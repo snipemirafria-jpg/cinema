@@ -18,6 +18,23 @@ const DEGRAU = 0.38;
 const LARG_BLOCO = 1.774;
 const CORREDOR = 1.6;
 
+// No celular troca materiais PBR (pesados) por Lambert, bem mais leves na GPU.
+function baratear(raiz) {
+  if (!MOBILE) return;
+  raiz.traverse(o => {
+    if (!o.isMesh) return;
+    const troca = m => {
+      if (!m || !(m.isMeshStandardMaterial || m.isMeshPhysicalMaterial)) return m;
+      if (m.userData._lambert) return m.userData._lambert;
+      const l = new THREE.MeshLambertMaterial({ color: m.color, map: m.map, emissive: m.emissive, emissiveMap: m.emissiveMap,
+        emissiveIntensity: m.emissiveIntensity, transparent: m.transparent, opacity: m.opacity, side: m.side, alphaTest: m.alphaTest });
+      m.userData._lambert = l; return l;
+    };
+    o.material = Array.isArray(o.material) ? o.material.map(troca) : troca(o.material);
+    o.castShadow = o.receiveShadow = false;
+  });
+}
+
 export class Cinema {
   constructor(canvas, camadaRotulos, video) {
     this.canvas = canvas;
@@ -27,10 +44,10 @@ export class Cinema {
     this.meuId = null;
     this.modo = 'poltrona';
 
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
+    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: MOBILE ? 'default' : 'high-performance' });
+    r.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1 : 2));
     r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = THREE.ACESFilmicToneMapping;
+    r.toneMapping = MOBILE ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
     r.shadowMap.enabled = !MOBILE;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -55,6 +72,7 @@ export class Cinema {
     this.assentos = [];
     this._montarSala();
     this._montarTela();
+    baratear(this.cena);
     this._redimensionar = this._redimensionar.bind(this);
     addEventListener('resize', this._redimensionar);
     this._redimensionar();
@@ -140,7 +158,7 @@ export class Cinema {
     // cortinas laterais do telão
     const cortinaMat = new THREE.MeshStandardMaterial({ color: '#7a0a16', roughness: 0.7, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) {
-      const g = new THREE.PlaneGeometry(3.2, A - 1, 40, 1);
+      const g = new THREE.PlaneGeometry(3.2, A - 1, MOBILE ? 16 : 40, 1);
       const pos = g.attributes.position;
       for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 7) * 0.18);
       g.computeVertexNormals();
@@ -156,13 +174,14 @@ export class Cinema {
     // iluminação
     c.add(new THREE.HemisphereLight('#ffc2cc', '#1a0810', 1.1));
     const ambiente = new THREE.AmbientLight('#3a1420', 1.2); c.add(ambiente);
-    for (const lado of [-1, 1]) {
+    if (MOBILE) ambiente.intensity = 2.2;
+    for (const lado of (MOBILE ? [] : [-1, 1])) {
       const pl = new THREE.PointLight('#ff2040', 60, 22, 1.4);
       pl.position.set(lado * 10, 7, 0); c.add(pl);
       const pl2 = new THREE.PointLight('#ff2040', 45, 20, 1.4);
       pl2.position.set(lado * 10, 6, 10); c.add(pl2);
     }
-    const fundoLuz = new THREE.PointLight('#ffb070', 14, 14, 1.8); fundoLuz.position.set(0, 9, zFundo + 3); c.add(fundoLuz);
+    if (!MOBILE) { const fundoLuz = new THREE.PointLight('#ffb070', 14, 14, 1.8); fundoLuz.position.set(0, 9, zFundo + 3); c.add(fundoLuz); }
     // luz do telão (cor varia com o filme)
     this.luzTela = new THREE.SpotLight('#9ab6ff', 60, 40, Math.PI / 3.2, 0.8, 1.2);
     this.luzTela.position.set(0, TELA.y, TELA.z - 1);
@@ -284,7 +303,7 @@ export class Cinema {
         mBloco.compose(new THREE.Vector3(b.x, b.y, b.z), new THREE.Quaternion().setFromEuler(new THREE.Euler(0, b.rotY, 0)), new THREE.Vector3(1, 1, 1));
         inst.setMatrixAt(k, mBloco.clone().multiply(o.matrixWorld));
       });
-      this.cena.add(inst);
+      baratear(inst); this.cena.add(inst);
     });
     this.assentos.sort((a, b) => a.prioridade - b.prioridade);
     return true;
@@ -309,7 +328,7 @@ export class Cinema {
           if (this.avatares.get(p.id) !== reg) return;
           reg.wrap = wrap; reg.carregando = false;
           wrap.userData.semente = Math.random();
-          this.cena.add(wrap);
+          baratear(wrap); this.cena.add(wrap);
           this._sentar(reg, reg.assento);
           reg.rotulo = this._criarRotulo(reg.dados);
           wrap.add(reg.rotulo);
@@ -418,6 +437,11 @@ export class Cinema {
   }
 
   _loop() {
+    if (MOBILE) {                       // celular: ~30 fps e pausa com a aba escondida
+      const agora = performance.now();
+      if (document.hidden || agora - (this._ult || 0) < 32) return;
+      this._ult = agora;
+    }
     const dt = Math.min(this.relogio.getDelta(), 0.1);
     const t = this.relogio.elapsedTime;
     if (this._alvoCam) {
@@ -426,7 +450,7 @@ export class Cinema {
       if (this.camera.position.distanceTo(this._alvoCam.pos) < 0.02) this._alvoCam = null;
     }
     this.controles.update();
-    if ((this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
+    if ((this._f = (this._f || 0) + 1) % (MOBILE ? 90 : 20) === 0) this._corDoVideo();
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);

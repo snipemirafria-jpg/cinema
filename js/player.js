@@ -75,7 +75,13 @@ export class PlayerSincronizado {
       if (v.canPlayType('application/vnd.apple.mpegurl')) v.src = url;         // Safari/iOS nativo
       else {
         const H = await carregarHls();
-        if (H.isSupported()) { this.hls = new H({ maxBufferLength: 30, capLevelToPlayerSize: false }); this.hls.loadSource(url); this.hls.attachMedia(v); }
+        if (H.isSupported()) { const leve = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+          this.hls = new H({ maxBufferLength: leve ? 20 : 30, capLevelToPlayerSize: false });
+          if (leve) this.hls.on(H.Events.MANIFEST_PARSED, (_, d) => {   // celular: no máximo 720p (o telão 3D não precisa de mais)
+            let cap = -1; d.levels.forEach((l, i) => { if ((l.height || 0) <= 720) cap = i; });
+            if (cap >= 0) this.hls.autoLevelCapping = cap;
+          });
+          this.hls.loadSource(url); this.hls.attachMedia(v); }
         else v.src = url;
       }
     } else if (tipo === 'dash') {

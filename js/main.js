@@ -142,8 +142,9 @@ async function abrirPerfil(primeiraVez) {
 }
 
 function criarPreview(canvas) {
-  const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
-  r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
+  const leve = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+  const r = new THREE.WebGLRenderer({ canvas, antialias: !leve, alpha: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, leve ? 1.25 : 2)); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
   const cena = new THREE.Scene();
   cena.add(new THREE.HemisphereLight('#ffffff', '#3a2a55', 1.6));
   const d = new THREE.DirectionalLight('#ffffff', 2.2); d.position.set(2, 4, 3); cena.add(d);
@@ -157,7 +158,7 @@ function criarPreview(canvas) {
   let atual = null;
   function tam() { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w) return; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
   addEventListener('resize', tam);
-  r.setAnimationLoop(() => { tam(); ctl.update(); r.render(cena, cam); });
+  r.setAnimationLoop(() => { if (document.hidden || !canvas.offsetParent) return; tam(); ctl.update(); r.render(cena, cam); });   // só desenha quando a tela de perfil está visível
   return { mostrar(av) { if (atual) cena.remove(atual); atual = av; poseEmPe(av); cena.add(av); } };
 }
 
