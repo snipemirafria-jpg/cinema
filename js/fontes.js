@@ -1,0 +1,110 @@
+// Reconhece qualquer link de filme: YouTube, Google Drive, HLS, DASH, MP4 ou página qualquer.
+export function idYouTube(u) {
+  try {
+    const url = new URL(u);
+    const h = url.hostname.replace(/^www\.|^m\./, '');
+    if (h === 'youtu.be') return url.pathname.slice(1).split('/')[0] || null;
+    if (/youtube(-nocookie)?\.com$/.test(h)) {
+      if (url.searchParams.get('v')) return url.searchParams.get('v');
+      const m = url.pathname.match(/\/(embed|shorts|live|v)\/([\w-]{6,})/);
+      return m ? m[2] : null;
+    }
+  } catch { }
+  return null;
+}
+
+export function idDrive(u) {
+  try {
+    const url = new URL(u);
+    if (!/(^|\.)google\.com$/.test(url.hostname) || !/drive|docs/.test(url.hostname)) return null;
+    const m = url.pathname.match(/\/d\/([\w-]{10,})/);
+    return m ? m[1] : url.searchParams.get('id');
+  } catch { }
+  return null;
+}
+
+// tipo a partir do link colado pelo dono
+export function detectarTipo(u) {
+  u = (u || '').trim();
+  if (idYouTube(u)) return 'youtube';
+  if (idDrive(u)) return 'drive';
+  if (/\.m3u8(\?|#|$)/i.test(u)) return 'hls';
+  if (/\.mpd(\?|#|$)/i.test(u)) return 'dash';
+  if (/\.(mp4|webm|m4v|mov|ogv)(\?|#|$)/i.test(u)) return 'mp4';
+  return 'link';
+}
+
+export const NOME_TIPO = { youtube: 'YouTube', drive: 'Google Drive', hls: 'HLS', dash: 'DASH', mp4: 'Vídeo direto', link: 'Link', upload: 'Upload' };
+
+export const urlDriveDireto = (id) => `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`;
+export const urlDrivePreview = (id) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;
+export const capaYouTube = (id) => `https://i.ytimg.com/vi/${encodeURIComponent(id)}/hqdefault.jpg`;
+export const capaDrive = (id) => `https://drive.google.com/thumbnail?id=${encodeURIComponent(id)}&sz=w800`;
+
+// ---------------------------------------------------------------- YouTube
+let apiYT = null;
+export function carregarApiYouTube() {
+  if (apiYT) return apiYT;
+  apiYT = new Promise((ok) => {
+    if (window.YT?.Player) return ok(window.YT);
+    const ant = window.onYouTubeIframeAPIReady;
+    window.onYouTubeIframeAPIReady = () => { ant?.(); ok(window.YT); };
+    const s = document.createElement('script'); s.src = 'https://www.youtube.com/iframe_api'; document.head.appendChild(s);
+  });
+  return apiYT;
+}
+
+// Faz um player do YouTube se comportar como um <video> (currentTime, paused, play…)
+export class MidiaYouTube {
+  constructor(id, inicio, eventos = {}) {
+    this.el = document.createElement('div'); this.el.className = 'midia-yt';
+    const alvo = document.createElement('div'); this.el.appendChild(alvo);
+    this.pronto = false; this._mudo = true; this._estado = -1; this.eventos = eventos;
+    carregarApiYouTube().then(YT => {
+      this.p = new YT.Player(alvo, {
+        videoId: id, width: '100%', height: '100%',
+        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, start: Math.floor(inicio || 0) },
+        events: {
+          onReady: () => { this.pronto = true; this.p.mute(); this.p.playVideo(); eventos.pronto?.(); },
+          onStateChange: (e) => {
+            this._estado = e.data;
+            if (e.data === 1) eventos.tocando?.();
+            if (e.data === 3) eventos.carregando?.();
+            if (e.data === 0) eventos.fim?.();
+          },
+          onError: (e) => eventos.erro?.(e.data === 101 || e.data === 150 ? 'O dono deste vídeo não permite exibir fora do YouTube.' : 'Vídeo do YouTube indisponível.'),
+        },
+      });
+    });
+  }
+  get readyState() { return this.pronto ? 4 : 0; }
+  get currentTime() { return this.pronto ? this.p.getCurrentTime() : 0; }
+  set currentTime(t) { if (this.pronto) this.p.seekTo(t, true); }
+  get paused() { return !this.pronto || this._estado === 2 || this._estado === -1 || this._estado === 5; }
+  get playbackRate() { return 1; }
+  set playbackRate(_) { }
+  get muted() { return this._mudo; }
+  set muted(m) { this._mudo = m; if (this.pronto) m ? this.p.mute() : (this.p.unMute(), this.p.setVolume(100)); }
+  set volume(_) { }
+  play() { if (this.pronto) this.p.playVideo(); return Promise.resolve(); }
+  pause() { if (this.pronto) this.p.pauseVideo(); }
+  destruir() { try { this.p?.destroy(); } catch { } this.el.remove(); }
+}
+
+// Página qualquer (sem controle de tempo): mostrada como está no telão.
+export class MidiaIframe {
+  constructor(url) {
+    this.el = document.createElement('iframe');
+    this.el.className = 'midia-iframe';
+    this.el.src = url;
+    this.el.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
+    this.el.referrerPolicy = 'no-referrer';
+    this.el.setAttribute('sandbox', 'allow-scripts allow-same-origin allow-presentation');
+    this.semControle = true;
+  }
+  get readyState() { return 4; } get currentTime() { return 0; } set currentTime(_) { }
+  get paused() { return false; } get playbackRate() { return 1; } set playbackRate(_) { }
+  get muted() { return false; } set muted(_) { } set volume(_) { }
+  play() { return Promise.resolve(); } pause() { }
+  destruir() { this.el.remove(); }
+}

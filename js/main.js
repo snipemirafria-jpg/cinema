@@ -185,15 +185,17 @@ async function abrirCinema() {
       if ($('#gaveta-programacao').hidden === false) carregarProgramacao();
     },
     aoLegenda: (t) => cinema.legenda(t),
-    aoEstado: (s) => {
-      if (s === 'tocando') cinema.mostrarVideo(true);
+    aoModo: (modo, el) => cinema.mostrarNaTela(el),
+    aoEstado: (s, msg) => {
+      if (s === 'tocando' && player.modo === 'textura') cinema.mostrarVideo(true);
+      if (s === 'erro' && msg) toast(msg, 'erro');
       if (s === 'bloqueado') $('#toque-iniciar').hidden = false;
     },
   });
   $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
   $('#btn-som').onclick = () => {
-    if (video.muted) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
-    else { video.muted = true; $('#btn-som').textContent = '🔇 Ativar som'; }
+    if (player.mutado) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
+    else { player.silenciar(); $('#btn-som').textContent = '🔇 Ativar som'; }
   };
   // navegadores só liberam som após um toque do usuário
   $('#toque-iniciar').hidden = false;

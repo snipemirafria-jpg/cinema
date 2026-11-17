@@ -1,5 +1,6 @@
 // Player sincronizado: todos veem o mesmo ponto do filme (o servidor manda).
 import { sb, urlPublica } from './supa.js';
+import { detectarTipo, idYouTube, idDrive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe } from './fontes.js';
 
 let Hls = null;
 const LEVE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;   // celular: corrige o sincronismo com mais folga (menos travadinhas)
@@ -13,14 +14,23 @@ function carregarDash() {
 }
 
 export class PlayerSincronizado {
-  constructor(video, { aoMudarFilme, aoLegenda, aoEstado } = {}) {
-    this.v = video;
-    this.aoMudarFilme = aoMudarFilme; this.aoLegenda = aoLegenda; this.aoEstado = aoEstado;
+  constructor(video, { aoMudarFilme, aoLegenda, aoEstado, aoModo } = {}) {
+    this.v = video;            // <video crossorigin> cujo quadro vira textura do telão 3D
+    this.m = video;            // mídia ativa (video, video livre, YouTube ou iframe)
+    this.modo = 'textura';
+    this.aoMudarFilme = aoMudarFilme; this.aoLegenda = aoLegenda; this.aoEstado = aoEstado; this.aoModo = aoModo;
+    // <video> sem crossorigin: toca links sem CORS (Drive, sites comuns), mostrado como elemento no telão
+    const vl = this.vLivre = document.createElement('video');
+    vl.className = 'midia-video'; vl.playsInline = true; vl.setAttribute('webkit-playsinline', ''); vl.muted = true; vl.preload = 'auto';
+    vl.addEventListener('playing', () => this.aoEstado?.('tocando'));
+    vl.addEventListener('waiting', () => this.aoEstado?.('carregando'));
+    vl.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
+    vl.addEventListener('error', () => this._falhaLivre?.());
     this.estado = null; this.offset = 0; this.itemAtual = null; this.hls = null; this.dash = null;
     this._tick = setInterval(() => this._corrigir(), 1500);
     this._poll = setInterval(() => this.atualizar(), 30000);
     video.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
-    video.addEventListener('error', () => this.aoEstado?.('erro'));
+    video.addEventListener('error', () => { if (this.m === this.v && this._semCors) return this._semCors(); this.aoEstado?.('erro'); });
     video.addEventListener('playing', () => this.aoEstado?.('tocando'));
     video.addEventListener('waiting', () => this.aoEstado?.('carregando'));
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.atualizar(); });
@@ -65,12 +75,53 @@ export class PlayerSincronizado {
     this.hls?.destroy(); this.hls = null;
     this.dash?.reset(); this.dash = null;
     this.v.removeAttribute('src'); this.v.load();
+    this.vLivre.removeAttribute('src'); this.vLivre.load();
+    if (this.m !== this.v && this.m !== this.vLivre) this.m.destroy?.(), this.m.destruir?.();
+    this._semCors = null; this._falhaLivre = null;
+    this._usar('textura', this.v);
+  }
+
+  _usar(modo, midia) {
+    const mudo = this.m?.muted ?? true;
+    this.m = midia; this.modo = modo;
+    try { midia.muted = mudo; } catch { }
+    this.aoModo?.(modo, modo === 'textura' ? null : midia.el || midia);
+  }
+
+  get mutado() { return this.m.muted; }
+  silenciar() { this.m.muted = true; }
+
+  // toca um link sem CORS num <video> comum mostrado direto no telão
+  _tocarLivre(url, reserva) {
+    this._falhaLivre = reserva || (() => this.aoEstado?.('erro'));
+    this.vLivre.src = url;
+    this._usar('elemento', this.vLivre);
+    this.vLivre.currentTime = this.posicaoAlvo();
+    this.tocar();
   }
 
   async _carregar(f) {
     this._parar();
-    const { tipo, url } = this.fonteDe(f);
+    let { tipo, url } = this.fonteDe(f);
+    if (tipo === 'link') tipo = detectarTipo(url);
     const v = this.v;
+    if (tipo === 'youtube') {
+      const yt = new MidiaYouTube(idYouTube(url), this.posicaoAlvo(), {
+        tocando: () => this.aoEstado?.('tocando'), carregando: () => this.aoEstado?.('carregando'),
+        fim: () => setTimeout(() => this.atualizar(), 800), erro: (msg) => this.aoEstado?.('erro', msg),
+        pronto: () => this._corrigir(true),
+      });
+      this._usar('youtube', yt);
+      return;
+    }
+    if (tipo === 'drive') {
+      const id = idDrive(url);
+      // 1º: arquivo direto (sincroniza); se o Drive recusar, mostra o player do próprio Drive
+      this._tocarLivre(urlDriveDireto(id), () => this._usar('iframe', new MidiaIframe(urlDrivePreview(id))));
+      return;
+    }
+    if (tipo === 'link') { this._usar('iframe', new MidiaIframe(url)); return; }
+    if (tipo === 'mp4') this._semCors = () => { this._semCors = null; v.removeAttribute('src'); this._tocarLivre(url); };
     [...v.querySelectorAll('track')].forEach(t => t.remove());
     if (tipo === 'hls') {
       // hls.js primeiro (MSE / ManagedMediaSource no iOS 17.1+): o quadro pode virar textura do telão 3D.
@@ -109,12 +160,13 @@ export class PlayerSincronizado {
     this.tocar();
   }
 
-  tocar() { return this.v.play().catch(() => this.aoEstado?.('bloqueado')); }
+  tocar() { return Promise.resolve(this.m.play()).catch(() => this.aoEstado?.('bloqueado')); }
 
-  ativarSom() { this.v.muted = false; this.v.volume = 1; return this.tocar(); }
+  ativarSom() { this.m.muted = false; try { this.m.volume = 1; } catch { } return this.tocar(); }
 
   _corrigir(forcar = false) {
-    const v = this.v;
+    const v = this.m;
+    if (v.semControle) return;
     if (!this.estado?.filme || v.readyState < 1) return;
     if (this.estado.pausado) { if (!v.paused) v.pause(); return; }
     const alvo = this.posicaoAlvo();

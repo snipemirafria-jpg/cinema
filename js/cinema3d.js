@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { criarAvatar, poseSentado, animarOcioso } from './avatar.js';
 import { esc } from './supa.js';
 
@@ -53,6 +54,11 @@ export class Cinema {
     r.shadowMap.type = THREE.PCFSoftShadowMap;
 
     this.css = new CSS2DRenderer({ element: camadaRotulos });
+    // camada para vídeos que não viram textura (YouTube, Drive, sites): o elemento HTML é posto em cima do telão em 3D
+    const camadaTela = document.createElement('div'); camadaTela.className = 'camada-tela';
+    canvas.after(camadaTela);
+    this.css3d = new CSS3DRenderer({ element: camadaTela });
+    this.cenaHtml = new THREE.Scene();
 
     this.cena = new THREE.Scene();
     this.cena.background = new THREE.Color('#06030a');
@@ -233,14 +239,29 @@ export class Cinema {
     this._ctxCor = this._cvCor.getContext('2d', { willReadFrequently: true });
   }
 
+  // coloca um elemento HTML (iframe/video) exatamente sobre o telão; null remove
+  mostrarNaTela(el) {
+    if (this.objTela) { this.cenaHtml.remove(this.objTela); this.objTela.element.remove(); this.objTela = null; }
+    if (!el) return;
+    const W = 1280, H = Math.round(W * TELA.h / TELA.w);
+    const caixa = document.createElement('div'); caixa.className = 'tela-html';
+    caixa.style.width = W + 'px'; caixa.style.height = H + 'px';
+    caixa.appendChild(el);
+    const o = this.objTela = new CSS3DObject(caixa);
+    o.position.set(0, TELA.y, TELA.z - 0.03); o.rotation.y = Math.PI; o.scale.setScalar(TELA.w / W);
+    this.cenaHtml.add(o);
+    this.materialTela.map = null; this.materialTela.color.set('#000000'); this.materialTela.needsUpdate = true;
+  }
+
   mostrarVideo(sim) {
+    if (this.objTela) return;
     this.materialTela.map = sim ? this.texturaVideo : null;
     this.materialTela.color.set(sim ? '#ffffff' : '#111111');
     this.materialTela.needsUpdate = true;
   }
 
   mostrarCapa(url) {
-    if (!url) return;
+    if (!url || this.objTela) return;
     new THREE.TextureLoader().load(url, (t) => {
       if (this.materialTela.map === this.texturaVideo && !this.video.paused) return;
       t.colorSpace = THREE.SRGBColorSpace; this.materialTela.map = t; this.materialTela.color.set('#ffffff'); this.materialTela.needsUpdate = true;
@@ -415,6 +436,7 @@ export class Cinema {
     const w = this.canvas.clientWidth || innerWidth, h = this.canvas.clientHeight || innerHeight;
     this.renderer.setSize(w, h, false);
     this.css.setSize(w, h);
+    this.css3d?.setSize(w, h);
     this.camera.aspect = w / h;
     this.camera.fov = w / h < 0.8 ? 72 : 55;
     this.camera.updateProjectionMatrix();
@@ -454,6 +476,7 @@ export class Cinema {
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);
+    if (this.objTela) this.css3d.render(this.cenaHtml, this.camera);
   }
 
   interromperCamera() { this._alvoCam = null; }

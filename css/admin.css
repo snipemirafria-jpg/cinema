@@ -77,3 +77,25 @@ td img.capa{width:38px;height:54px;object-fit:cover;border-radius:6px;background
   #conteudo{padding:14px}
   .topo{padding:14px}
 }
+
+/* pastas de filmes */
+.pastas{display:flex;gap:8px;overflow-x:auto;padding:12px 0 6px;scrollbar-width:thin}
+.pasta{flex:none;background:var(--card,#181224);border:1px solid var(--linha,#ffffff22);color:inherit;border-radius:999px;padding:8px 14px;font-weight:600;cursor:pointer;white-space:nowrap}
+.pasta small{opacity:.6;margin-left:4px}
+.pasta.ativa{background:linear-gradient(135deg,#7c3aed,#a855f7);border-color:transparent}
+.grade-filmes{display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:14px;margin-top:10px}
+.cartao-filme{background:var(--card,#181224);border:1px solid var(--linha,#ffffff22);border-radius:14px;padding:8px;display:flex;flex-direction:column;gap:6px;min-width:0}
+.cartao-filme .poster{aspect-ratio:16/10;border-radius:10px;background:#0b0710 center/cover no-repeat;position:relative}
+.cartao-filme .poster .tag{position:absolute;left:6px;top:6px;background:#000a}
+.cartao-filme b{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cartao-filme small{opacity:.7;font-size:12px}
+.cartao-filme .linha-acoes{flex-wrap:wrap;gap:4px}
+.cartao-filme .btn{padding:5px 8px;font-size:12px}
+.capa-prev{display:flex;gap:12px;align-items:center}
+.capa-prev img{width:120px;aspect-ratio:16/10;object-fit:cover;border-radius:8px;background:#0b0710}
+details summary{cursor:pointer;margin:6px 0;font-weight:600}
+
+.linha-check{flex-direction:row !important;align-items:center;gap:8px}
+.linha-check input{width:auto}
+.linha-dur{display:flex;gap:6px}
+.linha-dur .btn{flex:none}

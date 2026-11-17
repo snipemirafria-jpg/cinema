@@ -1,6 +1,7 @@
 // Painel do criador (OWNER). Toda permissão é garantida no banco (RLS + funções),
 // esta tela só organiza as ferramentas.
 import { sb, esc, toast, urlPublica } from './supa.js';
+import { detectarTipo, NOME_TIPO, idYouTube, idDrive, urlDriveDireto, capaYouTube, capaDrive, carregarApiYouTube } from './fontes.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -124,75 +125,145 @@ async function programacao() {
   }));
 }
 
-// ------------------------------------------------------------------ filmes
+// ------------------------------------------------------------------ filmes (pastas + links)
+st.pasta = 'Todas';
 async function filmes() {
-  const { data, error } = await sb.from('filmes').select('*').order('criado_em', { ascending: false });
+  const [{ data, error }, { data: cats }] = await Promise.all([
+    sb.from('filmes').select('*').order('criado_em', { ascending: false }),
+    sb.from('categorias').select('*').order('ordem'),
+  ]);
   if (erro(error)) return;
-  const { data: procs } = await sb.from('processamentos').select('filme, status, log').order('criado_em', { ascending: false });
-  const proc = Object.fromEntries((procs || []).reverse().map(p => [p.filme, p]));
-  C.innerHTML = `<div class="linha-acoes"><button class="btn p" id="f-novo">+ Novo filme</button></div>
-    <div class="card"><table><thead><tr><th></th><th>Título</th><th>Origem</th><th>Duração</th><th>Licença</th><th>Status</th><th></th></tr></thead><tbody>
-    ${data.map(f => `<tr><td><img class="capa" src="${esc(f.capa_url || 'icons/icon.svg')}"></td><td><b>${esc(f.titulo)}</b><div class="dica">${esc(f.genero || '')} · ${esc(f.classificacao || '')} · ${esc(f.idioma || '')}</div></td>
-      <td><span class="tag">${f.origem.toUpperCase()}</span></td><td>${dur(f.duracao_seg)}</td><td>${esc(f.licenca_tipo)}</td>
-      <td><span class="tag ${f.status === 'pronto' ? 'verde' : f.status === 'erro' ? 'verm' : 'amar'}">${f.status}</span>${proc[f.id] && f.origem === 'upload' ? `<div class="dica">HLS: ${proc[f.id].status}</div>` : ''}</td>
-      <td class="linha-acoes"><button class="btn" data-ed="${f.id}">Editar</button><button class="btn v" data-del="${f.id}">Excluir</button></td></tr>`).join('')}
-    </tbody></table></div>`;
-  $('#f-novo').onclick = () => formFilme();
+  st.cats = cats || [];
+  const conta = (n) => data.filter(f => (f.categoria || 'Outros') === n).length;
+  const visiveis = st.pasta === 'Todas' ? data : data.filter(f => (f.categoria || 'Outros') === st.pasta);
+  const icone = (n) => st.cats.find(c => c.nome === n)?.icone || '🎬';
+  C.innerHTML = `
+    <div class="linha-acoes"><button class="btn p" id="f-novo">+ Adicionar filme por link</button><button class="btn" id="f-pasta">+ Nova pasta</button></div>
+    <div class="pastas">
+      <button class="pasta ${st.pasta === 'Todas' ? 'ativa' : ''}" data-pasta="Todas">📁 Todas <small>${data.length}</small></button>
+      ${st.cats.map(c => `<button class="pasta ${st.pasta === c.nome ? 'ativa' : ''}" data-pasta="${esc(c.nome)}">${esc(c.icone)} ${esc(c.nome)} <small>${conta(c.nome)}</small></button>`).join('')}
+    </div>
+    <div class="grade-filmes">${visiveis.map(f => `
+      <div class="cartao-filme">
+        <div class="poster" style="background-image:url('${esc(f.capa_url || 'icons/icon.svg')}')"><span class="tag">${esc(NOME_TIPO[f.origem] || f.origem)}</span></div>
+        <b title="${esc(f.titulo)}">${esc(f.titulo)}</b>
+        <small>${icone(f.categoria)} ${esc(f.categoria || 'Outros')} · ${dur(f.duracao_seg)}${f.status !== 'pronto' ? ' · ' + f.status : ''}</small>
+        <div class="linha-acoes">
+          <button class="btn p" data-agora="${f.id}" title="Trocar o filme da sala por este agora">▶ Passar agora</button>
+          <button class="btn" data-fila="${f.id}" title="Adicionar ao fim da fila">+ Fila</button>
+          <button class="btn" data-ed="${f.id}">Editar</button>
+          <button class="btn v" data-del="${f.id}" title="Excluir">✕</button>
+        </div>
+      </div>`).join('') || '<p class="dica">Nenhum filme nesta pasta ainda. Clique em “Adicionar filme por link”.</p>'}</div>`;
+  $('#f-novo').onclick = () => formFilme({ categoria: st.pasta !== 'Todas' ? st.pasta : 'Outros' });
+  $('#f-pasta').onclick = () => modal(`<h3>Nova pasta</h3>
+      <div class="form-grid"><label>Nome<input name="nome" required maxlength="30" placeholder="Ex: Filmes de herói"></label>
+      <label>Ícone (emoji)<input name="icone" maxlength="4" value="🎬"></label></div>`, async (fm) => {
+      const v = Object.fromEntries(new FormData(fm));
+      if (erro((await sb.from('categorias').insert({ nome: v.nome.trim(), icone: v.icone || '🎬', ordem: 50 })).error)) return false;
+      st.pasta = v.nome.trim(); filmes();
+    });
+  $$('[data-pasta]').forEach(b => b.onclick = () => { st.pasta = b.dataset.pasta; filmes(); });
   $$('[data-ed]').forEach(b => b.onclick = () => formFilme(data.find(f => f.id === b.dataset.ed)));
+  $$('[data-fila]').forEach(b => b.onclick = async () => { if (await addFila(b.dataset.fila)) toast('Adicionado ao fim da fila', 'ok'); });
+  $$('[data-agora]').forEach(b => b.onclick = async () => {
+    const item = await addFila(b.dataset.agora); if (!item) return;
+    if (!erro((await sb.rpc('prog_reproduzir_agora', { p_item: item })).error)) toast('Trocado! Todos na sala já estão vendo este filme.', 'ok');
+  });
   $$('[data-del]').forEach(b => b.onclick = async () => {
     if (!confirm('Excluir este filme? Ele sai também da programação.')) return;
     if (!erro((await sb.from('filmes').delete().eq('id', b.dataset.del)).error)) { toast('Excluído', 'ok'); filmes(); }
   });
 }
 
+async function addFila(filme) {
+  const { data: ult } = await sb.from('programacao').select('posicao').order('posicao', { ascending: false }).limit(1);
+  const r = await sb.from('programacao').insert({ filme, posicao: (ult?.[0]?.posicao || 0) + 1 }).select('id').single();
+  return erro(r.error) ? null : r.data.id;
+}
+
+// descobre a duração do vídeo sozinho (segundos) — null se não conseguir
+async function detectarDuracao(tipo, url) {
+  if (tipo === 'youtube') {
+    const YT = await carregarApiYouTube();
+    return new Promise((ok) => {
+      const div = document.createElement('div'); div.style.cssText = 'position:fixed;left:-9999px;width:320px;height:180px';
+      const alvo = document.createElement('div'); div.appendChild(alvo); document.body.appendChild(div);
+      let p, n = 0; const fim = (v) => { clearInterval(t); try { p?.destroy(); } catch { } div.remove(); ok(v); };
+      const t = setInterval(() => { const d = p?.getDuration?.(); if (d > 0) fim(d); if (++n > 30) fim(null); }, 500);
+      p = new YT.Player(alvo, { videoId: idYouTube(url), playerVars: { mute: 1, autoplay: 1, controls: 0 }, events: { onError: () => fim(null) } });
+    });
+  }
+  if (tipo === 'link' || tipo === 'dash') return null;
+  return new Promise(async (ok) => {
+    const v = document.createElement('video'); v.muted = true; v.preload = 'metadata';
+    const fim = (d) => { clearTimeout(t); v.removeAttribute('src'); v.load(); ok(d); };
+    const t = setTimeout(() => fim(null), 15000);
+    v.onloadedmetadata = () => fim(isFinite(v.duration) && v.duration > 0 ? v.duration : null);
+    v.onerror = () => fim(null);
+    if (tipo === 'hls' && !v.canPlayType('application/vnd.apple.mpegurl')) {
+      const H = (await import('../vendor/hls.mjs')).default; const h = new H(); h.loadSource(url); h.attachMedia(v);
+      v.addEventListener('loadedmetadata', () => h.destroy(), { once: true });
+    } else v.src = tipo === 'drive' ? urlDriveDireto(idDrive(url)) : url;
+  });
+}
+
 function formFilme(f = {}) {
   const leg = (f.legendas || []).map(l => `${l.lang}|${l.label}|${l.url}`).join('\n');
+  const cats = (st.cats || []).map(c => `<option ${(f.categoria || 'Outros') === c.nome ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+  const minutos = f.duracao_seg ? Math.round(f.duracao_seg / 60) : '';
   const form = modal(`
-    <h3>${f.id ? 'Editar filme' : 'Novo filme'}</h3>
+    <h3>${f.id ? 'Editar filme' : 'Adicionar filme'}</h3>
     <div class="form-grid">
+      <label class="todo"><span>Link do filme <span class="tag" id="f-tipo">—</span></span>
+        <input name="fonte_url" placeholder="Cole aqui: YouTube, Google Drive, .mp4, .m3u8 ou qualquer link" value="${esc(f.origem === 'upload' ? '' : f.fonte_url || '')}">
+        <small class="dica">Google Drive: o arquivo precisa estar compartilhado como “Qualquer pessoa com o link”. YouTube: o vídeo precisa permitir incorporação.</small></label>
+      <label class="todo linha-check"><input type="checkbox" name="usar_upload" ${f.origem === 'upload' ? 'checked' : ''} style="width:auto"> Prefiro enviar o arquivo (até 50 MB)</label>
+      <label class="campo-up todo" hidden>Arquivo de vídeo<input name="arquivo" type="file" accept="video/mp4,video/webm,video/quicktime"></label>
       <label class="todo">Título<input name="titulo" required value="${esc(f.titulo || '')}"></label>
+      <label>Pasta<select name="categoria">${cats}</select></label>
+      <label>Duração (minutos)<span class="linha-dur"><input name="duracao" type="number" step="1" min="1" required value="${minutos}"><button type="button" class="btn" id="f-detectar">Detectar</button></span></label>
+      <label class="todo">Capa (link da imagem)<input name="capa_url" value="${esc(f.capa_url || '')}" placeholder="https://… (YouTube e Drive preenchem sozinho)"></label>
+      <div class="todo capa-prev"><img id="f-capa-prev" src="${esc(f.capa_url || 'icons/icon.svg')}" alt=""><label>…ou enviar imagem da capa<input name="capa_arq" type="file" accept="image/*"></label></div>
       <label class="todo">Descrição<textarea name="descricao">${esc(f.descricao || '')}</textarea></label>
-      <label>Origem<select name="origem">
-        ${[['hls', 'Fonte HLS (.m3u8)'], ['dash', 'Fonte MPEG-DASH (.mpd)'], ['mp4', 'Endereço de vídeo (.mp4/.webm)'], ['upload', 'Upload de arquivo']].map(([v, n]) => `<option value="${v}" ${f.origem === v ? 'selected' : ''}>${n}</option>`).join('')}</select></label>
-      <label class="campo-url">Endereço do vídeo<input name="fonte_url" type="url" placeholder="https://…" value="${esc(f.fonte_url || '')}"></label>
-      <label class="campo-up" hidden>Arquivo de vídeo<input name="arquivo" type="file" accept="video/mp4,video/webm,video/quicktime"></label>
-      <label>Duração (minutos)<input name="duracao" type="number" step="0.1" min="0.1" required value="${f.duracao_seg ? (f.duracao_seg / 60).toFixed(1) : ''}"></label>
-      <label>Capa (URL https)<input name="capa_url" value="${esc(f.capa_url || '')}" placeholder="https://… ou envie abaixo"></label>
-      <label>…ou enviar capa<input name="capa_arq" type="file" accept="image/*"></label>
-      <label>Gênero<input name="genero" value="${esc(f.genero || '')}"></label>
       <label>Classificação<select name="classificacao">${['L', '10', '12', '14', '16', '18'].map(c => `<option ${f.classificacao === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
-      <label>Idioma<input name="idioma" value="${esc(f.idioma || '')}"></label>
-      <label class="todo">Legendas WebVTT (uma por linha: idioma|nome|https://…/arquivo.vtt)<textarea name="legendas" placeholder="pt|Português|https://exemplo.com/pt.vtt">${esc(leg)}</textarea></label>
-      <label>Tipo de licença<select name="licenca_tipo" required>${['Domínio público', 'CC BY', 'CC BY 3.0', 'CC BY-SA', 'CC0', 'Licenciado (contrato)', 'Produção própria'].map(c => `<option ${f.licenca_tipo === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
-      <label>Titular dos direitos<input name="licenca_titular" value="${esc(f.licenca_titular || '')}"></label>
-      <label>Validade da licença<input name="licenca_validade" type="date" value="${esc(f.licenca_validade || '')}"></label>
-      <label class="todo">Detalhes da licença<textarea name="licenca_detalhes">${esc(f.licenca_detalhes || '')}</textarea></label>
+      <label>Idioma<input name="idioma" value="${esc(f.idioma || 'Português')}"></label>
+      <details class="todo"><summary>Legendas e licença (opcional)</summary><div class="form-grid">
+        <label class="todo">Legendas WebVTT (uma por linha: idioma|nome|https://…/arquivo.vtt)<textarea name="legendas" placeholder="pt|Português|https://exemplo.com/pt.vtt">${esc(leg)}</textarea></label>
+        <label>Tipo de licença<select name="licenca_tipo">${['Não informado', 'Domínio público', 'CC BY', 'CC BY-SA', 'CC0', 'Licenciado (contrato)', 'Produção própria'].map(c => `<option ${f.licenca_tipo === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label>Titular dos direitos<input name="licenca_titular" value="${esc(f.licenca_titular || '')}"></label>
+        <label>Validade da licença<input name="licenca_validade" type="date" value="${esc(f.licenca_validade || '')}"></label>
+        <label class="todo">Detalhes da licença<textarea name="licenca_detalhes">${esc(f.licenca_detalhes || '')}</textarea></label>
+      </div></details>
     </div>
     <p class="dica" id="f-validacao"></p>`, async (fm) => {
     const v = Object.fromEntries(new FormData(fm));
-    const reg = {
-      titulo: v.titulo.trim(), descricao: v.descricao, origem: v.origem, genero: v.genero, classificacao: v.classificacao, idioma: v.idioma,
-      duracao_seg: Math.round(parseFloat(v.duracao) * 60), licenca_tipo: v.licenca_tipo, licenca_titular: v.licenca_titular,
-      licenca_validade: v.licenca_validade || null, licenca_detalhes: v.licenca_detalhes, capa_url: v.capa_url || null,
-      legendas: v.legendas.split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [lang, label, url] = l.split('|'); return { lang, label, url }; }),
-      fonte_url: v.origem === 'upload' ? null : v.fonte_url.trim(),
-    };
     const info = $('#f-validacao', fm);
-    // capa enviada
+    const upload = !!v.usar_upload;
+    const url = (v.fonte_url || '').trim();
+    if (!upload && !/^https:\/\//i.test(url)) { info.textContent = '❌ Cole um link começando com https://'; return false; }
+    const origem = upload ? 'upload' : detectarTipo(url);
+    const reg = {
+      titulo: v.titulo.trim(), descricao: v.descricao, origem, categoria: v.categoria, classificacao: v.classificacao, idioma: v.idioma,
+      duracao_seg: Math.round(parseFloat(v.duracao) * 60), licenca_tipo: v.licenca_tipo || 'Não informado', licenca_titular: v.licenca_titular,
+      licenca_validade: v.licenca_validade || null, licenca_detalhes: v.licenca_detalhes, capa_url: v.capa_url || null,
+      legendas: (v.legendas || '').split('\n').map(l => l.trim()).filter(Boolean).map(l => { const [lang, label, u] = l.split('|'); return { lang, label, url: u }; }),
+      fonte_url: upload ? null : url, genero: v.categoria,
+    };
     if (v.capa_arq?.size) {
       const caminho = `${crypto.randomUUID()}-${v.capa_arq.name.replace(/[^\w.]/g, '_')}`;
       const up = await sb.storage.from('capas').upload(caminho, v.capa_arq, { contentType: v.capa_arq.type });
       if (erro(up.error)) return false;
       reg.capa_url = urlPublica('capas', caminho);
     }
-    // validação do endereço no servidor (SSRF, tipo de conteúdo, CORS)
-    if (reg.fonte_url) {
-      info.textContent = 'Validando endereço no servidor…';
-      const { data: val, error: e2 } = await sb.functions.invoke('validar-fonte', { body: { url: reg.fonte_url, origem: reg.origem } });
-      if (e2 || !val?.ok) { info.textContent = '❌ ' + (val?.motivo || e2?.message || 'Endereço inválido'); return false; }
+    // links de arquivo (HLS/DASH/MP4) passam pela checagem do servidor; YouTube/Drive/páginas tocam direto no telão
+    if (['hls', 'dash', 'mp4'].includes(origem)) {
+      info.textContent = 'Verificando o link…';
+      const { data: val, error: e2 } = await sb.functions.invoke('validar-fonte', { body: { url: reg.fonte_url, origem } });
+      if (e2 || !val?.ok) { info.textContent = '❌ ' + (val?.motivo || e2?.message || 'Link inválido'); return false; }
       if (val.aviso) toast(val.aviso);
     }
-    if (v.origem === 'upload' && !f.arquivo_path) {
+    if (upload && !f.arquivo_path) {
       if (!v.arquivo?.size) { info.textContent = 'Escolha o arquivo de vídeo.'; return false; }
       const caminho = `originais/${crypto.randomUUID()}-${v.arquivo.name.replace(/[^\w.]/g, '_')}`;
       info.textContent = `Enviando ${(v.arquivo.size / 1e6).toFixed(0)} MB… não feche esta janela.`;
@@ -202,11 +273,37 @@ function formFilme(f = {}) {
     }
     const r = f.id ? await sb.from('filmes').update(reg).eq('id', f.id) : await sb.from('filmes').insert({ ...reg, criado_por: st.uid });
     if (r.error) { info.textContent = '❌ ' + r.error.message; return false; }
-    toast('Filme salvo', 'ok'); filmes();
+    st.pasta = reg.categoria; toast('Filme salvo na pasta ' + reg.categoria, 'ok'); filmes();
   });
-  const sel = $('[name=origem]', form);
-  const troca = () => { $('.campo-url', form).hidden = sel.value === 'upload'; $('.campo-up', form).hidden = sel.value !== 'upload'; };
-  sel.onchange = troca; troca();
+  const campo = $('[name=fonte_url]', form), capa = $('[name=capa_url]', form), tit = $('[name=titulo]', form), durc = $('[name=duracao]', form);
+  const prev = $('#f-capa-prev', form), info = $('#f-validacao', form);
+  capa.oninput = () => prev.src = capa.value || 'icons/icon.svg';
+  const detectar = async () => {
+    const url = campo.value.trim(); if (!/^https:\/\//i.test(url)) return;
+    const tipo = detectarTipo(url);
+    info.textContent = 'Detectando duração…';
+    const d = await detectarDuracao(tipo, url).catch(() => null);
+    if (d) { durc.value = Math.max(1, Math.round(d / 60)); info.textContent = '✓ Duração detectada'; }
+    else info.textContent = tipo === 'link' ? 'Esse tipo de link não informa a duração: digite em minutos.' : 'Não consegui detectar a duração; digite em minutos.';
+  };
+  const analisar = async () => {
+    const url = campo.value.trim(), tipo = detectarTipo(url);
+    $('#f-tipo', form).textContent = url ? NOME_TIPO[tipo] : '—';
+    if (!/^https:\/\//i.test(url)) return;
+    if (tipo === 'youtube') {
+      const id = idYouTube(url);
+      if (!capa.value) { capa.value = capaYouTube(id); prev.src = capa.value; }
+      if (!tit.value) fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url)).then(r => r.ok ? r.json() : null).then(j => { if (j?.title && !tit.value) tit.value = j.title; }).catch(() => { });
+    }
+    if (tipo === 'drive' && !capa.value) { capa.value = capaDrive(idDrive(url)); prev.src = capa.value; }
+    if (!durc.value) detectar();
+  };
+  campo.addEventListener('change', analisar); campo.addEventListener('paste', () => setTimeout(analisar, 50));
+  $('#f-detectar', form).onclick = detectar;
+  const up = $('[name=usar_upload]', form);
+  const troca = () => { $('.campo-up', form).hidden = !up.checked; campo.closest('label').hidden = up.checked; };
+  up.onchange = troca; troca();
+  if (campo.value) $('#f-tipo', form).textContent = NOME_TIPO[detectarTipo(campo.value)];
 }
 
 // ------------------------------------------------------------------ usuários
@@ -222,10 +319,20 @@ async function usuarios() {
       <td><b>${esc(u.apelido || '—')}</b> ${onl.has(u.id) ? '<span class="tag verde">online</span>' : ''}</td><td>${esc(u.email)}</td>
       <td>${u.papel === 'owner' ? '<span class="tag roxo">👑 owner</span>' : 'espectador'}</td><td>${dataBR(u.criado_em)}</td><td>${dataBR(u.ultimo_acesso)}</td>
       <td>${b ? `<span class="tag verm">${b.tipo}</span>` : '<span class="tag verde">ativo</span>'}</td>
-      <td>${u.papel !== 'owner' ? `<button class="btn v" data-ban="${u.id}" data-nome="${esc(u.apelido || u.email)}">Banir</button>` : ''}</td></tr>`; }).join('')}
+      <td class="linha-acoes">${u.papel !== 'owner' ? `<button class="btn" data-exp="${u.id}" data-nome="${esc(u.apelido || u.email)}">Expulsar</button><button class="btn v" data-ban="${u.id}" data-nome="${esc(u.apelido || u.email)}">Banir</button>` : ''}</td></tr>`; }).join('')}
     </tbody></table></div>`;
   $('#busca').oninput = (e) => $$('#tb tr').forEach(tr => tr.hidden = !tr.dataset.q.includes(e.target.value.toLowerCase()));
   $$('[data-ban]').forEach(b => b.onclick = () => formBan(b.dataset.ban, b.dataset.nome));
+  $$('[data-exp]').forEach(b => b.onclick = () => expulsar(b.dataset.exp, b.dataset.nome));
+}
+
+// Expulsar: tira a pessoa da sala agora; ela só pode voltar depois de 10 minutos.
+async function expulsar(usuario, nome) {
+  if (!confirm(`Expulsar ${nome} da sala? A pessoa poderá voltar em 10 minutos.`)) return;
+  const reg = { usuario, tipo: 'temporario', motivo: 'Expulso da sala pelo dono', criado_por: st.uid, ate: new Date(Date.now() + 10 * 60e3).toISOString() };
+  if (erro((await sb.from('banimentos').insert(reg)).error)) return;
+  canal.send({ type: 'broadcast', event: 'moderacao', payload: { alvo: usuario } });
+  toast(nome + ' foi expulso', 'ok'); ir(st.secao);
 }
 
 function formBan(usuario, nome) {
@@ -267,12 +374,14 @@ async function denuncias() {
         <button class="btn" data-st="analisando" data-id="${d.id}">Analisar</button>
         <button class="btn ok" data-st="resolvida" data-id="${d.id}">Resolver</button>
         <button class="btn" data-st="descartada" data-id="${d.id}">Descartar</button>
+        <button class="btn" data-exp="${d.denunciado}" data-nome="${esc(d.denunciado_p?.apelido)}">Expulsar</button>
         <button class="btn v" data-ban="${d.denunciado}" data-nome="${esc(d.denunciado_p?.apelido)}">Banir</button>` : ''}</td></tr>`).join('') || '<tr><td colspan=6 class="dica">Nenhuma denúncia.</td></tr>'}</tbody></table></div>`;
   $$('[data-st]').forEach(b => b.onclick = async () => {
     const fim = ['resolvida', 'descartada'].includes(b.dataset.st);
     if (!erro((await sb.from('denuncias').update({ status: b.dataset.st, ...(fim ? { resolvido_por: st.uid, resolvido_em: new Date().toISOString() } : {}) }).eq('id', b.dataset.id)).error)) { denuncias(); badge(); }
   });
   $$('[data-ban]').forEach(b => b.onclick = () => formBan(b.dataset.ban, b.dataset.nome));
+  $$('[data-exp]').forEach(b => b.onclick = () => expulsar(b.dataset.exp, b.dataset.nome));
 }
 
 // ------------------------------------------------------------------ banimentos
