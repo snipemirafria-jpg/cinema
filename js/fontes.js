@@ -68,7 +68,8 @@ export function carregarApiYouTube() {
 export class MidiaYouTube {
   // O YouTube liga legendas automáticas quando o vídeo começa mudo; desliga sempre.
   semLegenda() {
-    try { this.p.setOption('captions', 'track', {}); this.p.unloadModule('captions'); this.p.unloadModule('cc'); } catch { }
+    const tirar = () => { try { this.p.setOption('captions', 'track', {}); this.p.setOption('cc', 'track', {}); this.p.unloadModule('captions'); this.p.unloadModule('cc'); } catch { } };
+    tirar(); [300, 1000, 2500, 5000].forEach(ms => setTimeout(tirar, ms));   // o YouTube religa a legenda logo depois de começar
   }
   constructor(id, inicio, eventos = {}) {
     this.el = document.createElement('div'); this.el.className = 'midia-yt';
@@ -77,7 +78,7 @@ export class MidiaYouTube {
     carregarApiYouTube().then(YT => {
       this.p = new YT.Player(alvo, {
         videoId: id, width: '100%', height: '100%',
-        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, start: Math.floor(inicio || 0) },
+        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'none', hl: 'pt', start: Math.floor(inicio || 0) },
         events: {
           onReady: () => { this.pronto = true; this.semLegenda(); this.p.mute(); this.p.playVideo(); eventos.pronto?.(); },
           onStateChange: (e) => {
