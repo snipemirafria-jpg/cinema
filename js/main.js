@@ -7,6 +7,8 @@ import { OPCOES, normalizarAvatar, criarAvatar, poseEmPe, preCarregar } from './
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const estado = { sessao: null, perfil: null, owner: false, cinema: null, player: null, canal: null, pessoas: new Map() };
+// leitura para módulos opcionais (VR): só expõe a sala e o player, sem mudar nada neles
+window.CineOnline = { get player() { return estado.player; }, get cinema() { return estado.cinema; } };
 
 function mostrar(id) {
   $$('.tela').forEach(t => t.hidden = t.id !== id);
