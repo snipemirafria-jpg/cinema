@@ -2,6 +2,7 @@
 import { sb, urlPublica } from './supa.js';
 
 let Hls = null;
+const LEVE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;   // celular: corrige o sincronismo com mais folga (menos travadinhas)
 async function carregarHls() { if (!Hls) Hls = (await import('../vendor/hls.mjs')).default; return Hls; }
 function carregarDash() {
   if (window.dashjs) return Promise.resolve(window.dashjs);
@@ -72,18 +73,19 @@ export class PlayerSincronizado {
     const v = this.v;
     [...v.querySelectorAll('track')].forEach(t => t.remove());
     if (tipo === 'hls') {
-      if (v.canPlayType('application/vnd.apple.mpegurl')) v.src = url;         // Safari/iOS nativo
-      else {
-        const H = await carregarHls();
-        if (H.isSupported()) { const leve = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
-          this.hls = new H({ maxBufferLength: leve ? 20 : 30, capLevelToPlayerSize: false });
-          if (leve) this.hls.on(H.Events.MANIFEST_PARSED, (_, d) => {   // celular: no máximo 720p (o telão 3D não precisa de mais)
-            let cap = -1; d.levels.forEach((l, i) => { if ((l.height || 0) <= 720) cap = i; });
-            if (cap >= 0) this.hls.autoLevelCapping = cap;
-          });
-          this.hls.loadSource(url); this.hls.attachMedia(v); }
-        else v.src = url;
-      }
+      // hls.js primeiro (MSE / ManagedMediaSource no iOS 17.1+): o quadro pode virar textura do telão 3D.
+      // HLS nativo do iPhone toca o som mas deixa o telão preto no WebGL, então ele fica só de reserva.
+      const H = await carregarHls();
+      if (H.isSupported()) {
+        const leve = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+        v.disableRemotePlayback = true;      // exigido pelo ManagedMediaSource do iOS
+        this.hls = new H({ maxBufferLength: leve ? 20 : 30, capLevelToPlayerSize: false, enableWorker: true });
+        if (leve) this.hls.on(H.Events.MANIFEST_PARSED, (_, d) => {   // celular: no máximo 720p (o telão 3D não precisa de mais)
+          let cap = -1; d.levels.forEach((l, i) => { if ((l.height || 0) <= 720) cap = i; });
+          if (cap >= 0) this.hls.autoLevelCapping = cap;
+        });
+        this.hls.loadSource(url); this.hls.attachMedia(v);
+      } else v.src = url;
     } else if (tipo === 'dash') {
       const d = await carregarDash();
       this.dash = d.MediaPlayer().create(); this.dash.initialize(v, url, false);
@@ -119,8 +121,8 @@ export class PlayerSincronizado {
     const dur = this.estado.filme.duracao_seg;
     if (alvo >= dur + 1) { this.atualizar(); return; }
     const dif = alvo - v.currentTime;
-    if (Math.abs(dif) > 3 || forcar && Math.abs(dif) > 1) { try { v.currentTime = alvo; } catch { } v.playbackRate = 1; }
-    else if (Math.abs(dif) > 0.4) v.playbackRate = dif > 0 ? 1.05 : 0.95;
+    if (Math.abs(dif) > (LEVE ? 6 : 3) || forcar && Math.abs(dif) > 1) { try { v.currentTime = alvo; } catch { } v.playbackRate = 1; }
+    else if (Math.abs(dif) > (LEVE ? 1 : 0.4)) v.playbackRate = dif > 0 ? 1.05 : 0.95;
     else v.playbackRate = 1;
     if (v.paused && !document.hidden) this.tocar();
   }

@@ -450,7 +450,7 @@ export class Cinema {
       if (this.camera.position.distanceTo(this._alvoCam.pos) < 0.02) this._alvoCam = null;
     }
     this.controles.update();
-    if ((this._f = (this._f || 0) + 1) % (MOBILE ? 90 : 20) === 0) this._corDoVideo();
+    if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);
