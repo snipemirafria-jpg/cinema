@@ -493,6 +493,17 @@ export class Cinema {
     } catch { /* fonte sem CORS: mantém a luz padrão */ }
   }
 
+  // anima o que se mexe na sala (personagens e luz do telão), sem câmera e sem desenhar.
+  // Usado pelo _loop da sala e pelo modo VR, que desenha a mesma cena com as câmeras dos olhos.
+  _animar(t) {
+    if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
+    for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
+  }
+  animar() {
+    this.relogio.getDelta();
+    this._animar(this.relogio.elapsedTime);
+  }
+
   _loop() {
     if (MOBILE) {                       // celular: ~30 fps e pausa com a aba escondida
       const agora = performance.now();
@@ -508,8 +519,7 @@ export class Cinema {
     }
     this.controles.update();
     this._limitarCamera();
-    if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
-    for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
+    this._animar(t);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);
     if (this.objTela) this.css3d.render(this.cenaHtml, this.camera);

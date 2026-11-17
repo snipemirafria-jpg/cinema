@@ -1,14 +1,18 @@
 // CineOnline VR — módulo independente (Cinema VR + Vídeos 360°).
-// Usa o Three.js que o projeto já tem (vendor/three). Não mexe no player, no Supabase,
-// nos avatares nem na sala 3D: só lê o filme da sessão (window.CineOnline) e silencia
-// a sala enquanto o VR está aberto. Ao sair, tudo volta como estava, sem recarregar.
+// Cinema VR: usa a PRÓPRIA sala 3D (window.CineOnline.cinema): mesma cena, mesmo renderer,
+// mesmo telão e o filme da sessão. O canvas da sala entra na tela do VR, a câmera vai para os
+// olhos do personagem do usuário (na poltrona dele) e a cena é desenhada em tela dividida.
+// Ao sair, o canvas volta para #tela-cinema e a sala continua de onde estava, sem recarregar.
+// Vídeos 360°: esfera panorâmica com renderer próprio (não mexe na sala).
 import * as THREE from 'three';
 import { detectarTipo, idYouTube, idArchive, idDrive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe } from '../../js/fontes.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 
-const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+// iPhone/iPad (o iPad recente se apresenta como Mac, mas tem tela de toque)
+const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+const MOBILE = IOS || matchMedia('(pointer:coarse)').matches || innerWidth < 760;
 const CHAVE = 'cineonline-vr-ajustes';
-const PADRAO = { tela: 16, dist: 14, sep: 0, escala: 1, distorcao: 0.22, volume: 1, oculos: true };
+const PADRAO = { sep: 0, escala: 1, distorcao: 0.22, volume: 1, oculos: true };
 const aj = Object.assign({}, PADRAO, JSON.parse(localStorage.getItem(CHAVE) || '{}'));
 const salvar = () => localStorage.setItem(CHAVE, JSON.stringify(aj));
 const $ = (s, r = document) => r.querySelector(s);
@@ -41,10 +45,12 @@ export function identificarFormato(largura, altura, nome = '') {
 
 // ----------------------------------------------------------------- sensores
 export async function verificarDispositivo() {
-  const info = { https: isSecureContext, webxr: false, orientacaoApi: 'DeviceOrientationEvent' in window, giroscopio: false, precisaPermissao: false, celular: MOBILE };
+  const info = { https: isSecureContext, webxr: false, orientacaoApi: 'DeviceOrientationEvent' in window, giroscopio: false, precisaPermissao: false, celular: MOBILE, ios: IOS };
   try { info.webxr = !!(navigator.xr && await navigator.xr.isSessionSupported('immersive-vr')); } catch { }
-  info.precisaPermissao = typeof DeviceOrientationEvent?.requestPermission === 'function';
-  if (info.orientacaoApi && !info.precisaPermissao) info.giroscopio = await testarGiroscopio(1200);
+  info.precisaPermissao = typeof window.DeviceOrientationEvent?.requestPermission === 'function';
+  // no iPhone/iPad nada chega antes da permissão; nos outros (Android, e Chrome que também tem requestPermission) testa direto
+  if (info.orientacaoApi && (!info.precisaPermissao || !IOS)) info.giroscopio = await testarGiroscopio(1200);
+  if (info.giroscopio) info.precisaPermissao = false;
   return info;
 }
 function testarGiroscopio(ms) {
@@ -80,62 +86,9 @@ const VERT = 'varying vec2 vUv; void main(){ vUv=uv; gl_Position=vec4(position.x
 const FRAG = `uniform sampler2D t; uniform float k1, escala; varying vec2 vUv;
 void main(){ vec2 p=(vUv-0.5)*2.0/escala; float r2=dot(p,p); vec2 d=p*(1.0+k1*r2+k1*0.5*r2*r2)/(1.0+k1*1.5); vec2 uv=d*0.5+0.5;
  if(uv.x<0.0||uv.y<0.0||uv.x>1.0||uv.y>1.0) gl_FragColor=vec4(0.,0.,0.,1.); else gl_FragColor=texture2D(t,uv);
+ #include <tonemapping_fragment>
  #include <colorspace_fragment>
 }`;
-
-// ----------------------------------------------------------------- cena: Cinema VR
-function criarSalaCinema() {
-  const g = new THREE.Group();
-  const L = 24, A = 11, C = 34;
-  const parede = new THREE.MeshStandardMaterial({ color: 0x5a3a4a, roughness: 0.95 });
-  const veludo = new THREE.MeshStandardMaterial({ color: 0x7a1a2c, roughness: 0.8 });
-  const chao = new THREE.Mesh(new THREE.PlaneGeometry(L, C), new THREE.MeshStandardMaterial({ color: 0x2e1c24, roughness: 1 }));
-  chao.rotation.x = -Math.PI / 2; chao.position.z = -C / 2 + 8; g.add(chao);
-  const teto = chao.clone(); teto.rotation.x = Math.PI / 2; teto.position.y = A; teto.material = parede; g.add(teto);
-  for (const s of [-1, 1]) {
-    const p = new THREE.Mesh(new THREE.PlaneGeometry(C, A), veludo);
-    p.rotation.y = -s * Math.PI / 2; p.position.set(s * L / 2, A / 2, -C / 2 + 8); g.add(p);
-    for (let i = 0; i < 5; i++) {   // arandelas nas paredes
-      const l = new THREE.Mesh(new THREE.BoxGeometry(0.1, 0.5, 0.25), new THREE.MeshBasicMaterial({ color: 0xffb070 }));
-      l.position.set(s * (L / 2 - 0.06), 4.2, 6 - i * 6); g.add(l);
-    }
-  }
-  const fundo = new THREE.Mesh(new THREE.PlaneGeometry(L, A), parede); fundo.position.set(0, A / 2, 8); fundo.rotation.y = Math.PI; g.add(fundo);
-  const frente = new THREE.Mesh(new THREE.PlaneGeometry(L, A), new THREE.MeshStandardMaterial({ color: 0x050305 })); frente.position.set(0, A / 2, -C + 8 + 0.02); g.add(frente);
-  // poltronas (instanciadas: 1 desenho para todas)
-  const assento = new THREE.BoxGeometry(0.9, 0.5, 0.8); assento.translate(0, 0.25, 0);
-  const encosto = new THREE.BoxGeometry(0.9, 1.0, 0.18); encosto.translate(0, 0.75, 0.38);
-  const matPolt = new THREE.MeshStandardMaterial({ color: 0x7a1424, roughness: 0.7 });
-  const filas = 9, porFila = 16, n = filas * porFila;
-  const iA = new THREE.InstancedMesh(assento, matPolt, n), iE = new THREE.InstancedMesh(encosto, matPolt, n);
-  const m = new THREE.Matrix4(); let k = 0;
-  for (let f = 0; f < filas; f++) for (let c = 0; c < porFila; c++) {
-    const x = (c - (porFila - 1) / 2) * 1.05 + (c >= porFila / 2 ? 0.8 : -0.8);
-    m.makeTranslation(x, 0, 4.5 - f * 1.5); iA.setMatrixAt(k, m); iE.setMatrixAt(k, m); k++;
-  }
-  g.add(iA, iE);
-  // luzes de corredor
-  for (let i = 0; i < 10; i++) {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.04, 0.12), new THREE.MeshBasicMaterial({ color: 0x5b8cff }));
-    l.position.set(0, 0.03, 4 - i * 1.5); g.add(l);
-  }
-  g.add(new THREE.AmbientLight(0x3a2630, 1.6));
-  g.add(new THREE.HemisphereLight(0x504060, 0x100808, 0.8));
-  // sanca de luz no teto e placa de saída no fundo: dá para ver o teto e a parte de trás da sala
-  for (const s of [-1, 1]) {
-    const f = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.06, C - 4), new THREE.MeshBasicMaterial({ color: 0x6a3cff }));
-    f.position.set(s * (L / 2 - 1.2), A - 0.05, -C / 2 + 8); g.add(f);
-  }
-  const saida = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.45), new THREE.MeshBasicMaterial({ color: 0x18c964 }));
-  saida.position.set(L / 2 - 3, 3.2, 7.98); saida.rotation.y = Math.PI; g.add(saida);
-  const porta = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 2.6), new THREE.MeshStandardMaterial({ color: 0x2a1a12 }));
-  porta.position.set(L / 2 - 3, 1.3, 7.98); porta.rotation.y = Math.PI; g.add(porta);
-  const cabine = new THREE.Mesh(new THREE.PlaneGeometry(0.8, 0.5), new THREE.MeshBasicMaterial({ color: 0xbfd0ff }));
-  cabine.position.set(0, 8.5, 7.98); cabine.rotation.y = Math.PI; g.add(cabine);   // janela da cabine de projeção
-  const luzTela = new THREE.PointLight(0xbfd0ff, 30, 40, 1.6); luzTela.position.set(0, 5, -12); g.add(luzTela);
-  g.userData.luzTela = luzTela;
-  return g;
-}
 
 // ----------------------------------------------------------------- interface
 const CSS = `
@@ -175,12 +128,23 @@ const CSS = `
 .vr-css{position:absolute;top:0;left:0;overflow:hidden;pointer-events:none;transform-origin:50% 50%}
 .vr-css .tela-html video{object-fit:contain}
 .vr-css .midia-iframe{pointer-events:auto}
+.vr-tela .vr-b[data-giro]{flex-basis:100%;background:linear-gradient(135deg,#0ea5e9,#6366f1)}
 #vr-botao span{white-space:nowrap}
 `;
+
+const pegarPlayer = () => window.CineOnline?.player || null;
+const pegarSala = () => window.CineOnline?.cinema || null;
+// devolve um elemento ao lugar exato de onde saiu
+function voltarAoLugar(el, lugar) {
+  if (!el || !lugar?.pai) return;
+  if (lugar.prox && lugar.prox.parentNode === lugar.pai) lugar.pai.insertBefore(el, lugar.prox);
+  else lugar.pai.appendChild(el);
+}
 
 class ExperienciaVR {
   constructor() {
     this.raiz = null; this.info = null; this.ativo = false;
+    this._permGiro = null; this._permEstado = null;   // a permissão do giroscópio (iPhone) é pedida uma vez só
   }
 
   montar() {
@@ -195,7 +159,8 @@ class ExperienciaVR {
         <div class="vr-info" data-info><span>🔎 Verificando o aparelho…</span></div>
         <div class="vr-aviso" data-aviso hidden></div>
         <div class="vr-botoes">
-          <button class="vr-b" data-ir="cinema">🎬 CINEMA VR<small>Telão gigante numa sala escura</small></button>
+          <button class="vr-b" data-giro hidden>📱 Ativar movimento VR<small>Libera o giroscópio: olhe em volta virando o celular</small></button>
+          <button class="vr-b" data-ir="cinema">🎬 CINEMA VR<small>A sua sala, vista da sua poltrona</small></button>
           <button class="vr-b" data-ir="360">🌐 VÍDEOS 360°<small>Olhe em volta com o celular</small></button>
         </div>
         <label class="vr-info"><span><input type="checkbox" data-oculos> Usar óculos (VR Box / Cardboard): tela dividida</span></label>
@@ -223,12 +188,11 @@ class ExperienciaVR {
         <button data-c="aovivo" title="Voltar ao ponto da sessão" hidden>🔴 Ao vivo</button>
         <label title="Volume">🔊<input type="range" min="0" max="1" step="0.05" data-r="volume"></label>
         <button data-c="estereo" data-so-textura title="Formato do filme: 2D, 3D lado a lado ou 3D em cima/embaixo">2D</button>
-        <label data-so-cinema title="Tamanho da tela">📐<input type="range" min="8" max="22" step="1" data-r="tela"></label>
-        <label data-so-cinema title="Distância da tela">↔<input type="range" min="6" max="24" step="1" data-r="dist"></label>
         <label data-so-oculos title="Separação entre os olhos">👀<input type="range" min="-60" max="60" step="2" data-r="sep"></label>
         <label data-so-oculos title="Escala da imagem">🔍<input type="range" min="0.6" max="1.3" step="0.02" data-r="escala"></label>
         <label data-so-oculos title="Correção das lentes">◎<input type="range" min="0" max="0.5" step="0.02" data-r="distorcao"></label>
         <button data-c="oculos" title="Tela dividida (óculos)">🥽</button>
+        <button data-c="giro" data-giro2 title="Liberar o giroscópio (iPhone/iPad)" hidden>📱 Ativar movimento VR</button>
         <button data-c="centro" title="Centralizar a visão">🎯</button>
         <button data-c="xr" title="Abrir em WebXR" hidden>XR</button>
         <button data-c="sair" title="Sair do VR">✕ Sair</button>
@@ -249,26 +213,66 @@ class ExperienciaVR {
   async entrar() {
     this.montar();
     this.raiz.hidden = false; this._tela('inicio');
+    this._atualizarBotaoGiro();
     this.info = await verificarDispositivo();
     const i = this.info, chips = [];
     chips.push(i.webxr ? '✅ WebXR disponível' : '➖ Sem WebXR: modo tela dividida');
-    chips.push(i.giroscopio ? '✅ Giroscópio' : i.precisaPermissao ? '🔐 Giroscópio pede permissão' : '⚠️ Sem giroscópio');
+    chips.push(i.giroscopio || this._permEstado === 'granted' ? '✅ Giroscópio' : i.precisaPermissao ? '🔐 Giroscópio pede permissão' : '⚠️ Sem giroscópio');
     chips.push(i.https ? '🔒 HTTPS' : '⚠️ Sem HTTPS');
     $('[data-info]', this.raiz).innerHTML = chips.map(c => `<span>${c}</span>`).join('');
     const av = $('[data-aviso]', this.raiz);
-    if (!i.giroscopio && !i.precisaPermissao) { av.hidden = false; av.textContent = 'Este aparelho não enviou dados de giroscópio. Você ainda pode usar o VR: arraste o dedo na tela (ou o mouse) para olhar em volta.'; }
+    if (!i.https && (i.precisaPermissao || i.celular)) { av.hidden = false; av.textContent = '⚠️ Sem HTTPS o celular não libera o giroscópio. Abra o site pelo endereço https://. Você ainda pode arrastar o dedo para olhar em volta.'; }
+    else if (!i.giroscopio && !i.precisaPermissao) { av.hidden = false; av.textContent = 'Este aparelho não enviou dados de giroscópio. Você ainda pode usar o VR: arraste o dedo na tela (ou o mouse) para olhar em volta.'; }
     else av.hidden = true;
+    this._atualizarBotaoGiro();
   }
 
   _tela(nome) { for (const s of this.raiz.querySelectorAll('.vr-tela')) s.hidden = s.dataset.t !== nome; }
 
+  // Tudo que precisa de toque válido (permissão do iOS) é chamado direto aqui, sem await antes.
   _clique(e) {
-    const b = e.target.closest('button'); if (!b) { if (this.ativo) this._mostrarControles(); return; }
+    const b = e.target.closest('button');
+    if (!b) {
+      if (this.ativo && !e.target.closest('.vr-controles, input, label')) { this._pedirPermissaoGiro(); this._mostrarControles(); }
+      return;
+    }
+    if (b.hasAttribute('data-giro') || b.dataset.c === 'giro') { this._pedirPermissaoGiro(); this._mostrarControles(); return; }
     if (b.hasAttribute('data-sair')) return this.sair();
     if (b.hasAttribute('data-voltar')) return this._tela('inicio');
-    if (b.dataset.ir) return this._escolherFonte(b.dataset.ir);
+    if (b.dataset.ir) { this._pedirPermissaoGiro(); return this._escolherFonte(b.dataset.ir); }
     if (b.dataset.fonte) return this._fonte(b.dataset.fonte);
     if (b.dataset.c) return this._comando(b.dataset.c);
+  }
+
+  // ------------------------------------------------------------ giroscópio do iPhone/iPad
+  // só pede quando o aparelho tem o pedido (iOS 13+) e ainda não chegou nenhum dado do giroscópio
+  _precisaPermissao() { return typeof window.DeviceOrientationEvent?.requestPermission === 'function' && !this._giroVisto && !this.info?.giroscopio; }
+  _pedirPermissaoGiro() {
+    if (this._permGiro) return this._permGiro;
+    if (!this._precisaPermissao()) return null;           // já pedida: o iOS só aceita uma vez por página
+    let pedido;
+    try { pedido = DeviceOrientationEvent.requestPermission(); }   // direto no toque (click), nunca no pointerdown
+    catch (e) { pedido = Promise.reject(e); }
+    try { if (typeof window.DeviceMotionEvent?.requestPermission === 'function') DeviceMotionEvent.requestPermission().catch(() => { }); } catch { }
+    this._permGiro = Promise.resolve(pedido).then((s) => {
+      this._permEstado = s;
+      if (s === 'granted') this._msg('✅ Movimento liberado: vire o celular para olhar em volta.', 2500);
+      else this._msg('Giroscópio negado. Para liberar: feche esta aba, abra o site de novo e toque em "Permitir" (ou Ajustes › Safari › Movimento e Orientação). Enquanto isso, arraste o dedo para olhar em volta.', 8000);
+      this._atualizarBotaoGiro();
+      return s;
+    }, (e) => {
+      this._permEstado = 'erro'; this._permGiro = null;   // erro (não foi um "não" da pessoa): deixa tentar de novo no próximo toque
+      this._msg(isSecureContext ? 'Não foi possível liberar o giroscópio (' + (e?.message || e) + '). Toque em 📱 Ativar movimento VR.' : '⚠️ Sem HTTPS o iPhone não libera o giroscópio. Abra o site pelo endereço https://.', 6000);
+      this._atualizarBotaoGiro();
+      return 'erro';
+    });
+    return this._permGiro;
+  }
+  _atualizarBotaoGiro() {
+    if (!this.raiz) return;
+    const mostrar = this._precisaPermissao() && this._permEstado !== 'granted' && this._permEstado !== 'denied';
+    $('[data-giro]', this.raiz).hidden = !mostrar;
+    $('[data-giro2]', this.raiz).hidden = !mostrar;
   }
 
   _escolherFonte(modo) {
@@ -276,16 +280,19 @@ class ExperienciaVR {
     this._tela('fonte');
     $('[data-titulo]', this.raiz).textContent = modo === 'cinema' ? '🎬 Cinema VR' : '🌐 Vídeos 360°';
     $('[data-explica]', this.raiz).textContent = modo === 'cinema'
-      ? 'Assista a um filme comum num telão gigante. Filmes 3D lado a lado ou em cima/embaixo mostram uma imagem para cada olho.'
+      ? 'Você fica na sua poltrona, na mesma sala, com o mesmo telão e o mesmo filme. Pausar e avançar valem só para você.'
       : 'Use um vídeo gravado em 360° (equirretangular, proporção 2:1; ou 3D 360° em cima/embaixo). Filmes comuns não viram 360°.';
     const s = this._fonteSessao();
     const bs = $('[data-fonte="sessao"]', this.raiz);
     bs.disabled = !s.ok; $('[data-sessao-info]', this.raiz).textContent = s.ok ? s.titulo : s.motivo;
     $('[data-aviso2]', this.raiz).hidden = true;
+    const semSala = modo === 'cinema' && !pegarSala();
+    for (const el of this.raiz.querySelectorAll('[data-fonte]')) if (semSala) el.disabled = true; else if (el.dataset.fonte !== 'sessao') el.disabled = false;
+    if (semSala) this._aviso2('O Cinema VR usa a sala de cinema: entre na sala e toque em 🥽 VR.');
   }
 
   _fonteSessao() {
-    const p = window.CineOnline?.player;
+    const p = pegarPlayer();
     const f = p?.estado?.filme;
     if (!p || !f) return { ok: false, motivo: 'Nenhum filme passando na sala agora' };
     let { tipo, url } = p.fonteDe(f);
@@ -306,13 +313,20 @@ class ExperienciaVR {
   _aviso2(t) { const a = $('[data-aviso2]', this.raiz); a.hidden = false; a.textContent = t; }
 
   // ------------------------------------------------------------ abrir vídeo
-  // Cinema VR: qualquer filme que o player do CineOnline toca. Vídeo direto (MP4/WebM/HLS/DASH,
-  // upload, Internet Archive) vira textura do telão; YouTube, Drive e páginas viram um player
-  // HTML posto sobre o telão em 3D (um para cada olho na tela dividida).
+  // Cinema VR + filme da sessão: usa o próprio player da sala (nada é baixado de novo).
+  // Cinema VR + outro vídeo: vídeo direto vira imagem do telão da sala; YouTube/Drive/páginas
+  // viram um player HTML posto sobre o telão (um para cada olho na tela dividida).
   // Vídeos 360°: só vídeo direto, e só se o formato for 360° de verdade.
   async abrir(fonte) {
-    this._aviso2('Carregando o vídeo…');
     this.fonte = fonte;
+    if (this.modo === 'cinema' && fonte.sessao) {
+      const p = pegarPlayer();
+      this._salaEstavaMuda = p ? p.mutado : true;
+      try { if (p?.mutado) p.ativarSom(); } catch { }   // ainda dentro do toque: o navegador deixa ligar o som
+      this.formato = { tipo: 'plano', estereo: aj.estereo || 'mono' };
+      return this._iniciarCena('sala');
+    }
+    this._aviso2('Carregando o vídeo…');
     let tipo = fonte.local ? 'mp4' : (fonte.tipo && fonte.tipo !== 'link' ? fonte.tipo : detectarTipo(fonte.url));
     if (tipo === 'upload') tipo = 'mp4';
     let url = fonte.url;
@@ -331,8 +345,8 @@ class ExperienciaVR {
             return this._aviso2(`⚠️ Este vídeo não é 360° (${dims}). Vídeos 360° têm proporção 2:1 (ou 1:1 em 3D). Filmes comuns abrem no Cinema VR.`);
           }
           this.formato = fmt;
-        } else this.formato = { tipo: 'plano', estereo: aj.estereo || 'mono' };   // Cinema VR: filme comum, sem deformação
-        if (fonte.sessao) { try { v.currentTime = window.CineOnline.player.posicaoAlvo(); } catch { } }
+        } else this.formato = { tipo: 'plano', estereo: aj.estereo || 'mono' };
+        if (fonte.sessao) { try { v.currentTime = pegarPlayer().posicaoAlvo(); } catch { } }
         return this._iniciarCena('textura');
       }
       if (this.modo === '360') return this._aviso2('⚠️ ' + erro);
@@ -384,28 +398,22 @@ class ExperienciaVR {
     } catch (e) { this._limparVideo(); return e.message; }
   }
 
-  // ------------------------------------------------------------ renderização
+  // ------------------------------------------------------------ montagem da cena
+  // tipoTela: 'sala' (filme da sessão no player da sala), 'textura' (vídeo próprio como imagem) ou 'html' (player de site)
   async _iniciarCena(tipoTela) {
     this.tipoTela = tipoTela;
-    this._tela('nenhuma');
     for (const s of this.raiz.querySelectorAll('.vr-tela')) s.hidden = true;
     this.ativo = true;
-    // pausa a sala 3D principal (economiza bateria/memória) e silencia o filme da sala
-    const C = window.CineOnline;
-    this._salaEstavaMuda = C?.player ? C.player.mutado : true;
-    try { C?.player?.silenciar(); } catch { }
-    try { C?.cinema?.renderer.setAnimationLoop(null); } catch { }
+    const p = pegarPlayer();
+    if (tipoTela !== 'sala') {   // vídeo próprio: o filme da sala fica mudo enquanto isso
+      if (this._salaEstavaMuda === undefined) this._salaEstavaMuda = p ? p.mutado : true;
+      try { p?.silenciar(); } catch { }
+    }
 
-    const c = this.canvas; c.hidden = false;
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas: c, antialias: !MOBILE, powerPreference: 'high-performance' });
-    r.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
-    r.outputColorSpace = THREE.SRGBColorSpace;
-    r.xr.enabled = true;
-    const cena = this.cena = new THREE.Scene();
-    cena.background = new THREE.Color(0x000000);
+    // câmeras: cabeça (sem óculos) e um olho de cada lado (tela dividida)
     const cab = this.cabeca = new THREE.PerspectiveCamera(this.modo === '360' ? 80 : 75, 1, 0.05, 200);
-    const rig = this.rig = new THREE.Group(); rig.add(cab); cena.add(rig);
-    cab.layers.enable(1);   // modo sem óculos: mostra o olho esquerdo
+    const rig = this.rig = new THREE.Group(); rig.add(cab);
+    cab.layers.enable(1);   // modo sem óculos: mostra o olho esquerdo dos filmes 3D
     this.olhoE = new THREE.PerspectiveCamera(90, 1, 0.05, 200); this.olhoE.layers.enable(1);
     this.olhoD = new THREE.PerspectiveCamera(90, 1, 0.05, 200); this.olhoD.layers.enable(2);
 
@@ -413,79 +421,195 @@ class ExperienciaVR {
       const tex = this.textura = new THREE.VideoTexture(this.video);
       tex.colorSpace = THREE.SRGBColorSpace; tex.minFilter = THREE.LinearFilter; tex.generateMipmaps = false;
     }
-    const tex = this.textura;
+    if (this.modo === '360') this._criarCena360();
+    else this._emprestarSala();
+    const r = this.r;
 
-    if (this.modo === '360') {
-      for (const [ox, oy, sx, sy, camada] of partesEstereo(this.formato.estereo)) {
-        const g = ajustarUV(new THREE.SphereGeometry(50, MOBILE ? 48 : 64, MOBILE ? 32 : 48), ox, oy, sx, sy);
-        g.scale(-1, 1, 1);
-        const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex }));
-        m.rotation.y = -Math.PI / 2;     // centro do vídeo fica à frente
-        m.layers.set(camada); cena.add(m);
-      }
-      rig.position.set(0, 0, 0);
-    } else {
-      cena.add(this.sala = criarSalaCinema());
-      this.telas = [];
-      if (tipoTela === 'textura') this._criarTelas();
-      const moldura = this.moldura = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), new THREE.MeshBasicMaterial({ color: 0x000000 }));
-      cena.add(moldura);
-      rig.position.set(0, 1.25, 0);   // sentado numa poltrona do meio
-    }
     // pós-processamento dos óculos: cada olho vai para uma textura e passa pela correção da lente
-    this.rt = new THREE.WebGLRenderTarget(16, 16, { samples: MOBILE ? 0 : 4 });
+    const meiaPrecisao = r.capabilities.isWebGL2 && (r.extensions.has('EXT_color_buffer_half_float') || r.extensions.has('EXT_color_buffer_float'));
+    this.rt = new THREE.WebGLRenderTarget(16, 16, { samples: MOBILE ? 0 : 4, type: meiaPrecisao ? THREE.HalfFloatType : THREE.UnsignedByteType });
     this.matLente = new THREE.ShaderMaterial({ uniforms: { t: { value: this.rt.texture }, k1: { value: aj.distorcao }, escala: { value: aj.escala } }, vertexShader: VERT, fragmentShader: FRAG, depthTest: false });
     this.quadCena = new THREE.Scene(); this.quadCam = new THREE.Camera();
     this.quadCena.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this.matLente));
 
+    if (this.modo === 'cinema') this._configurarTela();
     this._aplicarAjustes();
     this._ligarSensores();
     this._ligarToque();
     if (tipoTela === 'textura') this._ligarVideo();
-    else {
-      this._montarOlhosHtml();
-      this._tSync = setInterval(() => this._sincronizarOlhos(), 700);
-    }
+    this._tSync = setInterval(() => this._sincronizarOlhos(), 700);
     this._redimensionar = () => this._tamanho(); addEventListener('resize', this._redimensionar);
     this._tamanho();
-    const xrb = $('[data-c="xr"]', this.raiz); xrb.hidden = !this.info?.webxr || tipoTela !== 'textura';   // player HTML não aparece no WebXR
-    for (const el of this.raiz.querySelectorAll('[data-so-textura]')) el.hidden = tipoTela !== 'textura' || this.modo !== 'cinema';
-    const semControle = tipoTela === 'html' && this.html.tipo === 'iframe';
-    for (const c of ['play', 'voltar10', 'avancar10', 'aovivo']) $(`[data-c="${c}"]`, this.raiz).hidden = semControle || (c === 'aovivo' && !this.fonte?.sessao);
-    this._atualizarEstereo();
-    for (const el of this.raiz.querySelectorAll('[data-so-cinema]')) el.hidden = this.modo !== 'cinema';
     $('[data-ctl]', this.raiz).hidden = false;
+    this._atualizarBotoes();
+    this._atualizarBotaoGiro();
     this._mostrarControles();
     if (aj.oculos) await this._telaCheia();
+    if (!this.ativo) return;
     this._atualizarOculos();
     r.setAnimationLoop((t, frame) => this._loop(t, frame));
     if (tipoTela === 'textura') {
       try { await this.video.play(); } catch { this.video.muted = true; try { await this.video.play(); this._msg('Toque em ▶ para ligar o som.'); } catch { this._msg('Toque em ▶ para começar.'); } }
-    } else if (semControle) this._msg('Este filme usa o player do próprio site: toque no telão para dar play.', 5000);
+    } else if (this._semControle()) this._msg('Este filme usa o player do próprio site: toque no telão para dar play.', 5000);
     this._atualizarPlay();
-    if (!this.giro) this._msg(this.info?.precisaPermissao ? 'Toque na tela para liberar o giroscópio, ou arraste para olhar em volta.' : 'Sem giroscópio: arraste o dedo para olhar em volta.');
+    if (!this.giro) this._msg(this._permEstado === 'granted' ? 'Vire o celular para olhar em volta (ou arraste o dedo).'
+      : this._permEstado === 'denied' ? 'Giroscópio negado. Para liberar: feche esta aba, abra o site de novo e toque em "Permitir". Por enquanto, arraste o dedo para olhar em volta.'
+      : this._precisaPermissao() ? 'Toque em 📱 Ativar movimento VR (ou na tela) para liberar o giroscópio, ou arraste para olhar em volta.'
+      : 'Sem giroscópio: arraste o dedo para olhar em volta.');
   }
 
-  get midia() { return this.tipoTela === 'html' ? this.olhosHtml?.[0]?.m : this.video; }
-
-  // telão com textura (2D ou 3D: uma imagem por olho)
-  _criarTelas() {
-    for (const m of this.telas || []) { this.cena.remove(m); m.geometry.dispose(); m.material.dispose(); }
-    this.telas = [];
+  // Vídeos 360°: renderer e cena próprios (a sala não é usada)
+  _criarCena360() {
+    this.emprestada = false;
+    const c = this.canvas; c.hidden = false;
+    const r = this.r = new THREE.WebGLRenderer({ canvas: c, antialias: !MOBILE, powerPreference: 'high-performance' });
+    r.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1.5 : 2));
+    r.outputColorSpace = THREE.SRGBColorSpace;
+    r.xr.enabled = true;
+    const cena = this.cenaVR = new THREE.Scene();
+    cena.background = new THREE.Color(0x000000);
+    cena.add(this.rig);
     for (const [ox, oy, sx, sy, camada] of partesEstereo(this.formato.estereo)) {
-      const g = ajustarUV(new THREE.PlaneGeometry(1, 1), ox, oy, sx, sy);
-      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: this.textura, toneMapped: false }));
-      m.layers.set(camada); this.cena.add(m); this.telas.push(m);
+      const g = ajustarUV(new THREE.SphereGeometry(50, MOBILE ? 48 : 64, MOBILE ? 32 : 48), ox, oy, sx, sy);
+      g.scale(-1, 1, 1);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: this.textura }));
+      m.rotation.y = -Math.PI / 2;     // centro do vídeo fica à frente
+      m.layers.set(camada); cena.add(m);
     }
+    this.rig.position.set(0, 0, 0);
+    this._yawBase = 0;
+  }
+
+  // Cinema VR: pega emprestados o canvas, o renderer e a cena da sala original
+  _emprestarSala() {
+    const cin = this.cin = pegarSala();
+    this.emprestada = true;
+    cin.renderer.setAnimationLoop(null);            // a sala para de se desenhar sozinha
+    cin.controles.enabled = false;                  // os controles da sala não reagem ao toque no VR
+    cin.interromperCamera?.();
+    const css3d = cin.css3d.domElement;
+    this._lugarCanvas = { pai: cin.canvas.parentNode, prox: cin.canvas.nextSibling };
+    this._lugarCss3d = { pai: css3d.parentNode, prox: css3d.nextSibling };
+    this.raiz.insertBefore(cin.canvas, this.canvas);
+    this.raiz.insertBefore(css3d, $('[data-divisor]', this.raiz));
+    css3d.classList.add('vr-css');
+    this.canvas.hidden = true;
+    this.r = cin.renderer;
+    this.cenaVR = cin.cena;
+    cin.cena.add(this.rig);
+    this._yawBase = Math.PI;                         // a plateia olha para +Z (onde fica o telão)
+    this._sentarNaPoltrona();
+  }
+
+  // câmera nos olhos do personagem do usuário, na poltrona dele (o próprio corpo fica escondido)
+  _sentarNaPoltrona() {
+    const cin = this.cin; if (!cin) return;
+    const reg = cin.avatares.get(cin.meuId);
+    if (reg?.wrap && reg.assento) {
+      const p = reg.wrap.position;
+      this.rig.position.set(p.x, reg.assento.pos.y + 1.22, p.z + 0.12);
+      if (this._regEu !== reg) { this._regEu = reg; this._avatarVisivel = reg.wrap.visible; }
+      reg.wrap.visible = false;
+      this._naPoltrona = true;
+    } else if (!this._naPoltrona) {
+      this.rig.position.copy(cin.camera.position);   // personagem ainda carregando: fica onde a câmera da sala estava
+    }
+  }
+
+  // o que aparece no telão da sala durante o VR
+  _configurarTela() {
+    const cin = this.cin, p = pegarPlayer();
+    this._destruirOlhosHtml();
+    this._limparTelasEstereo();
+    if (this.tipoTela === 'sala') {
+      this._chaveSessao = p?.m;
+      if (p && p.modo !== 'textura' && cin.objTela) {
+        // player de site da sessão: o olho esquerdo é o próprio player da sala; o direito, uma cópia muda e sincronizada
+        this.html = this._htmlDaSessao();
+        this.olhosHtml = [this._olhoDaSala()];
+        this._montarOlhosHtml();
+      } else { this.html = null; this._criarTelasEstereo(cin.texturaVideo); }
+    } else if (this.tipoTela === 'textura') {
+      this._mapaAntes ||= { map: cin.materialTela.map, cor: cin.materialTela.color.getHex() };
+      cin.materialTela.map = this.textura; cin.materialTela.color.set('#ffffff'); cin.materialTela.needsUpdate = true;
+      this._criarTelasEstereo(this.textura);
+    } else {
+      this.olhosHtml = [];
+      this._montarOlhosHtml();
+    }
+    // o player de site da sala só aparece quando é ele o filme do VR
+    const usaSala = this.olhosHtml?.[0]?.emprestado;
+    cin.css3d.domElement.style.display = usaSala ? '' : 'none';
+  }
+
+  _olhoDaSala() {
+    const cin = this.cin;
+    return {
+      emprestado: true, css: cin.css3d, cena: cin.cenaHtml, cont: cin.css3d.domElement,
+      get obj() { return cin.objTela; }, get caixa() { return cin.objTela?.element; }, get m() { return pegarPlayer()?.m; },
+    };
+  }
+  _htmlDaSessao() {
+    const p = pegarPlayer(), m = p?.m; if (!m) return null;
+    if (m === p.vLivre || m instanceof HTMLVideoElement) return { tipo: 'video-livre', url: m.currentSrc || m.src };
+    if (m instanceof MidiaYouTube) { let id = null; try { id = m.p?.getVideoData?.().video_id; } catch { } return { tipo: 'youtube', url: id || idYouTube(p.fonteDe(p.estado.filme).url) }; }
+    if (m.el?.tagName === 'IFRAME') return { tipo: 'iframe', url: m.el.src };
+    return null;
+  }
+
+  // filmes 3D (lado a lado / em cima-embaixo): uma imagem por olho, por cima do telão da sala
+  _criarTelasEstereo(tex) {
+    this._limparTelasEstereo();
+    const est = this.formato?.estereo || 'mono';
+    if (est === 'mono' || !tex) return;
+    const t = this.cin.tela, { width, height } = t.geometry.parameters;
+    for (const [ox, oy, sx, sy, camada] of partesEstereo(est)) {
+      const g = ajustarUV(new THREE.PlaneGeometry(width, height), ox, oy, sx, sy);
+      const m = new THREE.Mesh(g, new THREE.MeshBasicMaterial({ map: tex, toneMapped: false }));
+      m.position.copy(t.position); m.position.z -= 0.01; m.rotation.copy(t.rotation);
+      m.layers.set(camada); this.cin.cena.add(m); this.telas.push(m);
+    }
+  }
+  _limparTelasEstereo() {
+    for (const m of this.telas || []) { m.removeFromParent(); m.geometry.dispose(); m.material.dispose(); }
+    this.telas = [];
   }
   _atualizarEstereo() {
     const b = $('[data-c="estereo"]', this.raiz); if (b) b.textContent = { mono: '2D', lr: '3D ⇆', tb: '3D ⇅' }[this.formato?.estereo || 'mono'];
   }
 
-  // players HTML (YouTube, Drive, vídeo sem CORS, páginas) sobre o telão: um por olho
+  get midia() {
+    if (this.tipoTela === 'sala') return pegarPlayer()?.m;
+    return this.tipoTela === 'html' ? this.olhosHtml?.[0]?.m : this.video;
+  }
+  _semControle() { return !!this.midia?.semControle || (this.tipoTela === 'html' && this.html?.tipo === 'iframe'); }
+  _usaTextura() { return this.tipoTela === 'textura' || (this.tipoTela === 'sala' && !this.html); }
+
+  _atualizarBotoes() {
+    const xrb = $('[data-c="xr"]', this.raiz); xrb.hidden = !this.info?.webxr || !this._usaTextura();   // player HTML não aparece no WebXR
+    for (const el of this.raiz.querySelectorAll('[data-so-textura]')) el.hidden = !this._usaTextura() || this.modo !== 'cinema';
+    const semControle = this._semControle();
+    for (const c of ['play', 'voltar10', 'avancar10', 'aovivo']) $(`[data-c="${c}"]`, this.raiz).hidden = semControle || (c === 'aovivo' && !this.fonte?.sessao);
+    this._atualizarEstereo();
+  }
+
+  // a sessão trocou de filme (ou de player) enquanto o VR estava aberto
+  _vigiarSessao() {
+    if (this.tipoTela !== 'sala') return;
+    const agora = performance.now(); if (agora - (this._tVigia || 0) < 1000) return; this._tVigia = agora;
+    if (!this._naPoltrona) this._sentarNaPoltrona();
+    const p = pegarPlayer();
+    if (p && p.m !== this._chaveSessao) {
+      p.controleLocal = false;
+      this._configurarTela(); this._aplicarAjustes(); this._tamanho(); this._atualizarBotoes(); this._atualizarPlay();
+    }
+  }
+
+  // players HTML (YouTube, Drive, vídeo sem CORS, páginas) sobre o telão
   _criarHtml(principal) {
     const { tipo, url } = this.html;
-    const pos = this.fonte?.sessao ? (() => { try { return window.CineOnline.player.posicaoAlvo(); } catch { return 0; } })() : 0;
+    const sessao = this.tipoTela === 'sala';
+    const pos = this.fonte?.sessao ? (() => { try { return sessao ? pegarPlayer().m.currentTime : pegarPlayer().posicaoAlvo(); } catch { return 0; } })() : 0;
     let m, el;
     if (tipo === 'youtube') {
       m = new MidiaYouTube(url, pos, {
@@ -495,16 +619,24 @@ class ExperienciaVR {
       el = m.el;
     } else if (tipo === 'video-livre') {
       const v = m = el = document.createElement('video');
+      v.className = 'midia-video';
       v.playsInline = true; v.setAttribute('webkit-playsinline', ''); v.preload = 'auto'; v.muted = !principal; v.volume = aj.volume; v.src = url;
-      v.addEventListener('loadedmetadata', () => { if (pos) try { v.currentTime = pos; } catch { } this._aplicarAjustes(); }, { once: true });
+      v.addEventListener('loadedmetadata', () => { if (pos) try { v.currentTime = pos; } catch { } }, { once: true });
       if (principal) v.addEventListener('error', () => this._trocarParaIframe(), { once: true });
       v.play().catch(() => { v.muted = true; v.play().catch(() => { }); });
     } else { m = new MidiaIframe(url); el = m.el; }
+    // mesma caixa e mesmo lugar do player do telão da sala (Cinema.mostrarNaTela)
+    const t = this.cin.tela, { width, height } = t.geometry.parameters;
+    const W = 1280, H = Math.round(W * height / width);
     const caixa = document.createElement('div'); caixa.className = 'tela-html';
-    caixa.style.width = '1280px'; caixa.style.height = '720px'; caixa.appendChild(el);
-    return { m, obj: new CSS3DObject(caixa), caixa };
+    caixa.style.width = W + 'px'; caixa.style.height = H + 'px'; caixa.appendChild(el);
+    const obj = new CSS3DObject(caixa);
+    obj.position.copy(t.position); obj.position.z -= 0.03; obj.rotation.copy(t.rotation); obj.scale.setScalar(width / W);
+    obj.updateMatrixWorld(true);
+    return { m, obj, caixa };
   }
   _montarOlhosHtml() {
+    if (!this.html) return;
     this.olhosHtml ||= [];
     const n = aj.oculos ? 2 : 1;
     while (this.olhosHtml.length > n) this._destruirOlho(this.olhosHtml.pop());
@@ -518,25 +650,31 @@ class ExperienciaVR {
     this._aplicarAjustes(); this._tamanho();
   }
   _destruirOlho(o) {
+    if (!o || o.emprestado) return;    // o player da sala nunca é destruído pelo VR
     try { if (o.m instanceof HTMLVideoElement) { o.m.pause(); o.m.removeAttribute('src'); o.m.load(); } else o.m.destruir?.(); } catch { }
     o.cont.remove();
+  }
+  _destruirOlhosHtml() {
+    while (this.olhosHtml?.length) this._destruirOlho(this.olhosHtml.pop());
+    this.olhosHtml = null;
   }
   _trocarParaIframe() {
     if (!this._reservaIframe || !this.olhosHtml) return this._msg('⚠️ Este vídeo não abriu.', 5000);
     this.html = { tipo: 'iframe', url: this._reservaIframe }; this._reservaIframe = null;
-    while (this.olhosHtml.length) this._destruirOlho(this.olhosHtml.pop());
+    this._destruirOlhosHtml(); this.olhosHtml = [];
     this._montarOlhosHtml();
-    for (const c of ['play', 'voltar10', 'avancar10', 'aovivo']) $(`[data-c="${c}"]`, this.raiz).hidden = true;
+    this._atualizarBotoes();
     this._msg('Este filme usa o player do próprio site: toque no telão para dar play.', 5000);
   }
   // o olho direito segue o esquerdo (o esquerdo tem o som)
   _sincronizarOlhos() {
-    const [a, b] = this.olhosHtml || []; if (!b || this.html?.tipo === 'iframe') return;
+    const [a, b] = this.olhosHtml || []; if (!a || !b || this.html?.tipo === 'iframe') return;
     try {
-      if (a.m.paused !== b.m.paused) a.m.paused ? b.m.pause() : b.m.play();
-      const d = a.m.currentTime - b.m.currentTime;
-      if (Math.abs(d) > 0.35) b.m.currentTime = a.m.currentTime + (a.m.paused ? 0 : 0.15);
-      if (!b.m.muted) b.m.muted = true;
+      const am = a.m, bm = b.m; if (!am || !bm) return;
+      if (am.paused !== bm.paused) am.paused ? bm.pause() : Promise.resolve(bm.play()).catch(() => { });
+      const d = am.currentTime - bm.currentTime;
+      if (Math.abs(d) > 0.35) bm.currentTime = am.currentTime + (am.paused ? 0 : 0.15);
+      if (!bm.muted) bm.muted = true;
     } catch { }
   }
   _htmlVisivel(o, cam) {   // o CSS 3D se desenha errado quando o telão fica atrás da câmera: esconde nesse caso
@@ -549,6 +687,7 @@ class ExperienciaVR {
   }
   _renderHtml(i, cam, desloc) {
     const o = this.olhosHtml?.[i]; if (!o) return;
+    if (!o.obj || !o.caixa) { o.cont.style.visibility = 'hidden'; return; }
     const vis = this._htmlVisivel(o, cam);
     o.cont.style.visibility = vis ? 'visible' : 'hidden';
     o.cont.style.transform = aj.oculos ? `translateX(${desloc}px) scale(${aj.escala})` : '';
@@ -557,36 +696,18 @@ class ExperienciaVR {
 
   _aplicarAjustes() {
     if (this.video) this.video.volume = aj.volume;
-    const m0 = this.olhosHtml?.[0]?.m;
-    if (m0) { if (m0 instanceof HTMLVideoElement) m0.volume = aj.volume; else try { m0.p?.setVolume(aj.volume * 100); } catch { } }
+    const m0 = this.midia;
+    if (m0 && this.tipoTela !== 'textura') { if (m0 instanceof HTMLVideoElement) m0.volume = aj.volume; else try { m0.p?.setVolume(aj.volume * 100); } catch { } }
     // no player HTML a correção de lente fica em 0 para a sala e o telão continuarem alinhados
-    if (this.matLente) { this.matLente.uniforms.k1.value = this.tipoTela === 'html' ? 0 : aj.distorcao; this.matLente.uniforms.escala.value = aj.escala; }
-    if (this.telas && (this.video || this.olhosHtml)) {
-      const ar = this._proporcao();
-      const w = aj.tela, h = w / ar, y = Math.max(1.25 + h * 0.12, 0.6 + h / 2);   // borda de baixo acima das poltronas
-      for (const m of this.telas) { m.scale.set(w, h, 1); m.position.set(0, y, -aj.dist); }
-      this.moldura.scale.set(w + 0.4, h + 0.4, 1); this.moldura.position.set(0, y, -aj.dist - 0.02);
-      this.sala.userData.luzTela.position.set(0, y, -aj.dist + 2);
-      for (const o of this.olhosHtml || []) {
-        const W = 1280, Hpx = Math.round(W / ar);
-        o.caixa.style.height = Hpx + 'px';
-        o.obj.position.set(0, y, -aj.dist + 0.01); o.obj.scale.setScalar(w / W); o.obj.updateMatrixWorld(true);
-      }
-    }
-  }
-  _proporcao() {
-    if (this.tipoTela === 'html') { const m = this.olhosHtml?.[0]?.m; return m instanceof HTMLVideoElement && m.videoWidth ? m.videoWidth / m.videoHeight : 16 / 9; }
-    const v = this.video; let ar = (v.videoWidth || 16) / (v.videoHeight || 9);
-    if (this.formato?.estereo === 'lr') ar /= 2; if (this.formato?.estereo === 'tb') ar *= 2;
-    return ar;
+    if (this.matLente) { this.matLente.uniforms.k1.value = this.olhosHtml?.length ? 0 : aj.distorcao; this.matLente.uniforms.escala.value = aj.escala; }
   }
 
   _tamanho() {
-    if (!this.renderer || this.renderer.xr.isPresenting) return;
-    const w = this.raiz.clientWidth, h = this.raiz.clientHeight;
-    this.renderer.setSize(w, h, false);
+    if (!this.r || this.r.xr.isPresenting || !this.ativo) return;
+    const w = this.raiz.clientWidth, h = this.raiz.clientHeight; if (!w || !h) return;
+    this.r.setSize(w, h, false);
     this.cabeca.aspect = w / h; this.cabeca.updateProjectionMatrix();
-    const pr = this.renderer.getPixelRatio();
+    const pr = this.r.getPixelRatio();
     this.rt.setSize(Math.round(w / 2 * pr), Math.round(h * pr));
     for (const o of [this.olhoE, this.olhoD]) { o.aspect = (w / 2) / h; o.updateProjectionMatrix(); }
     (this.olhosHtml || []).forEach((o, i) => {
@@ -595,27 +716,32 @@ class ExperienciaVR {
   }
 
   _loop() {
-    const r = this.renderer; if (!r) return;
+    const r = this.r; if (!r || !this.ativo) return;
+    if (this.emprestada) { this.cin.animar(); this._vigiarSessao(); }   // personagens e luz continuam animados
     this._atualizarTempo();
-    if (r.xr.isPresenting) { r.render(this.cena, this.cabeca); return; }
-    // orientação: giroscópio (se houver) + arrasto
+    if (r.xr.isPresenting) { r.render(this.cenaVR, this.cabeca); return; }
+    // orientação: giroscópio (se houver) + arrasto, a partir da frente da poltrona (_yawBase)
     const q = this.cabeca.quaternion;
     if (this.giro && this._ori) {
       quaternionDoSensor(q, this._ori.a, this._ori.b, this._ori.g, this._ori.o);
-      this.rig.rotation.set(0, this._yaw, 0);
+      this.rig.rotation.set(0, this._yawBase + this._yaw, 0);
     } else {
-      this.rig.rotation.set(0, 0, 0);
+      this.rig.rotation.set(0, this._yawBase, 0);
       _eul.set(this._pitch, this._yaw, 0, 'YXZ'); q.setFromEuler(_eul);
     }
-    this.cabeca.updateMatrixWorld(true);
-    if (!aj.oculos) { r.setScissorTest(false); r.setRenderTarget(null); r.render(this.cena, this.cabeca); this._renderHtml(0, this.cabeca, 0); return; }
-    const W = this.raiz.clientWidth, H = this.raiz.clientHeight, meia = W / 2, ipd = 0.064;
+    this.rig.updateMatrixWorld(true);
+    const W = this.raiz.clientWidth, H = this.raiz.clientHeight;
+    if (!aj.oculos) {
+      r.setRenderTarget(null); r.setScissorTest(false); r.setViewport(0, 0, W, H);
+      r.render(this.cenaVR, this.cabeca); this._renderHtml(0, this.cabeca, 0); return;
+    }
+    const meia = W / 2, ipd = 0.064;
     const olhos = [[this.olhoE, -1, 0], [this.olhoD, 1, meia]];
     for (const [olho, lado, x] of olhos) {
       olho.position.set(lado * ipd / 2, 0, 0).applyMatrix4(this.cabeca.matrixWorld);
-      olho.quaternion.copy(this.cabeca.getWorldQuaternion(new THREE.Quaternion()));
+      olho.quaternion.copy(this.cabeca.getWorldQuaternion(_qOlho));
       olho.updateMatrixWorld(true);
-      r.setRenderTarget(this.rt); r.setScissorTest(false); r.clear(); r.render(this.cena, olho);
+      r.setRenderTarget(this.rt); r.setScissorTest(false); r.clear(); r.render(this.cenaVR, olho);
       r.setRenderTarget(null);
       const desloc = -lado * aj.sep;   // separação: aproxima/afasta as duas imagens do centro
       r.setScissorTest(true); r.setScissor(x, 0, meia, H);
@@ -629,38 +755,41 @@ class ExperienciaVR {
 
   // ------------------------------------------------------------ sensores e toque
   _ligarSensores() {
-    this._yaw = 0; this._pitch = 0; this.giro = false;
+    this._yaw = 0; this._pitch = 0; this.giro = false; this._ori = null;
     this._aoOrientar = (e) => {
       if (e.alpha == null && e.beta == null) return;
       const D = THREE.MathUtils.DEG2RAD;
       const o = (screen.orientation?.angle ?? window.orientation ?? 0) * D;
       this._ori = { a: (e.alpha || 0) * D, b: (e.beta || 0) * D, g: (e.gamma || 0) * D, o };
-      if (!this.giro) { this.giro = true; this._centralizar(); }
+      if (!this.giro || this._recalibrar) { this.giro = true; this._recalibrar = false; this._centralizar(); }
+      if (!this._giroVisto) { this._giroVisto = true; this._atualizarBotaoGiro(); }
     };
     addEventListener('deviceorientation', this._aoOrientar);
-  }
-  async _pedirPermissaoGiro() {
-    if (typeof DeviceOrientationEvent?.requestPermission !== 'function' || this._permPedida) return;
-    this._permPedida = true;
-    try { const s = await DeviceOrientationEvent.requestPermission(); if (s !== 'granted') this._msg('Giroscópio negado: arraste para olhar em volta.'); } catch { }
+    // celular girado entre em pé e deitado: recalibra a frente
+    this._aoGirarTela = () => { this._recalibrar = true; setTimeout(() => this._tamanho(), 250); };
+    addEventListener('orientationchange', this._aoGirarTela);
+    try { screen.orientation?.addEventListener?.('change', this._aoGirarTela); } catch { }
   }
   _centralizar() {
-    if (this.giro && this._ori) {   // gira o "mundo" para que a frente seja para onde o celular aponta agora
+    if (this.giro && this._ori) {   // gira o "mundo" para que a frente (o telão) seja para onde o celular aponta agora
       const q = new THREE.Quaternion(); quaternionDoSensor(q, this._ori.a, this._ori.b, this._ori.g, this._ori.o);
       const e = new THREE.Euler().setFromQuaternion(q, 'YXZ'); this._yaw = -e.y;
     } else { this._yaw = 0; this._pitch = 0; }
   }
   _ligarToque() {
-    const c = this.canvas; let ant = null;
-    this._ptrDown = (e) => { ant = { x: e.clientX, y: e.clientY, t: Date.now(), mov: 0 }; this._pedirPermissaoGiro(); };
+    let ant = null;
+    this._ptrDown = (e) => {
+      if (e.target.closest?.('.vr-controles, .vr-tela, .midia-iframe')) return;
+      ant = { x: e.clientX, y: e.clientY, t: Date.now(), mov: 0 };
+    };
     this._ptrMove = (e) => {
       if (!ant) return;
       const dx = e.clientX - ant.x, dy = e.clientY - ant.y; ant.x = e.clientX; ant.y = e.clientY; ant.mov += Math.abs(dx) + Math.abs(dy);
       const k = (aj.oculos ? 2 : 1) * 0.005;
       this._yaw += dx * k; if (!this.giro) this._pitch = THREE.MathUtils.clamp(this._pitch + dy * k, -1.4, 1.4);
     };
-    this._ptrUp = () => { if (ant && ant.mov < 10) this._mostrarControles(); ant = null; };
-    c.addEventListener('pointerdown', this._ptrDown); addEventListener('pointermove', this._ptrMove); addEventListener('pointerup', this._ptrUp);
+    this._ptrUp = () => { ant = null; };
+    this.raiz.addEventListener('pointerdown', this._ptrDown); addEventListener('pointermove', this._ptrMove); addEventListener('pointerup', this._ptrUp);
     this._tecla = (e) => {
       if (!this.ativo) return;
       if (e.key === ' ') { e.preventDefault(); this._comando('play'); }
@@ -676,20 +805,31 @@ class ExperienciaVR {
   }
 
   // ------------------------------------------------------------ comandos
+  // No filme da sessão, pausar e avançar valem só para você (o player da sala para de corrigir);
+  // "🔴 Ao vivo" volta ao ponto da sessão e devolve a sincronia.
+  _controleLocal(sim) { if (this.tipoTela === 'sala') { const p = pegarPlayer(); if (p) p.controleLocal = sim; } }
   _comando(c) {
     const v = this.midia; this._mostrarControles();
     if (!v && ['play', 'voltar10', 'avancar10', 'aovivo'].includes(c)) return;
-    if (c === 'play') { if (v.paused) { v.muted = false; Promise.resolve(v.play()).catch(() => { }); } else v.pause(); setTimeout(() => this._atualizarPlay(), 300); }
-    else if (c === 'voltar10') v.currentTime = Math.max(0, v.currentTime - 10);
-    else if (c === 'avancar10') v.currentTime = Math.min((duracaoDe(v) || 1e9) - 0.5, v.currentTime + 10);
+    if (c === 'play') { this._controleLocal(true); if (v.paused) { v.muted = false; Promise.resolve(v.play()).catch(() => { }); } else v.pause(); setTimeout(() => this._atualizarPlay(), 300); }
+    else if (c === 'voltar10') { this._controleLocal(true); v.currentTime = Math.max(0, v.currentTime - 10); }
+    else if (c === 'avancar10') { this._controleLocal(true); v.currentTime = Math.min((duracaoDe(v) || 1e9) - 0.5, v.currentTime + 10); }
     else if (c === 'estereo') {
       const ordem = ['mono', 'lr', 'tb']; aj.estereo = ordem[(ordem.indexOf(this.formato.estereo) + 1) % 3]; salvar();
-      this.formato = { tipo: 'plano', estereo: aj.estereo }; this._criarTelas(); this._aplicarAjustes(); this._atualizarEstereo();
+      this.formato = { tipo: 'plano', estereo: aj.estereo };
+      this._criarTelasEstereo(this.tipoTela === 'textura' ? this.textura : this.cin?.texturaVideo); this._atualizarEstereo();
       this._msg({ mono: 'Filme 2D (normal)', lr: 'Filme 3D lado a lado', tb: 'Filme 3D em cima/embaixo' }[aj.estereo], 1500);
     }
-    else if (c === 'aovivo') { try { v.currentTime = window.CineOnline.player.posicaoAlvo(); v.play(); this._msg('De volta ao ponto da sessão.'); } catch { } }
+    else if (c === 'aovivo') {
+      try {
+        const p = pegarPlayer();
+        v.currentTime = p.posicaoAlvo(); Promise.resolve(v.play()).catch(() => { });
+        this._controleLocal(false);
+        this._msg('De volta ao ponto da sessão.');
+      } catch { }
+    }
     else if (c === 'centro') { this._centralizar(); this._msg('Visão centralizada.', 1200); }
-    else if (c === 'oculos') { aj.oculos = !aj.oculos; salvar(); if (this.tipoTela === 'html') this._montarOlhosHtml(); this._atualizarOculos(); if (aj.oculos) this._telaCheia(); }
+    else if (c === 'oculos') { aj.oculos = !aj.oculos; salvar(); if (this.html) this._montarOlhosHtml(); this._atualizarOculos(); if (aj.oculos) this._telaCheia(); }
     else if (c === 'xr') this._iniciarXR();
     else if (c === 'sair') this.sair();
   }
@@ -704,14 +844,14 @@ class ExperienciaVR {
     const v = this.midia; if (!v || (this._tUlt && performance.now() - this._tUlt < 500)) return; this._tUlt = performance.now();
     const f = (s) => { s = Math.max(0, s | 0); const h = s / 3600 | 0, m = (s % 3600) / 60 | 0, ss = s % 60; return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(ss).padStart(2, '0'); };
     const d = duracaoDe(v);
-    $('[data-tempo]', this.raiz).textContent = this.html?.tipo === 'iframe' ? '' : f(v.currentTime) + (d ? ' / ' + f(d) : '');
+    $('[data-tempo]', this.raiz).textContent = this._semControle() ? '' : f(v.currentTime) + (d ? ' / ' + f(d) : '');
     this._atualizarPlay();
   }
   _mostrarControles() {
-    const ctl = $('[data-ctl]', this.raiz); ctl.classList.remove('oculto');
+    const ctl = $('[data-ctl]', this.raiz); if (!ctl) return; ctl.classList.remove('oculto');
     clearTimeout(this._tCtl); this._tCtl = setTimeout(() => { if (this.midia && !this.midia.paused) ctl.classList.add('oculto'); }, 4000);
   }
-  _msg(t, ms = 3500) { const m = $('[data-msg]', this.raiz); m.hidden = false; m.textContent = t; clearTimeout(this._tMsg); this._tMsg = setTimeout(() => m.hidden = true, ms); }
+  _msg(t, ms = 3500) { if (!this.raiz) return; const m = $('[data-msg]', this.raiz); m.hidden = false; m.textContent = t; clearTimeout(this._tMsg); this._tMsg = setTimeout(() => m.hidden = true, ms); }
 
   async _telaCheia() {
     try { if (!document.fullscreenElement) await this.raiz.requestFullscreen?.({ navigationUI: 'hide' }); } catch { }
@@ -721,10 +861,11 @@ class ExperienciaVR {
   async _iniciarXR() {
     try {
       const s = await navigator.xr.requestSession('immersive-vr', { optionalFeatures: ['local-floor'] });
-      this.renderer.xr.setReferenceSpaceType('local');
-      await this.renderer.xr.setSession(s);
+      this.r.xr.enabled = true;
+      this.r.xr.setReferenceSpaceType('local');
+      await this.r.xr.setSession(s);
       s.addEventListener('select', () => this._comando('play'));   // toque/botão dos óculos = play/pausa
-      s.addEventListener('end', () => { this._tamanho(); });
+      s.addEventListener('end', () => { if (this.emprestada && this.r) this.r.xr.enabled = false; this._tamanho(); });
     } catch (e) { this._msg('Não foi possível abrir o WebXR: ' + (e.message || e)); }
   }
 
@@ -735,32 +876,68 @@ class ExperienciaVR {
     if (this.video) { this.video.pause(); if (this.fonte?.local) URL.revokeObjectURL(this.fonte.url); this.video.removeAttribute('src'); this.video.load(); }
     this.video = null;
   }
+
+  // devolve canvas, renderer, cena, telão, controles e o próprio personagem à sala original
+  _devolverSala() {
+    const cin = this.cin; if (!cin) return;
+    const r = cin.renderer;
+    r.setAnimationLoop(null);
+    r.setRenderTarget(null); r.setScissorTest(false); r.xr.enabled = false;
+    this.rig?.removeFromParent();
+    this._limparTelasEstereo();
+    if (this._mapaAntes) { cin.materialTela.map = this._mapaAntes.map; cin.materialTela.color.setHex(this._mapaAntes.cor); cin.materialTela.needsUpdate = true; this._mapaAntes = null; }
+    if (this._regEu?.wrap) this._regEu.wrap.visible = this._avatarVisivel ?? true;
+    this._regEu = null; this._naPoltrona = false;
+    const css3d = cin.css3d.domElement;
+    css3d.classList.remove('vr-css');
+    for (const k of ['left', 'transform', 'visibility', 'display']) css3d.style[k] = '';
+    voltarAoLugar(css3d, this._lugarCss3d);         // primeiro a camada do telão (o canvas volta antes dela)
+    voltarAoLugar(cin.canvas, this._lugarCanvas);  // o canvas volta para #tela-cinema
+    this._lugarCss3d = this._lugarCanvas = null;
+    cin.controles.enabled = true;
+    cin._redimensionar();
+    cin.relogio.getDelta();
+    r.setAnimationLoop(cin._loop);
+    this.cin = null;
+  }
+
   async sair() {
     const estava = this.ativo; this.ativo = false;
-    try { await this.renderer?.xr.getSession()?.end(); } catch { }
-    this.renderer?.setAnimationLoop(null);
+    try { await this.r?.xr.getSession()?.end(); } catch { }
+    this.r?.setAnimationLoop(null);
+    const tipoTela = this.tipoTela;
     this._limparVideo();
     clearInterval(this._tSync);
-    while (this.olhosHtml?.length) this._destruirOlho(this.olhosHtml.pop());
-    this.olhosHtml = null; this.html = null; this._reservaIframe = null;
-    if (this.cena) this.cena.traverse(o => { o.geometry?.dispose(); if (o.material) { o.material.map = null; o.material.dispose(); } });
-    this.textura?.dispose(); this.textura = null; this.rt?.dispose(); this.matLente?.dispose();
-    this.renderer?.dispose(); this.renderer?.forceContextLoss?.(); this.renderer = null;
-    // o canvas perde o contexto: troca por um novo para a próxima entrada
-    if (this.canvas) { const n = document.createElement('canvas'); n.dataset.canvas = ''; n.hidden = true; this.canvas.replaceWith(n); this.canvas = n; }
+    this._destruirOlhosHtml();
+    this.html = null; this._reservaIframe = null;
     removeEventListener('deviceorientation', this._aoOrientar); removeEventListener('resize', this._redimensionar);
+    removeEventListener('orientationchange', this._aoGirarTela); try { screen.orientation?.removeEventListener?.('change', this._aoGirarTela); } catch { }
+    this.raiz?.removeEventListener('pointerdown', this._ptrDown);
     removeEventListener('pointermove', this._ptrMove); removeEventListener('pointerup', this._ptrUp); removeEventListener('keydown', this._tecla);
+    if (this.emprestada) this._devolverSala();
+    else if (this.r) {   // 360°: renderer próprio é descartado
+      if (this.cenaVR) this.cenaVR.traverse(o => { o.geometry?.dispose(); if (o.material) { o.material.map = null; o.material.dispose(); } });
+      this.r.dispose(); this.r.forceContextLoss?.();
+      // o canvas perde o contexto: troca por um novo para a próxima entrada
+      if (this.canvas) { const n = document.createElement('canvas'); n.dataset.canvas = ''; n.hidden = true; this.canvas.replaceWith(n); this.canvas = n; }
+    }
+    this.textura?.dispose(); this.textura = null; this.rt?.dispose(); this.matLente?.dispose();
+    this.r = null; this.cenaVR = null; this.rig = null; this.emprestada = false;
     try { if (document.fullscreenElement) await document.exitFullscreen(); } catch { }
     try { screen.orientation?.unlock?.(); } catch { }
-    if (this.raiz) { this.raiz.hidden = true; $('[data-ctl]', this.raiz).hidden = true; $('[data-divisor]', this.raiz).hidden = true; }
-    this.cena = null; this.sala = null; this.telas = null;
-    if (estava) {   // devolve a sala 3D e o som do filme da sessão como estavam
-      const C = window.CineOnline;
-      try { C?.cinema?.renderer.setAnimationLoop(C.cinema._loop); } catch { }
-      try { if (C?.player && !this._salaEstavaMuda) C.player.ativarSom(); } catch { }
-      try { C?.player?.atualizar?.(); } catch { }
+    if (this.raiz) { this.raiz.hidden = true; $('[data-ctl]', this.raiz).hidden = true; $('[data-divisor]', this.raiz).hidden = true; for (const s of this.raiz.querySelectorAll('.vr-tela')) s.hidden = s.dataset.t !== 'inicio'; }
+    if (estava) {   // devolve a sincronia e o som do filme da sessão
+      const p = pegarPlayer();
+      if (p) {
+        p.controleLocal = false;
+        try { if (tipoTela !== 'sala' && !this._salaEstavaMuda) p.ativarSom(); } catch { }
+        try { p._corrigir?.(true); } catch { }
+      }
     }
+    this._salaEstavaMuda = undefined; this.tipoTela = null;
   }
 }
 
+const _qOlho = new THREE.Quaternion();
 export const vr = new ExperienciaVR();
+window.__vr = vr;   // usado pelos testes (tests/teste-vr-sala.html)
