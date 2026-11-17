@@ -57,6 +57,9 @@
       });
     }
     openPlayer(item){
+      // o app pode assumir (ex.: abrir a sala 3D do filme); se ninguém assumir, toca aqui mesmo
+      const ev=new CustomEvent('netmovies-assistir',{detail:item,bubbles:true,composed:true,cancelable:true});
+      if(!this.dispatchEvent(ev))return;
       this.shadowRoot.querySelector('dialog strong').textContent=item.title;
       const frame=document.createElement('iframe');frame.src=item.embedUrl;frame.title=`Reprodutor: ${item.title}`;frame.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';frame.allowFullscreen=true;frame.referrerPolicy='strict-origin-when-cross-origin';
       const player=this.shadowRoot.querySelector('.player');player.replaceChildren(frame);

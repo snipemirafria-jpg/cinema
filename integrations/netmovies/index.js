@@ -1,6 +1,6 @@
 // Módulo NetMovies — independente do resto do CineOnline.
-// Só acrescenta um botão no menu lateral e um painel por cima da sala; não toca em
-// Supabase, login, avatares, cinema 3D nem na sessão sincronizada.
+// Acrescenta um botão no menu lateral e um painel por cima da sala. "Assistir" abre a sala
+// própria do filme (js/sala-filme.js); a sala principal e o Supabase continuam iguais.
 // Para remover de vez: apague a linha <script ... integrations/netmovies/index.js> do index.html.
 import { NETMOVIES_ENABLED } from './config.js';
 
@@ -28,6 +28,14 @@ async function iniciar() {
   const catalogo = document.createElement('netmovies-catalog');
   catalogo.setAttribute('catalog', new URL('catalogo-netmovies.json', BASE).href);
   painel.appendChild(catalogo);
+  // "Assistir" abre a sala 3D própria do filme: quem abrir o mesmo filme entra junto com quem já está vendo
+  catalogo.addEventListener('netmovies-assistir', (e) => {
+    if (!document.getElementById('tela-cinema')) return;     // fora do app: usa o player do catálogo
+    e.preventDefault();
+    const url = new URL(location.href); url.search = ''; url.hash = '';
+    url.searchParams.set('netmovies', e.detail.id);
+    location.href = url.toString();
+  });
   document.body.appendChild(painel);
 
   const fechar = () => {

@@ -50,7 +50,7 @@ function telaBanido(st) {
 // ------------------------------------------------------------------ login
 $$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
-  const volta = location.origin + location.pathname;
+  const volta = location.origin + location.pathname + location.search;   // mantém o filme do NetMovies, se houver
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, queryParams: { prompt: 'select_account' } } });
   if (error) toast(error.message, 'erro');
 }));
@@ -170,13 +170,19 @@ async function abrirCinema() {
   if (estado.cinema) { estado.cinema.focarEm(estado.sessao.user.id); return; }
 
   const [{ Cinema }, { PlayerSincronizado }] = await Promise.all([import('./cinema3d.js'), import('./player.js')]);
+  // NetMovies: ?netmovies=<filme> abre a sala própria daquele filme (quem abrir o mesmo filme entra junto)
+  const idFilme = new URLSearchParams(location.search).get('netmovies');
+  if (idFilme) {
+    try { estado.sala = await (await import('./sala-filme.js')).prepararSalaFilme(idFilme); } catch (e) { console.warn(e); }
+    if (!estado.sala) { toast('Esse filme não está disponível. Voltando para a sala principal.', 'erro'); history.replaceState(null, '', location.pathname); }
+  }
   const video = $('#video');
   const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
   cinema.meuId = estado.sessao.user.id;
   cinema.aoClicarPessoa = (id) => id !== cinema.meuId && abrirDenuncia(id);
   cinema.controles.addEventListener('start', () => cinema.interromperCamera());
 
-  const player = estado.player = new PlayerSincronizado(video, {
+  const eventosPlayer = {
     aoMudarFilme: (f) => {
       $('#sem-filme').hidden = !!f;
       $('#titulo-filme').textContent = f ? f.titulo : 'Sem filme agora';
@@ -191,7 +197,9 @@ async function abrirCinema() {
       if (s === 'erro' && msg) toast(msg, 'erro');
       if (s === 'bloqueado') $('#toque-iniciar').hidden = false;
     },
-  });
+  };
+  const player = estado.player = estado.sala ? estado.sala.criarPlayer(video, eventosPlayer) : new PlayerSincronizado(video, eventosPlayer);
+  if (estado.sala) marcarSalaFilme();
   $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
   $('#btn-som').onclick = () => {
     if (player.mutado) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
@@ -199,7 +207,7 @@ async function abrirCinema() {
   };
   // navegadores só liberam som após um toque do usuário
   $('#toque-iniciar').hidden = false;
-  player.atualizar();
+  if (!estado.sala) player.atualizar();      // na sala do filme, o início vem de quem já está assistindo
 
   cinema.atualizarPessoas([meuEstadoPresenca()]);   // eu apareço mesmo antes da conexão em tempo real
   $('#qtd-online').textContent = 1;
@@ -209,11 +217,21 @@ async function abrirCinema() {
 }
 
 function meuEstadoPresenca() {
-  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : 'espectador', desde: estado._desde || (estado._desde = Date.now()) };
+  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : 'espectador', desde: estado._desde || (estado._desde = Date.now()), ...(estado.sala?.presenca() || {}) };
+}
+
+// sala de um filme do NetMovies: título, botão de voltar para a sala principal
+function marcarSalaFilme() {
+  $('#titulo-filme').textContent = estado.sala.filme.titulo;
+  document.title = estado.sala.filme.titulo + ' · CineOnline';
+  const b = document.createElement('button');
+  b.className = 'chip'; b.id = 'btn-sala-principal'; b.title = 'Voltar para a sala principal'; b.textContent = '⬅ Sala principal';
+  b.onclick = () => { location.href = location.pathname; };
+  $('.hud-dir').prepend(b);
 }
 
 function conectarSala() {
-  const canal = estado.canal = sb.channel('sala-principal', { config: { presence: { key: estado.sessao.user.id } } });
+  const canal = estado.canal = sb.channel(estado.sala ? estado.sala.canal : 'sala-principal', { config: { presence: { key: estado.sessao.user.id } } });
   canal.on('presence', { event: 'sync' }, () => {
     const st = canal.presenceState();
     const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
@@ -222,7 +240,12 @@ function conectarSala() {
     $('#qtd-online').textContent = lista.length;
     estado.cinema.atualizarPessoas(lista);
     if (!$('#gaveta-pessoas').hidden) desenharPessoas();
+    if (estado.sala) estado.sala.aoSync(lista, estado.sessao.user.id).then(mudou => mudou && canal.track(meuEstadoPresenca()));
   });
+  if (estado.sala) {   // chat ao vivo só desta sala
+    canal.on('broadcast', { event: 'chat' }, ({ payload }) => payload?.usuario && adicionarMsg({ ...payload, sala: true, texto: String(payload.texto || '').slice(0, 300) }, true));
+    estado.sala.esperar(() => canal.track(meuEstadoPresenca()));
+  }
   canal.on('broadcast', { event: 'moderacao' }, ({ payload }) => {
     if (payload?.alvo === estado.sessao.user.id) location.reload();
   });
@@ -236,6 +259,7 @@ async function iniciarChat() {
   $('#btn-emoji').onclick = () => $('#emojis').hidden = !$('#emojis').hidden;
   $$('#emojis button').forEach(b => b.onclick = () => { $('#chat-input').value += b.textContent; $('#emojis').hidden = true; $('#chat-input').focus(); });
 
+  if (estado.sala) return iniciarChatSala();
   const { data } = await sb.from('mensagens').select('id, usuario, texto, criado_em').order('criado_em', { ascending: false }).limit(30);
   (data || []).reverse().forEach(m => adicionarMsg(m, false));
   sb.channel('chat')
@@ -250,6 +274,19 @@ async function iniciarChat() {
     $('#chat-input').value = '';
     const { error } = await sb.from('mensagens').insert({ texto, usuario: estado.sessao.user.id });
     if (error) { toast(error.message.replace(/^.*?: /, ''), 'erro'); $('#chat-input').value = texto; }
+  };
+}
+
+// chat da sala de um filme: vai só para quem está nela (não fica salvo)
+function iniciarChatSala() {
+  $('#chat-form').onsubmit = (e) => {
+    e.preventDefault();
+    const texto = $('#chat-input').value.trim().slice(0, 300);
+    if (!texto) return;
+    $('#chat-input').value = '';
+    const m = { id: 'sala-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), usuario: estado.sessao.user.id, texto, sala: true };
+    estado.canal?.send({ type: 'broadcast', event: 'chat', payload: m });
+    adicionarMsg(m, true);
   };
 }
 
@@ -269,7 +306,7 @@ async function adicionarMsg(m, aoVivo) {
   el.className = 'msg'; el.dataset.msg = m.id;
   el.innerHTML = `<b class="${p.papel === 'owner' ? 'owner' : ''}">${p.papel === 'owner' ? '👑 ' : ''}${esc(p.apelido)}:</b> ${esc(m.texto)}` +
     (m.usuario !== estado.sessao.user.id ? ` <button class="denunciar" title="Denunciar">⚑</button>` : '');
-  el.querySelector('.denunciar')?.addEventListener('click', () => abrirDenuncia(m.usuario, m.id));
+  el.querySelector('.denunciar')?.addEventListener('click', () => abrirDenuncia(m.usuario, m.sala ? null : m.id));
   const lista = $('#chat-lista');
   lista.appendChild(el);
   while (lista.children.length > 60) lista.firstChild.remove();
