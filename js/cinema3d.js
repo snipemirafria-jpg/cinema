@@ -161,6 +161,13 @@ export class Cinema {
     const logo = new THREE.Mesh(new THREE.PlaneGeometry(6, 2.4), new THREE.MeshBasicMaterial({ map: this._texturaLogo(), transparent: true }));
     logo.position.set(0, 9.5, zFundo + 0.05); c.add(logo);
 
+    // logo nas paredes laterais (esquerda e direita), viradas para a plateia
+    const texLogo = logo.material.map;
+    for (const lado of [-1, 1]) {
+      const l = new THREE.Mesh(new THREE.PlaneGeometry(7, 2.8), new THREE.MeshBasicMaterial({ map: texLogo, transparent: true, toneMapped: false }));
+      l.position.set(lado * (L / 2 - 0.25), 10.1, 1); l.rotation.y = -lado * Math.PI / 2; c.add(l);
+    }
+
     // cortinas laterais do telão
     const cortinaMat = new THREE.MeshStandardMaterial({ color: '#7a0a16', roughness: 0.7, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) {
@@ -418,15 +425,30 @@ export class Cinema {
     if (!reg?.wrap) return;
     this.modo = 'poltrona';
     const p = reg.wrap.position;
-    const cabeca = new THREE.Vector3(p.x, reg.assento.pos.y + 1.25, p.z);
-    // atrás e acima do próprio avatar, olhando para o telão (visão da referência)
-    this._alvoCam = { pos: cabeca.clone().add(new THREE.Vector3(0, 0.9, -2.4)), alvo: new THREE.Vector3(p.x * 0.4, TELA.y - 0.6, TELA.z) };
-    if (ja) this._pularCamera();
+    // visão em primeira pessoa: câmera nos olhos do próprio personagem, olhando para o telão
+    const olhos = new THREE.Vector3(p.x, reg.assento.pos.y + 1.22, p.z + 0.12);
+    const dir = new THREE.Vector3(p.x * 0.4, TELA.y - 0.6, TELA.z).sub(olhos).normalize();
+    this._alvoCam = { pos: olhos, alvo: olhos.clone().add(dir.multiplyScalar(0.05)) };
+    this._primeiraPessoa(true, reg);
+    this._pularCamera();   // em primeira pessoa entra direto nos olhos
   }
   visaoGeral(ja = false) {
     this.modo = 'geral';
+    this._primeiraPessoa(false);
     this._alvoCam = { pos: new THREE.Vector3(7, 9, -13), alvo: new THREE.Vector3(0, 3.2, TELA.z - 3) };
     if (ja) this._pularCamera();
+  }
+  // liga/desliga a primeira pessoa: esconde o próprio corpo, gira a cabeça no lugar e usa 90° de visão
+  _primeiraPessoa(sim, reg) {
+    if (this._regFP && this._regFP !== reg) this._regFP.wrap && (this._regFP.wrap.visible = true);
+    this._regFP = sim ? reg : null;
+    if (reg?.wrap) reg.wrap.visible = !sim;
+    this.controles.minDistance = sim ? 0.01 : 1.2;
+    this.controles.maxDistance = sim ? 0.05 : 24;
+    this.controles.enableZoom = !sim;
+    this.controles.rotateSpeed = (MOBILE ? 0.5 : 0.7) * (sim ? -0.6 : 1);
+    this.controles.maxPolarAngle = sim ? Math.PI * 0.8 : Math.PI * 0.62;
+    this._redimensionar();
   }
   _pularCamera() {
     this.camera.position.copy(this._alvoCam.pos); this.controles.target.copy(this._alvoCam.alvo); this._alvoCam = null;
@@ -438,7 +460,9 @@ export class Cinema {
     this.css.setSize(w, h);
     this.css3d?.setSize(w, h);
     this.camera.aspect = w / h;
-    this.camera.fov = w / h < 0.8 ? 72 : 55;
+    if (this.modo === 'poltrona') {   // 90° de campo de visão horizontal (limitado no celular em pé)
+      this.camera.fov = Math.min(100, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(45)) / (w / h))));
+    } else this.camera.fov = w / h < 0.8 ? 72 : 55;
     this.camera.updateProjectionMatrix();
   }
 
