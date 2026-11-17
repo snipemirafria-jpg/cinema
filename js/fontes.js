@@ -66,6 +66,10 @@ export function carregarApiYouTube() {
 
 // Faz um player do YouTube se comportar como um <video> (currentTime, paused, play…)
 export class MidiaYouTube {
+  // O YouTube liga legendas automáticas quando o vídeo começa mudo; desliga sempre.
+  semLegenda() {
+    try { this.p.setOption('captions', 'track', {}); this.p.unloadModule('captions'); this.p.unloadModule('cc'); } catch { }
+  }
   constructor(id, inicio, eventos = {}) {
     this.el = document.createElement('div'); this.el.className = 'midia-yt';
     const alvo = document.createElement('div'); this.el.appendChild(alvo);
@@ -73,12 +77,12 @@ export class MidiaYouTube {
     carregarApiYouTube().then(YT => {
       this.p = new YT.Player(alvo, {
         videoId: id, width: '100%', height: '100%',
-        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, start: Math.floor(inicio || 0) },
+        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, start: Math.floor(inicio || 0) },
         events: {
-          onReady: () => { this.pronto = true; this.p.mute(); this.p.playVideo(); eventos.pronto?.(); },
+          onReady: () => { this.pronto = true; this.semLegenda(); this.p.mute(); this.p.playVideo(); eventos.pronto?.(); },
           onStateChange: (e) => {
             this._estado = e.data;
-            if (e.data === 1) eventos.tocando?.();
+            if (e.data === 1) { this.semLegenda(); eventos.tocando?.(); }
             if (e.data === 3) eventos.carregando?.();
             if (e.data === 0) eventos.fim?.();
           },
@@ -94,7 +98,7 @@ export class MidiaYouTube {
   get playbackRate() { return 1; }
   set playbackRate(_) { }
   get muted() { return this._mudo; }
-  set muted(m) { this._mudo = m; if (this.pronto) m ? this.p.mute() : (this.p.unMute(), this.p.setVolume(100)); }
+  set muted(m) { this._mudo = m; if (this.pronto) m ? this.p.mute() : (this.p.unMute(), this.p.setVolume(100), this.semLegenda()); }
   set volume(_) { }
   play() { if (this.pronto) this.p.playVideo(); return Promise.resolve(); }
   pause() { if (this.pronto) this.p.pauseVideo(); }
