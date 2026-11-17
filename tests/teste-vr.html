@@ -11,7 +11,7 @@ const ini = Date.now() - 5000;
 window.CineOnline = {
   cinema: null,
   player: {
-    mutado: true, estado: { filme: { titulo: 'Filme de teste', origem: 'link', fonte_url: new URL(filme, location.href).href } },
+    mutado: true, estado: { filme: { titulo: 'Filme de teste', origem: 'link', fonte_url: /^https?:/.test(filme) ? filme : new URL(filme, location.href).href } },
     fonteDe: (f) => ({ tipo: f.origem, url: f.fonte_url }), posicaoAlvo: () => (Date.now() - ini) / 1000,
     silenciar() { this.mutado = true; }, ativarSom() { this.mutado = false; }, atualizar() {},
   },
