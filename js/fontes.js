@@ -13,6 +13,15 @@ export function idYouTube(u) {
   return null;
 }
 
+export function idArchive(u) {
+  try {
+    const url = new URL(u);
+    if (!/(^|\.)archive\.org$/i.test(url.hostname)) return null;
+    const m = url.pathname.match(/^\/(details|embed)\/([A-Za-z0-9_-]{3,120})/);
+    return m ? m[2] : null;
+  } catch { return null; }
+}
+
 export function idDrive(u) {
   try {
     const url = new URL(u);
@@ -27,6 +36,7 @@ export function idDrive(u) {
 export function detectarTipo(u) {
   u = (u || '').trim();
   if (idYouTube(u)) return 'youtube';
+  if (idArchive(u)) return 'archive';
   if (idDrive(u)) return 'drive';
   if (/\.m3u8(\?|#|$)/i.test(u)) return 'hls';
   if (/\.mpd(\?|#|$)/i.test(u)) return 'dash';
@@ -34,7 +44,7 @@ export function detectarTipo(u) {
   return 'link';
 }
 
-export const NOME_TIPO = { youtube: 'YouTube', drive: 'Google Drive', hls: 'HLS', dash: 'DASH', mp4: 'Vídeo direto', link: 'Link', upload: 'Upload' };
+export const NOME_TIPO = { archive: 'Internet Archive', youtube: 'YouTube', drive: 'Google Drive', hls: 'HLS', dash: 'DASH', mp4: 'Vídeo direto', link: 'Link', upload: 'Upload' };
 
 export const urlDriveDireto = (id) => `https://drive.usercontent.google.com/download?id=${encodeURIComponent(id)}&export=download&confirm=t`;
 export const urlDrivePreview = (id) => `https://drive.google.com/file/d/${encodeURIComponent(id)}/preview`;

@@ -99,3 +99,13 @@ details summary{cursor:pointer;margin:6px 0;font-weight:600}
 .linha-check input{width:auto}
 .linha-dur{display:flex;gap:6px}
 .linha-dur .btn{flex:none}
+
+/* Busca de catálogo do Internet Archive */
+.archive-resultados{max-height:48vh;overflow:auto;display:flex;flex-direction:column;gap:10px}
+.archive-item{display:flex;gap:12px;padding:10px;border:1px solid var(--linha);border-radius:12px;background:var(--card2)}
+.archive-item img{width:76px;height:108px;object-fit:cover;border-radius:8px;background:#0b0710;flex:none}
+.archive-meta{min-width:0;display:flex;flex-direction:column;gap:5px}
+.archive-meta small{font-size:11px;color:var(--sub);overflow-wrap:anywhere}
+.archive-meta p{font-size:12px;color:var(--sub);margin:0;line-height:1.4}
+.archive-meta .linha-acoes{margin-top:4px}
+@media(max-width:560px){.archive-item{align-items:flex-start}.archive-item img{width:58px;height:84px}}

@@ -62,3 +62,9 @@ Abra http://localhost:8080. Cada push na branch `main` republica o site automati
 ## Limites conhecidos
 - iPhone: MPEG-DASH depende do suporte do iOS (17.1+); HLS funciona em todos.
 - O vídeo só aparece no telão 3D se o servidor do vídeo enviar cabeçalho CORS (`Access-Control-Allow-Origin`). O painel avisa quando não envia.
+
+
+## Catálogo gratuito — Internet Archive
+No painel do criador, abra **Filmes → Buscar filmes gratuitos**, pesquise por título/tema, confira a página original e use **Adicionar** para preencher o cadastro. Informe a duração manualmente e salve.
+Antes de publicar, confira direitos, titularidade, licença e permissão de incorporação de cada obra. A busca de metadados não comprova autorização.
+Execute `supabase/migrations/003_internet_archive.sql` no SQL Editor do Supabase antes de publicar o frontend. O player usa `archive.org/embed/IDENTIFICADOR`; por ser um player externo, a sincronização de posição não tem a mesma precisão de MP4/HLS/DASH.

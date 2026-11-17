@@ -1,6 +1,6 @@
 // Player sincronizado: todos veem o mesmo ponto do filme (o servidor manda).
 import { sb, urlPublica } from './supa.js';
-import { detectarTipo, idYouTube, idDrive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe } from './fontes.js';
+import { detectarTipo, idYouTube, idDrive, idArchive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe } from './fontes.js';
 
 let Hls = null;
 const LEVE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;   // celular: corrige o sincronismo com mais folga (menos travadinhas)
@@ -105,6 +105,15 @@ export class PlayerSincronizado {
     let { tipo, url } = this.fonteDe(f);
     if (tipo === 'link') tipo = detectarTipo(url);
     const v = this.v;
+    if (tipo === 'archive') {
+      const id = idArchive(url);
+      if (!id) { this.aoEstado?.('erro', 'Identificador do Internet Archive inválido.'); return; }
+      // Player oficial incorporado. A posição não pode ser sincronizada com precisão pelo site.
+      const embed = new URL(`https://archive.org/embed/${encodeURIComponent(id)}`);
+      embed.searchParams.set('autoplay', '1');
+      this._usar('iframe', new MidiaIframe(embed.toString()));
+      return;
+    }
     if (tipo === 'youtube') {
       const yt = new MidiaYouTube(idYouTube(url), this.posicaoAlvo(), {
         tocando: () => this.aoEstado?.('tocando'), carregando: () => this.aoEstado?.('carregando'),

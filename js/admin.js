@@ -1,7 +1,7 @@
 // Painel do criador (OWNER). Toda permissão é garantida no banco (RLS + funções),
 // esta tela só organiza as ferramentas.
 import { sb, esc, toast, urlPublica } from './supa.js';
-import { detectarTipo, NOME_TIPO, idYouTube, idDrive, urlDriveDireto, capaYouTube, capaDrive, carregarApiYouTube } from './fontes.js';
+import { detectarTipo, NOME_TIPO, idArchive, idYouTube, idDrive, urlDriveDireto, capaYouTube, capaDrive, carregarApiYouTube } from './fontes.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -138,7 +138,7 @@ async function filmes() {
   const visiveis = st.pasta === 'Todas' ? data : data.filter(f => (f.categoria || 'Outros') === st.pasta);
   const icone = (n) => st.cats.find(c => c.nome === n)?.icone || '🎬';
   C.innerHTML = `
-    <div class="linha-acoes"><button class="btn p" id="f-novo">+ Adicionar filme por link</button><button class="btn" id="f-pasta">+ Nova pasta</button></div>
+    <div class="linha-acoes"><button class="btn p" id="f-novo">+ Adicionar filme por link</button><button class="btn" id="f-archive">🔎 Buscar filmes gratuitos</button><button class="btn" id="f-pasta">+ Nova pasta</button></div>
     <div class="pastas">
       <button class="pasta ${st.pasta === 'Todas' ? 'ativa' : ''}" data-pasta="Todas">📁 Todas <small>${data.length}</small></button>
       ${st.cats.map(c => `<button class="pasta ${st.pasta === c.nome ? 'ativa' : ''}" data-pasta="${esc(c.nome)}">${esc(c.icone)} ${esc(c.nome)} <small>${conta(c.nome)}</small></button>`).join('')}
@@ -156,6 +156,7 @@ async function filmes() {
         </div>
       </div>`).join('') || '<p class="dica">Nenhum filme nesta pasta ainda. Clique em “Adicionar filme por link”.</p>'}</div>`;
   $('#f-novo').onclick = () => formFilme({ categoria: st.pasta !== 'Todas' ? st.pasta : 'Outros' });
+  $('#f-archive').onclick = buscarInternetArchive;
   $('#f-pasta').onclick = () => modal(`<h3>Nova pasta</h3>
       <div class="form-grid"><label>Nome<input name="nome" required maxlength="30" placeholder="Ex: Filmes de herói"></label>
       <label>Ícone (emoji)<input name="icone" maxlength="4" value="🎬"></label></div>`, async (fm) => {
@@ -174,6 +175,73 @@ async function filmes() {
     if (!confirm('Excluir este filme? Ele sai também da programação.')) return;
     if (!erro((await sb.from('filmes').delete().eq('id', b.dataset.del)).error)) { toast('Excluído', 'ok'); filmes(); }
   });
+}
+
+
+// Busca pública do Internet Archive. A presença de um item no catálogo não comprova direitos.
+async function buscarInternetArchive() {
+  const fm = modal(`
+    <h3>Buscar filmes no Internet Archive</h3>
+    <label class="todo">Título, tema ou palavra-chave
+      <input name="q" required maxlength="100" placeholder="Ex.: silent comedy, animation">
+    </label>
+    <p class="dica">Confira os direitos e a permissão de incorporação na página original antes de publicar.</p>
+    <div id="archive-resultados" class="archive-resultados todo"><p class="dica">Digite uma busca e clique em Buscar.</p></div>
+    <div class="linha-acoes"><button type="button" class="btn p" id="archive-buscar">Buscar</button></div>`, async () => false);
+  const area = $('#archive-resultados', fm);
+  const buscar = async () => {
+    const q = $('[name=q]', fm).value.trim();
+    if (!q) { area.innerHTML = '<p class="dica">Digite o que deseja procurar.</p>'; return; }
+    area.innerHTML = '<p class="dica">Consultando o catálogo…</p>';
+    try {
+      const params = new URLSearchParams({
+        q: `(${q}) AND mediatype:movies`,
+        fl: 'identifier,title,year,description,licenseurl,creator',
+        rows: '20', page: '1', output: 'json'
+      });
+      const resp = await fetch(`https://archive.org/advancedsearch.php?${params}`);
+      if (!resp.ok) throw new Error('O catálogo não respondeu.');
+      const json = await resp.json();
+      const docs = json?.response?.docs || [];
+      if (!docs.length) { area.innerHTML = '<p class="dica">Nenhum resultado. Tente outras palavras, inclusive em inglês.</p>'; return; }
+      area.innerHTML = docs.map((d, i) => {
+        const id = String(d.identifier || '');
+        const title = String(d.title || id);
+        const desc = String(d.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 240);
+        const license = String(d.licenseurl || '');
+        return `<article class="archive-item">
+          <img src="https://archive.org/services/img/${encodeURIComponent(id)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+          <div class="archive-meta"><b>${esc(title)}</b><small>${esc(String(d.year || ''))} ${d.creator ? '· ' + esc(String(d.creator)) : ''}</small>
+          <p>${esc(desc || 'Sem descrição informada.')}</p>
+          <small>${license ? 'Licença declarada: ' + esc(license) : '⚠️ Licença não informada no resultado.'}</small>
+          <div class="linha-acoes">
+            <a class="btn" href="https://archive.org/details/${encodeURIComponent(id)}" target="_blank" rel="noreferrer">Ver origem/licença</a>
+            <button type="button" class="btn p" data-archive-add="${i}">Adicionar</button>
+          </div></div></article>`;
+      }).join('');
+      $$('[data-archive-add]', area).forEach(b => b.onclick = () => {
+        const d = docs[Number(b.dataset.archiveAdd)];
+        const id = String(d.identifier || '');
+        if (!/^[A-Za-z0-9_-]{3,120}$/.test(id)) return toast('Identificador inválido.', 'erro');
+        $('#modal').close();
+        formFilme({
+          titulo: String(d.title || id),
+          descricao: String(d.description || '').replace(/<[^>]*>/g, ' ').replace(/\s+/g, ' ').slice(0, 3000),
+          fonte_url: `https://archive.org/details/${id}`,
+          capa_url: `https://archive.org/services/img/${encodeURIComponent(id)}`,
+          categoria: st.pasta !== 'Todas' ? st.pasta : 'Outros',
+          licenca_tipo: d.licenseurl ? 'Licença declarada (verificar)' : 'Não informado',
+          licenca_titular: String(d.creator || ''),
+          licenca_detalhes: `Importado do Internet Archive. Licença declarada: ${d.licenseurl || 'não informada'}. Confirme os direitos e a permissão de incorporação na origem.`,
+          origem: 'archive'
+        });
+      });
+    } catch (e) {
+      area.innerHTML = `<p class="dica">Falha ao consultar o catálogo: ${esc(e.message)}</p>`;
+    }
+  };
+  $('#archive-buscar', fm).onclick = buscar;
+  $('[name=q]', fm).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscar(); } });
 }
 
 async function addFila(filme) {
@@ -216,7 +284,7 @@ function formFilme(f = {}) {
     <h3>${f.id ? 'Editar filme' : 'Adicionar filme'}</h3>
     <div class="form-grid">
       <label class="todo"><span>Link do filme <span class="tag" id="f-tipo">—</span></span>
-        <input name="fonte_url" placeholder="Cole aqui: YouTube, Google Drive, .mp4, .m3u8 ou qualquer link" value="${esc(f.origem === 'upload' ? '' : f.fonte_url || '')}">
+        <input name="fonte_url" placeholder="Cole aqui: YouTube, Internet Archive, Google Drive, .mp4, .m3u8 ou qualquer link" value="${esc(f.origem === 'upload' ? '' : f.fonte_url || '')}">
         <small class="dica">Google Drive: o arquivo precisa estar compartilhado como “Qualquer pessoa com o link”. YouTube: o vídeo precisa permitir incorporação.</small></label>
       <label class="todo linha-check"><input type="checkbox" name="usar_upload" ${f.origem === 'upload' ? 'checked' : ''} style="width:auto"> Prefiro enviar o arquivo (até 50 MB)</label>
       <label class="campo-up todo" hidden>Arquivo de vídeo<input name="arquivo" type="file" accept="video/mp4,video/webm,video/quicktime"></label>
@@ -230,7 +298,7 @@ function formFilme(f = {}) {
       <label>Idioma<input name="idioma" value="${esc(f.idioma || 'Português')}"></label>
       <details class="todo"><summary>Legendas e licença (opcional)</summary><div class="form-grid">
         <label class="todo">Legendas WebVTT (uma por linha: idioma|nome|https://…/arquivo.vtt)<textarea name="legendas" placeholder="pt|Português|https://exemplo.com/pt.vtt">${esc(leg)}</textarea></label>
-        <label>Tipo de licença<select name="licenca_tipo">${['Não informado', 'Domínio público', 'CC BY', 'CC BY-SA', 'CC0', 'Licenciado (contrato)', 'Produção própria'].map(c => `<option ${f.licenca_tipo === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
+        <label>Tipo de licença<select name="licenca_tipo">${['Não informado', 'Domínio público', 'CC BY', 'CC BY-SA', 'CC0', 'Licença declarada (verificar)', 'Licenciado (contrato)', 'Produção própria'].map(c => `<option ${f.licenca_tipo === c ? 'selected' : ''}>${c}</option>`).join('')}</select></label>
         <label>Titular dos direitos<input name="licenca_titular" value="${esc(f.licenca_titular || '')}"></label>
         <label>Validade da licença<input name="licenca_validade" type="date" value="${esc(f.licenca_validade || '')}"></label>
         <label class="todo">Detalhes da licença<textarea name="licenca_detalhes">${esc(f.licenca_detalhes || '')}</textarea></label>
@@ -290,13 +358,21 @@ function formFilme(f = {}) {
     const url = campo.value.trim(), tipo = detectarTipo(url);
     $('#f-tipo', form).textContent = url ? NOME_TIPO[tipo] : '—';
     if (!/^https:\/\//i.test(url)) return;
+    if (tipo === 'archive') {
+      const id = idArchive(url);
+      if (id) {
+        if (!capa.value) { capa.value = `https://archive.org/services/img/${encodeURIComponent(id)}`; prev.src = capa.value; }
+        if (!tit.value) tit.value = id;
+        info.textContent = 'Player oficial do Internet Archive. Informe a duração manualmente e confira os direitos na origem.';
+      }
+    }
     if (tipo === 'youtube') {
       const id = idYouTube(url);
       if (!capa.value) { capa.value = capaYouTube(id); prev.src = capa.value; }
       if (!tit.value) fetch('https://www.youtube.com/oembed?format=json&url=' + encodeURIComponent(url)).then(r => r.ok ? r.json() : null).then(j => { if (j?.title && !tit.value) tit.value = j.title; }).catch(() => { });
     }
     if (tipo === 'drive' && !capa.value) { capa.value = capaDrive(idDrive(url)); prev.src = capa.value; }
-    if (!durc.value) detectar();
+    if (!durc.value && tipo !== 'archive') detectar();
   };
   campo.addEventListener('change', analisar); campo.addEventListener('paste', () => setTimeout(analisar, 50));
   $('#f-detectar', form).onclick = detectar;
