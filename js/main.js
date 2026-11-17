@@ -183,6 +183,8 @@ async function abrirCinema() {
   $('#toque-iniciar').hidden = false;
   player.atualizar();
 
+  cinema.atualizarPessoas([meuEstadoPresenca()]);   // eu apareço mesmo antes da conexão em tempo real
+  $('#qtd-online').textContent = 1;
   conectarSala();
   iniciarChat();
   configurarMenu();
@@ -197,6 +199,7 @@ function conectarSala() {
   canal.on('presence', { event: 'sync' }, () => {
     const st = canal.presenceState();
     const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
+    if (!lista.some(p => p.id === estado.sessao.user.id)) lista.push(meuEstadoPresenca());
     estado.pessoas = new Map(lista.map(p => [p.id, p]));
     $('#qtd-online').textContent = lista.length;
     estado.cinema.atualizarPessoas(lista);

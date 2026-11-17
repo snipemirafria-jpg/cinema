@@ -42,14 +42,14 @@ export class Cinema {
     this.cena.fog = new THREE.Fog('#06030a', 22, 48);
 
     this.camera = new THREE.PerspectiveCamera(55, 1, 0.1, 120);
-    this.camera.position.set(0, 6, -9);
+    this.camera.position.set(0, 7, -10);
     this.controles = new OrbitControls(this.camera, canvas);
     this.controles.enableDamping = true;
     this.controles.enablePan = false;
     this.controles.minDistance = 1.2;
-    this.controles.maxDistance = 16;
+    this.controles.maxDistance = 24;
     this.controles.maxPolarAngle = Math.PI * 0.62;
-    this.controles.target.set(0, 4, TELA.z);
+    this.controles.target.set(0, 3.5, 8);
     this.controles.rotateSpeed = MOBILE ? 0.5 : 0.7;
 
     this.assentos = [];
