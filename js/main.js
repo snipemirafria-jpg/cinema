@@ -1,0 +1,317 @@
+// Fluxo do app dos espectadores: login Google → perfil → sala 3D.
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { sb, configurado, COLS_PERFIL, idDispositivo, plataforma, esc, toast } from './supa.js';
+import { OPCOES, normalizarAvatar, criarAvatar, poseEmPe, preCarregar } from './avatar.js';
+
+const $ = (s) => document.querySelector(s);
+const $$ = (s) => [...document.querySelectorAll(s)];
+const estado = { sessao: null, perfil: null, owner: false, cinema: null, player: null, canal: null, pessoas: new Map() };
+
+function mostrar(id) {
+  $$('.tela').forEach(t => t.hidden = t.id !== id);
+  $('#carregando').classList.add('some');
+}
+
+// ------------------------------------------------------------------ início
+async function iniciar() {
+  if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
+  if (!configurado) { $('#aviso-config').hidden = false; mostrar('tela-login'); return; }
+  preCarregar();
+  const { data: { session } } = await sb.auth.getSession();
+  sb.auth.onAuthStateChange((ev, s) => {
+    if (ev === 'SIGNED_OUT') location.reload();
+    if (ev === 'SIGNED_IN' && !estado.sessao && s) { estado.sessao = s; entrar(); }
+  });
+  if (!session) { mostrar('tela-login'); return; }
+  estado.sessao = session;
+  entrar();
+}
+
+async function entrar() {
+  if (estado._entrando) return; estado._entrando = true;
+  const { data: st, error } = await sb.rpc('registrar_acesso', { p_dispositivo: idDispositivo(), p_plataforma: plataforma() });
+  if (error) { toast('Erro ao entrar: ' + error.message, 'erro'); mostrar('tela-login'); estado._entrando = false; return; }
+  if (st.banido) return telaBanido(st);
+  estado.owner = !!st.owner;
+  const { data: perfil } = await sb.rpc('meu_perfil');
+  estado.perfil = perfil;
+  if (!perfil?.cadastro_completo) return abrirPerfil(true);
+  abrirCinema();
+}
+
+function telaBanido(st) {
+  const tipos = { temporario: 'Banimento temporário', permanente: 'Banimento permanente', suspensao: 'Conta suspensa para análise' };
+  $('#banido-texto').innerHTML = `<b>${tipos[st.tipo] || 'Bloqueado'}</b><br>Motivo: ${esc(st.motivo)}` +
+    (st.ate ? `<br>Até: ${new Date(st.ate).toLocaleString('pt-BR')}` : '');
+  mostrar('tela-banido');
+}
+
+// ------------------------------------------------------------------ login
+$$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
+  if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
+  const volta = location.origin + location.pathname;
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, queryParams: { prompt: 'select_account' } } });
+  if (error) toast(error.message, 'erro');
+}));
+$$('[data-acao="sair"]').forEach(b => b.addEventListener('click', sair));
+async function sair() { await sb.auth.signOut(); location.reload(); }
+
+// ------------------------------------------------------------------ perfil
+let preview = null;
+async function abrirPerfil(primeiraVez) {
+  mostrar('tela-perfil');
+  $('#perfil-titulo').textContent = primeiraVez ? 'Complete seu perfil' : 'Meu perfil';
+  $('#perfil-voltar').hidden = primeiraVez;
+  const p = estado.perfil || {};
+  const cfg = normalizarAvatar(p.avatar);
+  $('#apelido').value = p.apelido || '';
+  let genero = p.genero || (cfg.base === 'female' ? 'feminino' : 'masculino');
+  const marcarGenero = () => $$('#seg-genero button').forEach(b => b.classList.toggle('sel', b.dataset.v === genero));
+  marcarGenero();
+  $$('#seg-genero button').forEach(b => b.onclick = () => {
+    genero = b.dataset.v; marcarGenero();
+    if (genero !== 'outro') { cfg.base = genero === 'feminino' ? 'female' : 'male'; montar(); atualizarPreview(); }
+  });
+
+  const linhas = [
+    ['Corpo', 'base', OPCOES.base.map(o => [o.id, o.nome])],
+    ['Cabelo', 'cabelo', OPCOES.cabelo.map(o => [o.id, o.nome])],
+    ['Barba', 'barba', OPCOES.barba.map(o => [o.id, o.nome])],
+    ['Cor cabelo', 'cabeloCor', OPCOES.cabeloCor],
+    ['Pele', 'pele', OPCOES.pele],
+    ['Olhos', 'olhos', OPCOES.olhos],
+    ['Roupa', 'roupa', OPCOES.roupa],
+    ['Calça', 'calca', OPCOES.calca],
+  ];
+  function montar() {
+    $('#opcoes-avatar').innerHTML = linhas.map(([rot, chave, itens]) => `
+      <div class="linha-op"><span>${rot}</span><div class="itens">${itens.map(it => Array.isArray(it)
+        ? `<button type="button" data-k="${chave}" data-v="${it[0]}" class="${cfg[chave] === it[0] ? 'sel' : ''}">${it[1]}</button>`
+        : `<button type="button" class="cor ${cfg[chave] === it ? 'sel' : ''}" data-k="${chave}" data-v="${it}" style="background:${it}" aria-label="${it}"></button>`).join('')}</div></div>`).join('');
+    $$('#opcoes-avatar button').forEach(b => b.onclick = () => { cfg[b.dataset.k] = b.dataset.v; montar(); atualizarPreview(); });
+  }
+  montar();
+
+  if (!preview) preview = criarPreview($('#preview3d'));
+  async function atualizarPreview() { preview.mostrar(await criarAvatar(cfg)); }
+  atualizarPreview();
+
+  // verificação de apelido único
+  let tApelido;
+  $('#apelido').oninput = () => {
+    clearTimeout(tApelido);
+    const v = $('#apelido').value.trim();
+    $('#apelido-ok').textContent = '';
+    if (!/^[A-Za-z0-9_.]{3,20}$/.test(v)) return;
+    tApelido = setTimeout(async () => {
+      const { data } = await sb.from('perfis').select('id').ilike('apelido', v.replace(/[_%]/g, '\\$&')).neq('id', estado.sessao.user.id).limit(1);
+      $('#apelido-ok').textContent = data?.length ? '❌' : '✅';
+    }, 350);
+  };
+  $('#apelido').oninput();
+
+  $('#perfil-voltar').onclick = () => abrirCinema();
+  $('#form-perfil').onsubmit = async (e) => {
+    e.preventDefault();
+    const apelido = $('#apelido').value.trim();
+    $('#btn-salvar-perfil').disabled = true;
+    const { error } = await sb.from('perfis').update({ apelido, genero, avatar: cfg, cadastro_completo: true }).eq('id', estado.sessao.user.id);
+    $('#btn-salvar-perfil').disabled = false;
+    if (error) return toast(error.code === '23505' ? 'Esse apelido já existe. Escolha outro.' : error.message, 'erro');
+    estado.perfil = { ...estado.perfil, apelido, genero, avatar: cfg, cadastro_completo: true };
+    toast('Perfil salvo!', 'ok');
+    estado.canal?.track(meuEstadoPresenca());
+    abrirCinema();
+  };
+}
+
+function criarPreview(canvas) {
+  const r = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+  r.setPixelRatio(Math.min(devicePixelRatio, 2)); r.outputColorSpace = THREE.SRGBColorSpace; r.toneMapping = THREE.ACESFilmicToneMapping;
+  const cena = new THREE.Scene();
+  cena.add(new THREE.HemisphereLight('#ffffff', '#3a2a55', 1.6));
+  const d = new THREE.DirectionalLight('#ffffff', 2.2); d.position.set(2, 4, 3); cena.add(d);
+  const aro = new THREE.DirectionalLight('#a78bfa', 2); aro.position.set(-3, 2, -3); cena.add(aro);
+  const base = new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.75, 0.06, 48), new THREE.MeshStandardMaterial({ color: '#1e1532', emissive: '#4c1d95', emissiveIntensity: 0.4 }));
+  base.position.y = -0.03; cena.add(base);
+  const anel = new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.012, 8, 64), new THREE.MeshBasicMaterial({ color: '#a78bfa' }));
+  anel.rotation.x = Math.PI / 2; cena.add(anel);
+  const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 50); cam.position.set(0, 1.25, 4.2);
+  const ctl = new OrbitControls(cam, canvas); ctl.target.set(0, 0.95, 0); ctl.enablePan = false; ctl.minDistance = 1.5; ctl.maxDistance = 6; ctl.autoRotate = true; ctl.autoRotateSpeed = 1.2;
+  let atual = null;
+  function tam() { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w) return; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  addEventListener('resize', tam);
+  r.setAnimationLoop(() => { tam(); ctl.update(); r.render(cena, cam); });
+  return { mostrar(av) { if (atual) cena.remove(atual); atual = av; poseEmPe(av); cena.add(av); } };
+}
+
+// ------------------------------------------------------------------ cinema
+async function abrirCinema() {
+  mostrar('tela-cinema');
+  $('#menu-painel').hidden = !estado.owner;
+  $('#eu-nome').textContent = (estado.owner ? '👑 ' : '') + (estado.perfil.apelido || '');
+  if (estado.cinema) { estado.cinema.focarEm(estado.sessao.user.id); return; }
+
+  const [{ Cinema }, { PlayerSincronizado }] = await Promise.all([import('./cinema3d.js'), import('./player.js')]);
+  const video = $('#video');
+  const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
+  cinema.meuId = estado.sessao.user.id;
+  cinema.aoClicarPessoa = (id) => id !== cinema.meuId && abrirDenuncia(id);
+  cinema.controles.addEventListener('start', () => cinema.interromperCamera());
+
+  const player = estado.player = new PlayerSincronizado(video, {
+    aoMudarFilme: (f) => {
+      $('#sem-filme').hidden = !!f;
+      $('#titulo-filme').textContent = f ? f.titulo : 'Sem filme agora';
+      if (f) { cinema.mostrarCapa(f.capa_url); } else cinema.mostrarVideo(false);
+      cinema.legenda('');
+      if ($('#gaveta-programacao').hidden === false) carregarProgramacao();
+    },
+    aoLegenda: (t) => cinema.legenda(t),
+    aoEstado: (s) => {
+      if (s === 'tocando') cinema.mostrarVideo(true);
+      if (s === 'bloqueado') $('#toque-iniciar').hidden = false;
+    },
+  });
+  $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
+  $('#btn-som').onclick = () => {
+    if (video.muted) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
+    else { video.muted = true; $('#btn-som').textContent = '🔇 Ativar som'; }
+  };
+  // navegadores só liberam som após um toque do usuário
+  $('#toque-iniciar').hidden = false;
+  player.atualizar();
+
+  conectarSala();
+  iniciarChat();
+  configurarMenu();
+}
+
+function meuEstadoPresenca() {
+  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : 'espectador', desde: estado._desde || (estado._desde = Date.now()) };
+}
+
+function conectarSala() {
+  const canal = estado.canal = sb.channel('sala-principal', { config: { presence: { key: estado.sessao.user.id } } });
+  canal.on('presence', { event: 'sync' }, () => {
+    const st = canal.presenceState();
+    const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
+    estado.pessoas = new Map(lista.map(p => [p.id, p]));
+    $('#qtd-online').textContent = lista.length;
+    estado.cinema.atualizarPessoas(lista);
+    if (!$('#gaveta-pessoas').hidden) desenharPessoas();
+  });
+  canal.on('broadcast', { event: 'moderacao' }, ({ payload }) => {
+    if (payload?.alvo === estado.sessao.user.id) location.reload();
+  });
+  canal.subscribe(async (s) => { if (s === 'SUBSCRIBED') await canal.track(meuEstadoPresenca()); });
+}
+
+// ------------------------------------------------------------------ chat
+const EMOJIS = ['😀', '😂', '😍', '😮', '😢', '😡', '👏', '🔥', '🍿', '🎬', '❤️', '👍', '👎', '🤯', '😴', '🎉'];
+async function iniciarChat() {
+  $('#emojis').innerHTML = EMOJIS.map(e => `<button type="button">${e}</button>`).join('');
+  $('#btn-emoji').onclick = () => $('#emojis').hidden = !$('#emojis').hidden;
+  $$('#emojis button').forEach(b => b.onclick = () => { $('#chat-input').value += b.textContent; $('#emojis').hidden = true; $('#chat-input').focus(); });
+
+  const { data } = await sb.from('mensagens').select('id, usuario, texto, criado_em').order('criado_em', { ascending: false }).limit(30);
+  (data || []).reverse().forEach(m => adicionarMsg(m, false));
+  sb.channel('chat')
+    .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, ({ new: m }) => adicionarMsg(m, true))
+    .on('postgres_changes', { event: 'UPDATE', schema: 'public', table: 'mensagens' }, ({ new: m }) => { if (m.removida) document.querySelector(`[data-msg="${m.id}"]`)?.remove(); })
+    .subscribe();
+
+  $('#chat-form').onsubmit = async (e) => {
+    e.preventDefault();
+    const texto = $('#chat-input').value.trim();
+    if (!texto) return;
+    $('#chat-input').value = '';
+    const { error } = await sb.from('mensagens').insert({ texto, usuario: estado.sessao.user.id });
+    if (error) { toast(error.message.replace(/^.*?: /, ''), 'erro'); $('#chat-input').value = texto; }
+  };
+}
+
+const nomesCache = new Map();
+async function nomeDe(id) {
+  if (estado.pessoas.has(id)) return estado.pessoas.get(id);
+  if (nomesCache.has(id)) return nomesCache.get(id);
+  const { data } = await sb.from('perfis').select('id, apelido, papel').eq('id', id).maybeSingle();
+  nomesCache.set(id, data || { apelido: '???' });
+  return nomesCache.get(id);
+}
+
+async function adicionarMsg(m, aoVivo) {
+  if (document.querySelector(`[data-msg="${m.id}"]`)) return;
+  const p = await nomeDe(m.usuario);
+  const el = document.createElement('div');
+  el.className = 'msg'; el.dataset.msg = m.id;
+  el.innerHTML = `<b class="${p.papel === 'owner' ? 'owner' : ''}">${p.papel === 'owner' ? '👑 ' : ''}${esc(p.apelido)}:</b> ${esc(m.texto)}` +
+    (m.usuario !== estado.sessao.user.id ? ` <button class="denunciar" title="Denunciar">⚑</button>` : '');
+  el.querySelector('.denunciar')?.addEventListener('click', () => abrirDenuncia(m.usuario, m.id));
+  const lista = $('#chat-lista');
+  lista.appendChild(el);
+  while (lista.children.length > 60) lista.firstChild.remove();
+  lista.scrollTop = lista.scrollHeight;
+  if (aoVivo) estado.cinema?.balao(m.usuario, m.texto);
+}
+
+// ------------------------------------------------------------------ denúncias
+async function abrirDenuncia(id, msgId = null) {
+  const p = await nomeDe(id);
+  $('#denuncia-nome').textContent = p.apelido;
+  $('#denuncia-motivo').value = ''; $('#denuncia-detalhe').value = '';
+  const dlg = $('#modal-denuncia');
+  dlg.showModal();
+  dlg.onclose = async () => {
+    if (dlg.returnValue !== 'ok' || !$('#denuncia-motivo').value) return;
+    const motivo = $('#denuncia-motivo').value + ($('#denuncia-detalhe').value ? ' — ' + $('#denuncia-detalhe').value : '');
+    const { error } = await sb.from('denuncias').insert({ denunciante: estado.sessao.user.id, denunciado: id, mensagem: msgId, motivo });
+    toast(error ? error.message : 'Denúncia enviada. Obrigado!', error ? 'erro' : 'ok');
+  };
+}
+
+// ------------------------------------------------------------------ menu e gavetas
+function configurarMenu() {
+  const fecharGavetas = () => $$('.gaveta').forEach(g => g.hidden = true);
+  $$('[data-fechar]').forEach(b => b.onclick = fecharGavetas);
+  $('#btn-pessoas').onclick = () => { const g = $('#gaveta-pessoas'); const abrir = g.hidden; fecharGavetas(); g.hidden = !abrir; if (abrir) desenharPessoas(); };
+  $('#btn-eu').onclick = () => abrirPerfil(false);
+  $$('#menu-lateral button').forEach(b => b.onclick = () => {
+    $$('#menu-lateral button').forEach(x => x.classList.toggle('ativo', x === b));
+    const ir = b.dataset.ir;
+    if (ir === 'sala') { fecharGavetas(); $('#chat').classList.remove('oculto'); estado.cinema.focarEm(estado.sessao.user.id); }
+    if (ir === 'perfil') abrirPerfil(false);
+    if (ir === 'chat') { $('#chat').classList.toggle('oculto'); $('#chat-input').focus(); }
+    if (ir === 'pessoas') { fecharGavetas(); $('#gaveta-pessoas').hidden = false; desenharPessoas(); estado.cinema.visaoGeral(); }
+    if (ir === 'programacao') { fecharGavetas(); $('#gaveta-programacao').hidden = false; carregarProgramacao(); }
+    if (ir === 'painel') location.href = 'admin.html';
+    if (ir === 'sair') sair();
+  });
+}
+
+function desenharPessoas() {
+  const lista = [...estado.pessoas.values()].sort((a, b) => (b.papel === 'owner') - (a.papel === 'owner') || String(a.apelido).localeCompare(b.apelido));
+  $('#lista-pessoas').innerHTML = lista.map(p => `
+    <li><span class="n"><span class="bolinha" style="background:${esc(p.avatar?.roupa || '#7c3aed')}">${esc((p.apelido || '?')[0].toUpperCase())}</span>
+      ${p.papel === 'owner' ? '👑 ' : ''}${esc(p.apelido)}${p.id === estado.sessao.user.id ? ' (você)' : ''}</span>
+      ${p.id !== estado.sessao.user.id ? `<button data-den="${p.id}">Denunciar</button>` : ''}</li>`).join('');
+  $$('[data-den]').forEach(b => b.onclick = () => abrirDenuncia(b.dataset.den));
+}
+
+async function carregarProgramacao() {
+  const [{ data: itens }, st] = await Promise.all([
+    sb.from('programacao').select('id, posicao, filmes(titulo, capa_url, duracao_seg, genero, classificacao)').order('posicao'),
+    Promise.resolve(estado.player?.estado),
+  ]);
+  const atual = st?.item;
+  const min = (s) => `${Math.floor(s / 3600) ? Math.floor(s / 3600) + 'h ' : ''}${Math.round((s % 3600) / 60)}min`;
+  $('#lista-programacao').innerHTML = (itens || []).map(i => `
+    <div class="prog-item ${i.id === atual ? 'atual' : ''}">
+      <img src="${esc(i.filmes?.capa_url || 'icons/icon.svg')}" alt="" loading="lazy">
+      <div><b>${esc(i.filmes?.titulo)}</b><small>${esc(i.filmes?.genero || '')} · ${min(i.filmes?.duracao_seg || 0)} · ${esc(i.filmes?.classificacao || 'L')}</small>
+      ${i.id === atual ? '<small style="color:#ff2d55">● Passando agora</small>' : ''}</div>
+    </div>`).join('') || '<p>Nenhum filme programado.</p>';
+}
+
+iniciar();
