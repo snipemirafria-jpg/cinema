@@ -35,6 +35,12 @@
       <h1>Seu cinema virtual, sempre <em>com você!</em></h1>
       <p>Assista aos filmes em tempo real, converse com outras pessoas e viva essa experiência.</p>
       <button class="btn-google grande" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
+      <form id="form-email" class="form-email">
+        <div class="ou"><span>ou entre com e-mail</span></div>
+        <input type="email" id="em-email" placeholder="seu@email.com" autocomplete="email" required>
+        <input type="password" id="em-senha" placeholder="Senha (mín. 6)" minlength="6" autocomplete="current-password" required>
+        <div class="em-botoes"><button type="submit" class="em-entrar">Entrar</button><button type="button" id="em-criar" class="em-criar">Criar conta</button></div>
+      </form>
       <p class="aviso-config" id="aviso-config" hidden>⚠️ Configure o Supabase em <code>js/config.js</code> (veja o README).</p>
     </div>
   </section>

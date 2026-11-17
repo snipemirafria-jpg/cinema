@@ -54,6 +54,21 @@ $$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, queryParams: { prompt: 'select_account' } } });
   if (error) toast(error.message, 'erro');
 }));
+async function loginEmail(criar) {
+  if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
+  const email = $('#em-email').value.trim(), password = $('#em-senha').value;
+  if (!email || password.length < 6) return toast('Digite e-mail e senha (mín. 6)', 'erro');
+  const r = criar ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } })
+                  : await sb.auth.signInWithPassword({ email, password });
+  if (r.error) {
+    const m = r.error.message;
+    return toast(/Invalid login/i.test(m) ? 'E-mail ou senha incorretos' : /already registered/i.test(m) ? 'Esse e-mail já tem conta, clique em Entrar' : m, 'erro');
+  }
+  if (criar && !r.data.session) return toast('Conta criada! Confirme pelo e-mail e depois entre.', 'ok');
+  location.reload();
+}
+$('#form-email')?.addEventListener('submit', e => { e.preventDefault(); loginEmail(false); });
+$('#em-criar')?.addEventListener('click', () => loginEmail(true));
 $$('[data-acao="sair"]').forEach(b => b.addEventListener('click', sair));
 async function sair() { await sb.auth.signOut(); location.reload(); }
 

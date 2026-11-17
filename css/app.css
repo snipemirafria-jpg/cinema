@@ -172,3 +172,12 @@ input,select,textarea{font:inherit;color:var(--txt)}
   .chat-lista{max-height:30vh}
   .menu-lateral{top:calc(54px + var(--seg-top));bottom:auto;flex-direction:row;flex-wrap:wrap;width:auto;max-width:56px}
 }
+
+.form-email{margin-top:18px;display:grid;gap:10px;max-width:380px}
+.form-email .ou{display:flex;align-items:center;gap:10px;color:#bfb6cc;font-size:13px}
+.form-email .ou::before,.form-email .ou::after{content:"";flex:1;height:1px;background:#ffffff30}
+.form-email input{background:#0d0a14cc;border:1px solid #ffffff2a;color:#fff;border-radius:12px;padding:12px 14px;font-size:16px;width:100%;box-sizing:border-box}
+.em-botoes{display:flex;gap:10px}
+.em-botoes button{flex:1;border-radius:12px;padding:12px;font-weight:700;font-size:15px;border:0;cursor:pointer}
+.em-entrar{background:#fff;color:#1a1020}
+.em-criar{background:transparent;color:#fff;border:1px solid #ffffff55 !important}
