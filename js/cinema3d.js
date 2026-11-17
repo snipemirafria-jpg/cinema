@@ -12,6 +12,7 @@ const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
 
 // Geometria da sala (a plateia olha para +Z, onde fica o telão)
 const TELA = { z: 15.5, y: 5.6, w: 17.6, h: 7.4 };
+const SALA = { L: 26, A: 13, zFundo: -16 };   // largura, altura e parede do fundo (usado para prender a câmera)
 const FILEIRAS = 10;
 const BLOCOS_POR_LADO = 3;     // cada bloco = 3 poltronas
 const PASSO_FILA = 1.35;
@@ -70,7 +71,7 @@ export class Cinema {
     this.controles.enableDamping = true;
     this.controles.enablePan = false;
     this.controles.minDistance = 1.2;
-    this.controles.maxDistance = 24;
+    this.controles.maxDistance = 20;
     this.controles.maxPolarAngle = Math.PI * 0.62;
     this.controles.target.set(0, 3.5, 8);
     this.controles.rotateSpeed = MOBILE ? 0.5 : 0.7;
@@ -90,8 +91,7 @@ export class Cinema {
   // ------------------------------------------------------------------ sala
   _montarSala() {
     const c = this.cena;
-    const L = 26, P = 34, A = 13;
-    const zFundo = -16;
+    const { L, A, zFundo } = SALA, P = 34;
     const mat = (cor, rough = 0.85, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: rough, ...extra });
 
     // piso (carpete) e degraus da plateia
@@ -444,7 +444,7 @@ export class Cinema {
     this._regFP = sim ? reg : null;
     if (reg?.wrap) reg.wrap.visible = !sim;
     this.controles.minDistance = sim ? 0.01 : 1.2;
-    this.controles.maxDistance = sim ? 0.05 : 24;
+    this.controles.maxDistance = sim ? 0.05 : 20;
     this.controles.enableZoom = !sim;
     this.controles.rotateSpeed = (MOBILE ? 0.5 : 0.7) * (sim ? -0.6 : 1);
     this.controles.maxPolarAngle = sim ? Math.PI * 0.8 : Math.PI * 0.62;
@@ -452,6 +452,17 @@ export class Cinema {
   }
   _pularCamera() {
     this.camera.position.copy(this._alvoCam.pos); this.controles.target.copy(this._alvoCam.alvo); this._alvoCam = null;
+  }
+
+  // a câmera nunca sai da sala (paredes, teto, chão e telão)
+  _limitarCamera() {
+    const c = this.camera.position, t = this.controles.target;
+    const caixa = (v, folga) => {
+      v.x = THREE.MathUtils.clamp(v.x, -SALA.L / 2 + folga, SALA.L / 2 - folga);
+      v.y = THREE.MathUtils.clamp(v.y, 0.9, SALA.A - folga);
+      v.z = THREE.MathUtils.clamp(v.z, SALA.zFundo + folga, TELA.z - 1.2);
+    };
+    caixa(c, 0.7); caixa(t, 0.3);
   }
 
   _redimensionar() {
@@ -496,6 +507,7 @@ export class Cinema {
       if (this.camera.position.distanceTo(this._alvoCam.pos) < 0.02) this._alvoCam = null;
     }
     this.controles.update();
+    this._limitarCamera();
     if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
     this.renderer.render(this.cena, this.camera);
