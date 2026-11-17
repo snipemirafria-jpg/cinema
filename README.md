@@ -44,3 +44,21 @@ Abra http://localhost:8080. Cada push na branch `main` republica o site automati
 - Avatares: Quaternius — Universal Base Characters (CC0).
 - Poltronas: Grab3D (CC0).
 - Filmes de exemplo: Blender Foundation (CC BY 3.0) — Big Buck Bunny, Sintel, Tears of Steel.
+
+## ✅ Já feito
+- Banco Supabase criado e configurado (tabelas, RLS, auditoria, funções da programação, buckets).
+- Edge Function `validar-fonte` publicada.
+- Site URL do Auth: `https://snipemirafria-jpg.github.io/cinema/`.
+- 3 filmes livres (Blender) na programação para testar.
+
+## ⏳ Falta (passo a passo)
+1. **Ativar o GitHub Pages**: Settings → Pages → Source: **GitHub Actions**. O workflow `Publicar no GitHub Pages` publica em `https://snipemirafria-jpg.github.io/cinema/`.
+2. **Login Google**:
+   - Google Cloud Console → crie um projeto → *Google Auth Platform* → Branding (nome “Cine Online”), Audience **External** → **Publish app**.
+   - Clients → Create client → *Web application* → Authorized redirect URI: `https://mbunkvouhdveruyezuof.supabase.co/auth/v1/callback`.
+   - Supabase → Authentication → Sign In / Providers → **Google** → cole Client ID e Client Secret → Enable.
+3. **Conversão HLS de uploads (opcional)**: Settings → Secrets and variables → Actions → crie `SUPABASE_URL` (`https://mbunkvouhdveruyezuof.supabase.co`) e `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API Keys → service_role). Observação: o plano grátis do Supabase aceita uploads de até 50 MB; para filmes longos use links HLS/DASH/MP4 externos ou o plano Pro.
+
+## Limites conhecidos
+- iPhone: MPEG-DASH depende do suporte do iOS (17.1+); HLS funciona em todos.
+- O vídeo só aparece no telão 3D se o servidor do vídeo enviar cabeçalho CORS (`Access-Control-Allow-Origin`). O painel avisa quando não envia.
