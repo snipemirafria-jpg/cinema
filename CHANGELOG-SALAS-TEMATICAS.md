@@ -15,3 +15,7 @@
 ## Arquivos
 - Novos: js/temas-sala.js, js/temas-decoracao.js, js/temas-texturas.js, tests/teste-temas.html
 - Alterados: js/cinema3d.js, js/main.js, js/fontes.js, integrations/vr/vr.js, sw.js (cache v5)
+
+
+## 2026-11-18
+- Modo VR removido por completo (integrations/vr, testes de VR e vídeos 360°).

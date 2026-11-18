@@ -176,7 +176,7 @@ export class PlayerSincronizado {
 
   _corrigir(forcar = false) {
     const v = this.m;
-    if (v.semControle || this.controleLocal || this.emAnuncio) return;   // durante anúncio não mexe no tempo   // controleLocal: a pessoa controla o filme só para ela (modo VR)
+    if (v.semControle || this.emAnuncio) return;   // durante anúncio não mexe no tempo
     if (!this.estado?.filme || v.readyState < 1) return;
     if (this.estado.pausado) { if (!v.paused) v.pause(); return; }
     const alvo = this.posicaoAlvo();

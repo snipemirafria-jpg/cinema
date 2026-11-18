@@ -504,7 +504,7 @@ export class Cinema {
   }
 
   // anima o que se mexe na sala (personagens e luz do telão), sem câmera e sem desenhar.
-  // Usado pelo _loop da sala e pelo modo VR, que desenha a mesma cena com as câmeras dos olhos.
+  // Usado pelo _loop da sala.
   _animar(t) {
     if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);

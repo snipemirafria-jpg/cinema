@@ -1,7 +1,7 @@
 <!doctype html><html lang="pt-BR"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <link rel="stylesheet" href="../css/app.css">
 <!-- Teste das SALAS TEMÁTICAS (?genero=Terror ou ?genero=Comédia, Paródia) sobre a sala real.
-     Baseado no teste do Cinema VR com a SALA REAL (js/cinema3d.js) e o player REAL (js/player.js).
+     Usa a SALA REAL (js/cinema3d.js) e o player REAL (js/player.js).
      Só o Supabase é trocado por um falso (sem rede): o "servidor" da sessão é simulado aqui.
      ?modo=livre  -> o filme da sessão toca num <video> HTML sobre o telão (como Drive / MP4 sem CORS)
      ?filme=...   -> outro arquivo de vídeo (padrão: filme.webm) -->
@@ -44,10 +44,8 @@ player.itemAtual = 't1';
 video.loop = true; player.vLivre.loop = true;   // vídeo curto: continua em volta
 if (modo === 'livre') player._tocarLivre(arquivo);
 else await player._carregar(filme);
-window.CineOnline = { player, cinema: c };
 c.aplicarTema(filme);
 window.tema = (genero) => c.aplicarTema({ ...filme, genero });
 c.focarEm('u0', true);
-await import('../integrations/vr/index.js');
 window.PRONTO = 1;
 </script></body></html>

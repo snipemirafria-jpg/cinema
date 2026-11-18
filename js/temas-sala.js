@@ -374,7 +374,7 @@ export class SalaTematica {
     return o;
   }
 
-  // ---------------------------------------------------------------- animação (chamada pela sala e pelo VR)
+  // ---------------------------------------------------------------- animação (chamada pela sala)
   animar(t) {
     const agora = performance.now();
     if (this._trans) {
