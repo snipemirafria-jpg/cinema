@@ -507,7 +507,7 @@ async function denuncias() {
   const cor = { aberta: 'verm', analisando: 'amar', resolvida: 'verde', descartada: '' };
   C.innerHTML = `<div class="card"><table><thead><tr><th>Quando</th><th>Denunciado</th><th>Por</th><th>Motivo</th><th>Status</th><th></th></tr></thead><tbody>
     ${data.map(d => `<tr><td>${dataBR(d.criado_em)}</td><td><b>${esc(d.denunciado_p?.apelido)}</b></td><td>${esc(d.denunciante_p?.apelido)}</td>
-      <td>${esc(d.motivo)}${d.mensagens ? `<div class="dica">“${esc(d.mensagens.texto)}”</div>` : ''}</td><td><span class="tag ${cor[d.status]}">${d.status}</span></td>
+      <td>${esc(d.motivo)}${(d.mensagens?.texto || d.texto_mensagem) ? `<div class="dica">“${esc(d.mensagens?.texto || d.texto_mensagem)}”</div>` : ''}</td><td><span class="tag ${cor[d.status]}">${d.status}</span></td>
       <td class="linha-acoes">${['aberta', 'analisando'].includes(d.status) ? `
         <button class="btn" data-st="analisando" data-id="${d.id}">Analisar</button>
         <button class="btn ok" data-st="resolvida" data-id="${d.id}">Resolver</button>

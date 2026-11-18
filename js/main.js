@@ -277,7 +277,7 @@ async function iniciarChat() {
   $$('#emojis button').forEach(b => b.onclick = () => { $('#chat-input').value += b.textContent; $('#emojis').hidden = true; $('#chat-input').focus(); });
 
   if (estado.sala) return iniciarChatSala();
-  const { data } = await sb.from('mensagens').select('id, usuario, texto, criado_em').order('criado_em', { ascending: false }).limit(30);
+  const { data } = await sb.from('mensagens').select('id, usuario, texto, criado_em').gt('criado_em', new Date(Date.now() - VIDA_MSG).toISOString()).order('criado_em', { ascending: false }).limit(30);
   (data || []).reverse().forEach(m => adicionarMsg(m, false));
   sb.channel('chat')
     .on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'mensagens' }, ({ new: m }) => adicionarMsg(m, true))
@@ -307,6 +307,9 @@ function iniciarChatSala() {
   };
 }
 
+// cada mensagem some sozinha 1 minuto depois de enviada (o banco também apaga)
+const VIDA_MSG = 60e3;
+
 const nomesCache = new Map();
 async function nomeDe(id) {
   if (estado.pessoas.has(id)) return estado.pessoas.get(id);
@@ -325,6 +328,9 @@ async function adicionarMsg(m, aoVivo) {
     (m.usuario !== estado.sessao.user.id ? ` <button class="denunciar" title="Denunciar">⚑</button>` : '');
   el.querySelector('.denunciar')?.addEventListener('click', () => abrirDenuncia(m.usuario, m.sala ? null : m.id));
   const lista = $('#chat-lista');
+  const resta = VIDA_MSG - (m.criado_em ? Date.now() - new Date(m.criado_em).getTime() : 0);
+  if (resta <= 0) return;
+  setTimeout(() => { el.classList.add('sumindo'); setTimeout(() => el.remove(), 600); }, Math.min(resta, VIDA_MSG));
   lista.appendChild(el);
   while (lista.children.length > 60) lista.firstChild.remove();
   lista.scrollTop = lista.scrollHeight;
