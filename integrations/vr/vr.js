@@ -12,7 +12,7 @@ import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer
 const IOS = /iP(hone|ad|od)/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
 const MOBILE = IOS || matchMedia('(pointer:coarse)').matches || innerWidth < 760;
 const CHAVE = 'cineonline-vr-ajustes';
-const PADRAO = { sep: 0, escala: 1, distorcao: 0.22, volume: 1, oculos: true };
+const PADRAO = { sep: 0, escala: 1, distorcao: 0.22, volume: 1, oculos: true, duplicarImagem: true };
 const aj = Object.assign({}, PADRAO, JSON.parse(localStorage.getItem(CHAVE) || '{}'));
 const salvar = () => localStorage.setItem(CHAVE, JSON.stringify(aj));
 const $ = (s, r = document) => r.querySelector(s);
@@ -437,14 +437,11 @@ class ExperienciaVR {
     this._ligarSensores();
     this._ligarToque();
     if (tipoTela === 'textura') this._ligarVideo();
-    this._tSync = setInterval(() => this._sincronizarOlhos(), 200);
-    // iPhone/Android só liberam som e o segundo player com um toque: a cada toque liga o som do olho esquerdo
-    // e dá play nos dois (o direito fica sempre mudo)
+    // A mídia externa agora tem uma única instância; o toque apenas libera o áudio/reprodução dela.
     this._liberarMidia = () => {
-      for (const [i, o] of (this.olhosHtml || []).entries()) {
-        const m = o.m; if (!m || o.emprestado) continue;
-        try { m.muted = i !== 0; if (i === 0 && m.p?.setVolume) m.p.setVolume(aj.volume * 100); if (i > 0 && m.paused && !this.olhosHtml[0].m?.paused) Promise.resolve(m.play()).catch(() => { }); } catch { }
-      }
+      const m = this.olhosHtml?.[0]?.m;
+      if (!m || this.olhosHtml?.[0]?.emprestado) return;
+      try { m.muted = false; if (m.p?.setVolume) m.p.setVolume(aj.volume * 100); Promise.resolve(m.play?.()).catch(() => {}); } catch {}
     };
     this.raiz.addEventListener('touchend', this._liberarMidia, { passive: true });
     this.raiz.addEventListener('click', this._liberarMidia);
@@ -652,7 +649,8 @@ class ExperienciaVR {
   _montarOlhosHtml() {
     if (!this.html) return;
     this.olhosHtml ||= [];
-    const n = aj.oculos ? 2 : 1;
+    // Uma única instância de mídia. Não cria um segundo YouTube/iframe/vídeo para o outro olho.
+    const n = 1;
     while (this.olhosHtml.length > n) this._destruirOlho(this.olhosHtml.pop());
     while (this.olhosHtml.length < n) {
       const cont = document.createElement('div'); cont.className = 'vr-css';
@@ -777,12 +775,12 @@ class ExperienciaVR {
     if (!this.r || this.r.xr.isPresenting || !this.ativo) return;
     const w = this.raiz.clientWidth, h = this.raiz.clientHeight; if (!w || !h) return;
     this.r.setSize(w, h, false);
-    this.cabeca.aspect = w / h; this.cabeca.updateProjectionMatrix();
+    this.cabeca.aspect = (aj.oculos ? w / 2 : w) / h; this.cabeca.updateProjectionMatrix();
     const pr = this.r.getPixelRatio();
     this.rt.setSize(Math.round(w / 2 * pr), Math.round(h * pr));
     for (const o of [this.olhoE, this.olhoD]) { o.aspect = (w / 2) / h; o.updateProjectionMatrix(); }
     (this.olhosHtml || []).forEach((o, i) => {
-      const ow = aj.oculos ? w / 2 : w; o.css.setSize(ow, h); o.cont.style.left = (aj.oculos ? i * w / 2 : 0) + 'px';
+      o.css.setSize(w, h); o.cont.style.left = '0px';
     });
   }
 
@@ -806,21 +804,24 @@ class ExperienciaVR {
       r.setRenderTarget(null); r.setScissorTest(false); r.setViewport(0, 0, W, H);
       r.render(this.cenaVR, this.cabeca); this._renderHtml(0, this.cabeca, 0); return;
     }
-    const meia = W / 2, ipd = 0.064;
-    const olhos = [[this.olhoE, -1, 0], [this.olhoD, 1, meia]];
-    for (const [olho, lado, x] of olhos) {
-      olho.position.set(lado * ipd / 2, 0, 0).applyMatrix4(this.cabeca.matrixWorld);
-      olho.quaternion.copy(this.cabeca.getWorldQuaternion(_qOlho));
-      olho.updateMatrixWorld(true);
-      r.setRenderTarget(this.rt); r.setScissorTest(false); r.clear(); r.render(this.cenaVR, olho);
-      r.setRenderTarget(null);
-      const desloc = -lado * aj.sep;   // separação: aproxima/afasta as duas imagens do centro
+    const meia = W / 2;
+    // Renderiza a cena UMA vez com a câmera central. O mesmo frame é copiado
+    // para as duas metades: não há olho esquerdo/direito independente nem drift.
+    this.cabeca.aspect = meia / H;
+    this.cabeca.updateProjectionMatrix();
+    r.setRenderTarget(this.rt); r.setScissorTest(false); r.clear();
+    r.render(this.cenaVR, this.cabeca);
+    r.setRenderTarget(null);
+    for (const x of [0, meia]) {
       r.setScissorTest(true); r.setScissor(x, 0, meia, H);
-      r.setViewport(x + desloc, 0, meia, H);
-      if (lado === -1) r.clear();
+      r.setViewport(x, 0, meia, H);
+      r.clear();
       r.render(this.quadCena, this.quadCam);
-      this._renderHtml(lado === -1 ? 0 : 1, olho, desloc);
     }
+    // Players externos (YouTube/iframe) permanecem em uma única instância.
+    // Como o navegador não permite capturar a imagem de um iframe cross-origin,
+    // eles são apresentados uma vez, sem criar um segundo player independente.
+    if (this.olhosHtml?.length) this._renderHtml(0, this.cabeca, 0);
     r.setScissorTest(false); r.setViewport(0, 0, W, H);
   }
 

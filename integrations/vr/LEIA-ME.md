@@ -18,7 +18,7 @@ Módulo independente com dois modos:
 
 ## Como cada filme aparece no telão
 - Filme da sessão em vídeo direto (MP4, WebM, HLS, DASH, upload): é a própria imagem do telão da sala, com correção das lentes.
-- Filme da sessão no YouTube, Drive ou páginas: o olho esquerdo usa o próprio player da sala (com o som); o direito, uma cópia muda e sincronizada.
+- Cinema VR em tela dividida: a cena 3D é renderizada uma única vez e o mesmo quadro é copiado para as duas metades. YouTube/Drive/iframes usam uma única instância de player; por serem conteúdo externo, o navegador não permite capturar o quadro interno para duplicá-lo como textura, então esse player único ocupa a visualização inteira.
 - Vídeo do celular ou link: vira a imagem do telão da sala enquanto o VR estiver aberto (o filme da sessão fica mudo e volta ao sair).
 - Pausar e avançar valem só para você (a sincronia da sessão fica em pausa); 🔴 Ao vivo volta ao ponto da sessão. Ao sair, a sincronia volta.
 
@@ -27,7 +27,7 @@ Módulo independente com dois modos:
 - Páginas externas e o Drive em modo "pré-visualização" não expõem controle confiável de tempo. Nesses casos, não é tecnicamente possível garantir sincronismo quadro a quadro entre duas instâncias independentes; o VR avisa sobre essa limitação. Para sincronismo mais preciso, use MP4/WebM/HLS direto ou um player que exponha o tempo de reprodução.
 - O Cinema VR precisa da sala aberta (window.CineOnline.cinema). Fora dela, use o modo 360°.
 - O modo Vídeos 360° continua aceitando só vídeos 360° de verdade (arquivo de vídeo 2:1, ou 3D 1:1 / 4:1).
-- MP4/WebM/HLS direto usa uma única fonte de vídeo compartilhada pelos dois olhos, evitando deriva entre players. Em YouTube e vídeo HTML duplicado, o olho direito acompanha o esquerdo com correção de atraso e espera de buffer; a precisão depende do player e da rede. No VR, pausar/avançar é só para você; "🔴 Ao vivo" volta ao ponto da sessão.
+- A cena 3D usa um único render e duplica exatamente o mesmo quadro nos dois lados, sem diferença de tempo entre olhos. YouTube/Drive/iframes também usam somente um player; por restrição de segurança do navegador, o conteúdo interno de iframes de outros domínios não pode ser copiado para uma textura WebGL. No VR, pausar/avançar é só para você; "🔴 Ao vivo" volta ao ponto da sessão.
 - iPhone: o giroscópio pede permissão (botão 📱 ou toque na tela). Tela cheia e tela deitada dependem do navegador.
 
 ## Teste
