@@ -14,7 +14,7 @@ const GENEROS = [
   ['policial', /policial|crime|detetive|gangster|mafia|investiga/],
   ['guerra', /guerra|militar|\bwar\b|combate/],
   ['scifi', /ficcao|sci-?fi|cientific|espacial|futur|cyberpunk|alien/],
-  ['acao', /acao|super-?heroi|artes marciais|esporte|corrida|luta/],
+  ['acao', /\bacao|super-?heroi|artes marciais|esporte|corrida|luta/],
   ['fantasia', /fantasia|magia|conto de fadas|medieval/],
   ['aventura', /aventura|faroeste|western|pirata|expedic/],
   ['animacao', /animacao|anime|desenho|infantil|familia|kids|crianca/],
