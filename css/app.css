@@ -191,3 +191,9 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .tela-html>.midia-yt{position:relative;overflow:hidden}
 .midia-yt iframe{position:absolute;left:0;top:50%;width:100%!important;height:auto!important;aspect-ratio:16/9;transform:translateY(-50%);border:0;pointer-events:none}
 .midia-iframe{pointer-events:auto}
+
+/* Botão "Pular anúncio": libera o toque no player do YouTube por alguns segundos e mostra o vídeo inteiro
+   (sem cortar em cima/embaixo), para a pessoa tocar no botão "Pular" do próprio YouTube. */
+body.yt-tocavel .midia-yt iframe{pointer-events:auto;top:0;left:50%;height:100%!important;width:auto!important;transform:translateX(-50%)}
+body.yt-tocavel .midia-yt{outline:3px solid #ffd34d;outline-offset:-3px}
+#btn-pular-anuncio.ativo{background:#ffd34d;color:#1a1020}

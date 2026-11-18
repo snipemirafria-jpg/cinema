@@ -208,6 +208,17 @@ async function abrirCinema() {
     if (player.mutado) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
     else { player.silenciar(); $('#btn-som').textContent = '🔇 Ativar som'; }
   };
+  // "Pular anúncio": por 15 s o toque vai para o player do YouTube, para tocar no botão "Pular" dele
+  let tPular;
+  $('#btn-pular-anuncio').onclick = () => {
+    const ligar = !document.body.classList.contains('yt-tocavel');
+    document.body.classList.toggle('yt-tocavel', ligar); $('#btn-pular-anuncio').classList.toggle('ativo', ligar);
+    clearTimeout(tPular);
+    if (ligar) {
+      toast('Toque em "Pular" no canto do vídeo quando aparecer', 'ok');
+      tPular = setTimeout(() => { document.body.classList.remove('yt-tocavel'); $('#btn-pular-anuncio').classList.remove('ativo'); }, 15000);
+    }
+  };
   // navegadores só liberam som após um toque do usuário
   $('#toque-iniciar').hidden = false;
   if (!estado.sala) player.atualizar();      // na sala do filme, o início vem de quem já está assistindo
