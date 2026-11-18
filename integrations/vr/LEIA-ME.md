@@ -24,10 +24,10 @@ Módulo independente com dois modos:
 
 ## Limitações
 - Nos players de site (YouTube, Drive, páginas) a correção de lente fica desligada para o telão não sair do lugar, e o botão WebXR some (o WebXR não mostra players de outros sites).
-- Páginas externas e o Drive em modo "pré-visualização" não deixam controlar o tempo: dá play tocando no telão, e na tela dividida os dois lados podem ficar um pouco fora de sincronia.
+- Páginas externas e o Drive em modo "pré-visualização" não expõem controle confiável de tempo. Nesses casos, não é tecnicamente possível garantir sincronismo quadro a quadro entre duas instâncias independentes; o VR avisa sobre essa limitação. Para sincronismo mais preciso, use MP4/WebM/HLS direto ou um player que exponha o tempo de reprodução.
 - O Cinema VR precisa da sala aberta (window.CineOnline.cinema). Fora dela, use o modo 360°.
 - O modo Vídeos 360° continua aceitando só vídeos 360° de verdade (arquivo de vídeo 2:1, ou 3D 1:1 / 4:1).
-- No VR, pausar/avançar é só para você; "🔴 Ao vivo" volta ao ponto da sessão.
+- MP4/WebM/HLS direto usa uma única fonte de vídeo compartilhada pelos dois olhos, evitando deriva entre players. Em YouTube e vídeo HTML duplicado, o olho direito acompanha o esquerdo com correção de atraso e espera de buffer; a precisão depende do player e da rede. No VR, pausar/avançar é só para você; "🔴 Ao vivo" volta ao ponto da sessão.
 - iPhone: o giroscópio pede permissão (botão 📱 ou toque na tela). Tela cheia e tela deitada dependem do navegador.
 
 ## Teste

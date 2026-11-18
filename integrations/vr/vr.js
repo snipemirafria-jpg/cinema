@@ -460,7 +460,11 @@ class ExperienciaVR {
     r.setAnimationLoop((t, frame) => this._loop(t, frame));
     if (tipoTela === 'textura') {
       try { await this.video.play(); } catch { this.video.muted = true; try { await this.video.play(); this._msg('Toque em ▶ para ligar o som.'); } catch { this._msg('Toque em ▶ para começar.'); } }
-    } else if (this._semControle()) this._msg('Este filme usa o player do próprio site: toque no telão para dar play.', 5000);
+    } else if (this._semControle()) {
+      this._msg(this.html?.tipo === 'iframe'
+        ? 'Este player externo não oferece controle de tempo: as duas imagens podem ter pequena diferença. Para sincronismo melhor, use MP4/WebM/HLS direto.'
+        : 'Este filme usa o player do próprio site: toque no telão para dar play.', 6500);
+    }
     this._atualizarPlay();
     if (!this.giro) this._msg(this._permEstado === 'granted' ? 'Vire o celular para olhar em volta (ou arraste o dedo).'
       : this._permEstado === 'denied' ? 'Giroscópio negado. Para liberar: feche esta aba, abra o site de novo e toque em "Permitir". Por enquanto, arraste o dedo para olhar em volta.'
@@ -688,32 +692,61 @@ class ExperienciaVR {
       if (!bm.muted) bm.muted = true;
       const yt = typeof bm.taxa === 'function';
       const taxa = (r) => { if (yt) bm.taxa(r); else if (bm.playbackRate !== r) bm.playbackRate = r; };
+      const pronto = (m) => m instanceof MidiaYouTube
+        ? m.pronto && !m.carregando
+        : m instanceof HTMLVideoElement && m.readyState >= 2;
       const st = this._sinc ||= { lat: yt ? 0.45 : 0.08, ate: 0, pulo: null };
       const agora = performance.now();
-      if (am.paused) {   // pausado: deixa os dois no mesmo quadro
+
+      // Não tente sincronizar durante o carregamento: currentTime/seekTo ainda pode
+      // retornar zero ou ignorar o comando, criando um salto grande ao liberar o player.
+      if (!pronto(am) || !pronto(bm)) {
         if (!bm.paused) bm.pause();
         taxa(1);
-        if (Math.abs(am.currentTime - bm.currentTime) > 0.08 && agora > st.ate) { bm.currentTime = am.currentTime; st.ate = agora + 600; }
         return;
       }
-      if (bm.paused) Promise.resolve(bm.play()).catch(() => { });
-      if (agora < st.ate || bm.carregando) return;            // esperando o pulo anterior assentar
-      const d = am.currentTime - bm.currentTime;              // > 0: o direito está atrasado
-      if (st.pulo) {                                          // aprende quanto tempo o pulo leva neste aparelho
-        st.lat = Math.min(1.5, Math.max(0, st.lat + d * 0.6)); st.pulo = null;
-      }
-      if (Math.abs(d) > 1.2) {
-        taxa(1); bm.currentTime = am.currentTime + st.lat; st.pulo = true; st.ate = agora + (yt ? 1200 : 500);
-      } else if (yt && MOBILE) {
-        // celular: mudar a velocidade do YouTube faz o vídeo engasgar; só corrige com um pulo quando passa de 0,35 s
+
+      if (am.paused || am.carregando) {
+        if (!bm.paused) bm.pause();
         taxa(1);
-        if (Math.abs(d) > 0.35) { bm.currentTime = am.currentTime + st.lat; st.pulo = true; st.ate = agora + 2500; }
+        if (Math.abs(am.currentTime - bm.currentTime) > 0.08 && agora > st.ate) {
+          bm.currentTime = am.currentTime;
+          st.ate = agora + (yt ? 900 : 350);
+        }
+        return;
+      }
+
+      if (bm.paused) Promise.resolve(bm.play()).catch(() => { });
+      if (agora < st.ate || bm.carregando) return;
+      const d = am.currentTime - bm.currentTime; // positivo: o olho direito está atrasado
+      if (st.pulo) {
+        st.lat = Math.min(1.5, Math.max(0, st.lat + d * 0.6));
+        st.pulo = null;
+      }
+
+      if (Math.abs(d) > 1.2) {
+        taxa(1);
+        bm.currentTime = Math.max(0, am.currentTime + st.lat);
+        st.pulo = true;
+        st.ate = agora + (yt ? 1400 : 500);
+      } else if (yt && MOBILE) {
+        // No YouTube móvel, playbackRate costuma causar engasgos; use correção
+        // pontual e com intervalo maior para não reiniciar o buffer repetidamente.
+        taxa(1);
+        if (Math.abs(d) > 0.65) {
+          bm.currentTime = Math.max(0, am.currentTime + st.lat);
+          st.pulo = true;
+          st.ate = agora + 2500;
+        }
       } else if (Math.abs(d) > 0.05) {
         if (yt) taxa(d > 0 ? 1.25 : 0.75);
         else taxa(1 + Math.max(-0.12, Math.min(0.12, d * 0.6)));
       } else taxa(1);
       this._difOlhos = d;
-    } catch { }
+    } catch (e) {
+      // Uma falha transitória de um player externo não deve derrubar o loop VR.
+      console.debug('[CineOnline VR] sincronização temporariamente indisponível:', e);
+    }
   }
   _htmlVisivel(o, cam) {   // o CSS 3D se desenha errado quando o telão fica atrás da câmera: esconde nesse caso
     const w = o.caixa.offsetWidth / 2, h = o.caixa.offsetHeight / 2, v = new THREE.Vector3();
@@ -951,7 +984,10 @@ class ExperienciaVR {
     removeEventListener('deviceorientation', this._aoOrientar); removeEventListener('resize', this._redimensionar);
     removeEventListener('orientationchange', this._aoGirarTela); try { screen.orientation?.removeEventListener?.('change', this._aoGirarTela); } catch { }
     this.raiz?.removeEventListener('pointerdown', this._ptrDown);
+    this.raiz?.removeEventListener('touchend', this._liberarMidia);
+    this.raiz?.removeEventListener('click', this._liberarMidia);
     removeEventListener('pointermove', this._ptrMove); removeEventListener('pointerup', this._ptrUp); removeEventListener('keydown', this._tecla);
+    this._liberarMidia = null;
     if (this.emprestada) this._devolverSala();
     else if (this.r) {   // 360°: renderer próprio é descartado
       if (this.cenaVR) this.cenaVR.traverse(o => { o.geometry?.dispose(); if (o.material) { o.material.map = null; o.material.dispose(); } });
