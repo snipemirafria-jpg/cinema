@@ -1,8 +1,9 @@
-// Módulo NetMovies — independente do resto do CineOnline.
-// Acrescenta um botão no menu lateral e um painel por cima da sala. "Assistir" abre a sala
+// Módulo de fornecedores de filmes gratuitos (NetMovies, Capivara Filmes...) — independente do resto do CineOnline.
+// Acrescenta um botão por fornecedor no menu lateral e um painel por cima da sala. "Assistir" abre a sala
 // própria do filme (js/sala-filme.js); a sala principal e o Supabase continuam iguais.
 // Para remover de vez: apague a linha <script ... integrations/netmovies/index.js> do index.html.
-import { NETMOVIES_ENABLED } from './config.js';
+// Fornecedores: lista FORNECEDORES em ./config.js.
+import { NETMOVIES_ENABLED, FORNECEDORES } from './config.js';
 
 const BASE = new URL('./', import.meta.url);
 
@@ -14,43 +15,45 @@ async function iniciar() {
 
   const estilo = document.createElement('style');
   estilo.textContent = `
-    #netmovies-painel{position:fixed;inset:0;z-index:50;background:rgba(5,3,9,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow-y:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
-    #netmovies-painel[hidden]{display:none}
-    #netmovies-painel .nm-topo{max-width:1100px;margin:0 auto 10px;display:flex;justify-content:flex-end}
-    #netmovies-painel .nm-fechar{background:#30343d;color:#fff;border:0;border-radius:10px;padding:9px 14px;font:inherit;cursor:pointer}
-    #netmovies-painel netmovies-catalog{max-width:1100px;margin:0 auto;--cine-panel:#140d1c;--cine-card:#1d1428;--cine-input:#221830;--cine-border:rgba(255,255,255,.1);--cine-accent:#7c3aed}
+    .fornecedor-painel{position:fixed;inset:0;z-index:50;background:rgba(5,3,9,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);overflow-y:auto;padding:calc(16px + env(safe-area-inset-top,0px)) 16px calc(16px + env(safe-area-inset-bottom,0px))}
+    .fornecedor-painel[hidden]{display:none}
+    .fornecedor-painel .nm-topo{max-width:1100px;margin:0 auto 10px;display:flex;justify-content:flex-end}
+    .fornecedor-painel .nm-fechar{background:#30343d;color:#fff;border:0;border-radius:10px;padding:9px 14px;font:inherit;cursor:pointer}
+    .fornecedor-painel netmovies-catalog{max-width:1100px;margin:0 auto;--cine-panel:#140d1c;--cine-card:#1d1428;--cine-input:#221830;--cine-border:rgba(255,255,255,.1);--cine-accent:#7c3aed}
   `;
   document.head.appendChild(estilo);
 
-  const painel = document.createElement('div');
-  painel.id = 'netmovies-painel'; painel.hidden = true;
-  painel.innerHTML = '<div class="nm-topo"><button type="button" class="nm-fechar">✕ Voltar para a sala</button></div>';
-  const catalogo = document.createElement('netmovies-catalog');
-  catalogo.setAttribute('catalog', new URL('catalogo-netmovies.json', BASE).href);
-  painel.appendChild(catalogo);
-  // "Assistir" abre a sala 3D própria do filme: quem abrir o mesmo filme entra junto com quem já está vendo
-  catalogo.addEventListener('netmovies-assistir', (e) => {
-    if (!document.getElementById('tela-cinema')) return;     // fora do app: usa o player do catálogo
-    e.preventDefault();
-    const url = new URL(location.href); url.search = ''; url.hash = '';
-    url.searchParams.set('netmovies', e.detail.id);
-    location.href = url.toString();
-  });
-  document.body.appendChild(painel);
-
-  const fechar = () => {
-    catalogo.closePlayer?.();          // para o vídeo ao sair
-    painel.hidden = true;
-  };
-  painel.querySelector('.nm-fechar').addEventListener('click', fechar);
-  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !painel.hidden && !catalogo.dialog?.open) fechar(); });
-
-  const botao = document.createElement('button');
-  botao.id = 'netmovies-botao'; botao.type = 'button'; botao.title = 'NetMovies — Filmes gratuitos';
-  botao.innerHTML = '🍿<span>NetMovies</span>';
-  botao.addEventListener('click', (e) => { e.stopPropagation(); painel.hidden = false; });
   const antes = menu.querySelector('[data-ir="painel"]') || menu.querySelector('[data-ir="sair"]');
-  menu.insertBefore(botao, antes);
+  for (const f of FORNECEDORES) {
+    const painel = document.createElement('div');
+    painel.className = 'fornecedor-painel';
+    painel.id = f.id === 'netmovies' ? 'netmovies-painel' : `fornecedor-${f.id}-painel`;
+    painel.hidden = true;
+    painel.innerHTML = '<div class="nm-topo"><button type="button" class="nm-fechar">✕ Voltar para a sala</button></div>';
+    const catalogo = document.createElement('netmovies-catalog');
+    catalogo.setAttribute('catalog', new URL(f.catalogo, BASE).href);
+    painel.appendChild(catalogo);
+    // "Assistir" abre a sala 3D própria do filme: quem abrir o mesmo filme entra junto com quem já está vendo
+    catalogo.addEventListener('netmovies-assistir', (e) => {
+      if (!document.getElementById('tela-cinema')) return;     // fora do app: usa o player do catálogo
+      e.preventDefault();
+      const url = new URL(location.href); url.search = ''; url.hash = '';
+      url.searchParams.set('netmovies', e.detail.id);
+      location.href = url.toString();
+    });
+    document.body.appendChild(painel);
+
+    const fechar = () => { catalogo.closePlayer?.(); painel.hidden = true; };
+    painel.querySelector('.nm-fechar').addEventListener('click', fechar);
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !painel.hidden && !catalogo.dialog?.open) fechar(); });
+
+    const botao = document.createElement('button');
+    botao.id = f.id === 'netmovies' ? 'netmovies-botao' : `fornecedor-${f.id}-botao`;
+    botao.type = 'button'; botao.title = `${f.nome} — Filmes gratuitos (com anúncios)`;
+    botao.innerHTML = `${f.icone}<span>${f.nome}</span>`;
+    botao.addEventListener('click', (e) => { e.stopPropagation(); painel.hidden = false; });
+    menu.insertBefore(botao, antes);
+  }
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);

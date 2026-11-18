@@ -5,14 +5,17 @@
 // Se ninguém estiver na sala, o próximo a entrar começa o filme do início.
 import { sb } from './supa.js';
 import { PlayerSincronizado } from './player.js';
-import { NETMOVIES_ENABLED } from '../integrations/netmovies/config.js';
+import { NETMOVIES_ENABLED, FORNECEDORES } from '../integrations/netmovies/config.js';
 
-const CATALOGO = new URL('../integrations/netmovies/catalogo-netmovies.json', import.meta.url);
+const catalogo = (f) => new URL('../integrations/netmovies/' + f.catalogo, import.meta.url);
 
 export async function prepararSalaFilme(id) {
   if (!NETMOVIES_ENABLED || !/^[a-z0-9-]{1,80}$/i.test(id || '')) return null;
   let it = null;
-  try { it = (await (await fetch(CATALOGO)).json()).items.find(i => i.id === id); } catch { }
+  for (const f of FORNECEDORES) {   // procura o filme em todos os fornecedores
+    try { it = (await (await fetch(catalogo(f))).json()).items.find(i => i.id === id); } catch { }
+    if (it) break;
+  }
   if (!it) return null;
   const filme = {
     titulo: it.title, capa_url: it.poster, origem: 'link', fonte_url: it.watchUrl,

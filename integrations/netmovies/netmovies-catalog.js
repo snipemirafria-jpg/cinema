@@ -16,6 +16,7 @@
     .poster{width:100%;aspect-ratio:16/9;object-fit:cover;display:block;background:#252a33}.fallback{display:flex;align-items:center;justify-content:center;font-size:2rem;background:linear-gradient(135deg,#2a1838,#14070b)}
     .info{padding:10px}.title{font-weight:700;line-height:1.3;min-height:2.5em}.meta{opacity:.72;font-size:.78rem;margin:7px 0}
     .tags{font-size:.75rem;opacity:.8;min-height:2em}.watch{width:100%;margin-top:9px;padding:10px;border:0;border-radius:8px;background:var(--cine-accent,#6d55d9);color:white;font-weight:700;cursor:pointer}
+    .aviso-anuncio{display:flex;gap:10px;align-items:center;background:#3a2a06;border:1px solid #a87b12;color:#ffe2a0;border-radius:10px;padding:10px 12px;font-size:.88rem;margin:0 0 14px}.aviso-anuncio b{color:#fff}
     .empty{padding:24px;text-align:center;opacity:.7}.credit{font-size:.75rem;opacity:.65;margin:16px 0 0}
     dialog{width:min(900px,94vw);padding:0;border:1px solid #444;border-radius:14px;background:#08090c;color:white}
     dialog::backdrop{background:#000c}.player{aspect-ratio:16/9;background:#000}.player iframe{width:100%;height:100%;border:0}
@@ -25,15 +26,16 @@
   class NetMoviesCatalog extends HTMLElement {
     constructor(){super();this.attachShadow({mode:'open'});this.items=[];this.dialog=null;}
     async connectedCallback(){
-      this.shadowRoot.innerHTML=`<style>${styles}</style><section class="wrap"><div class="head"><div><h2>NetMovies — Filmes gratuitos</h2><p class="sub">Filmes publicados no canal oficial NetMovies</p></div><span class="count"></span></div><div class="filters"><input type="search" placeholder="Buscar filme..." aria-label="Buscar filme"><select aria-label="Filtrar gênero"><option value="">Todos os gêneros</option></select></div><div class="grid"></div><p class="credit">Fonte e créditos: <a href="https://www.youtube.com/@netmovies" target="_blank" rel="noopener">Canal oficial NetMovies</a>. Reprodução incorporada do YouTube. Disponibilidade e anúncios dependem do YouTube.</p></section><dialog><div class="modalhead"><strong></strong><button type="button" class="close">Fechar</button></div><div class="player"></div></dialog>`;
+      this.shadowRoot.innerHTML=`<style>${styles}</style><section class="wrap"><div class="aviso-anuncio" role="note">📢 <span><b>Este fornecedor tem anúncios.</b> Os filmes são gratuitos e passam pelo YouTube, que pode mostrar propagandas antes e durante o filme.</span></div><div class="head"><div><h2>NetMovies — Filmes gratuitos</h2><p class="sub">Filmes publicados no canal oficial NetMovies</p></div><span class="count"></span></div><div class="filters"><input type="search" placeholder="Buscar filme..." aria-label="Buscar filme"><select aria-label="Filtrar gênero"><option value="">Todos os gêneros</option></select></div><div class="grid"></div><p class="credit">Fonte e créditos: <a href="https://www.youtube.com/@netmovies" target="_blank" rel="noopener">Canal oficial NetMovies</a>. Reprodução incorporada do YouTube. Disponibilidade e anúncios dependem do YouTube.</p></section><dialog><div class="modalhead"><strong></strong><button type="button" class="close">Fechar</button></div><div class="player"></div></dialog>`;
       this.dialog=this.shadowRoot.querySelector('dialog');
       this.shadowRoot.querySelector('.close').addEventListener('click',()=>this.closePlayer());
       this.dialog.addEventListener('click',e=>{if(e.target===this.dialog)this.closePlayer();});
       this.shadowRoot.querySelector('input').addEventListener('input',()=>this.render());
       this.shadowRoot.querySelector('select').addEventListener('change',()=>this.render());
       const url=this.getAttribute('catalog')||window.NETMOVIES_CATALOG_URL||'./catalogo-netmovies.json';
-      try{const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);const data=await res.json();this.items=Array.isArray(data)?data:(data.items||[]);}
+      let data;try{const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);data=await res.json();this.items=Array.isArray(data)?data:(data.items||[]);}
       catch(err){this.shadowRoot.querySelector('.grid').innerHTML='<p class="empty">Não foi possível carregar o catálogo. Confira o caminho do arquivo JSON.</p>';console.error('[NetMovies]',err);return;}
+      const src=data.source||{};if(src.name){const nome=src.name;this.shadowRoot.querySelector('h2').textContent=`${nome} — Filmes gratuitos`;this.shadowRoot.querySelector('.sub').textContent=`Filmes publicados no canal oficial ${nome}`;const a=this.shadowRoot.querySelector('.credit a');a.textContent=`Canal oficial ${nome}`;if(src.channelUrl)a.href=src.channelUrl;}
       const genres=[...new Set(this.items.flatMap(x=>x.genres||[]))].sort();
       const select=this.shadowRoot.querySelector('select');genres.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g;select.append(o);});
       this.render();

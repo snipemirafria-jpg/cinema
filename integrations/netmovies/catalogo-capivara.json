@@ -1,0 +1,1513 @@
+{
+  "source": {
+    "id": "capivara-youtube",
+    "name": "Capivara Filmes",
+    "icon": "🦫",
+    "channelUrl": "https://www.youtube.com/@capivarafilmesoficial",
+    "channelId": "UC1opo0B5IDcjLeuHVc38LIw",
+    "licenseNote": "Vídeos publicados no canal oficial. Reprodução via player incorporado do YouTube; anúncios e disponibilidade são controlados pelo YouTube/provedor.",
+    "lastChecked": "2026-11-18"
+  },
+  "items": [
+    {
+      "id": "cf-pdw6yatd6h4-0",
+      "title": "🕵",
+      "youtubeId": "PDW6YaTd6h4",
+      "duration": "2h 05min",
+      "durationMinutes": 125,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/PDW6YaTd6h4/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=PDW6YaTd6h4",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/PDW6YaTd6h4"
+    },
+    {
+      "id": "cf-gl4tp5bnoy8-1",
+      "title": "A FAMÍLIA SE MUDA PARA O CAMPO E DESCOBRE UM TERRÍVEL SEGREDO",
+      "youtubeId": "Gl4TP5BNOY8",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Gl4TP5BNOY8/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Gl4TP5BNOY8",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Gl4TP5BNOY8"
+    },
+    {
+      "id": "cf-qwhqt-topow-2",
+      "title": "A FAMILY MOVES INTO A PLACE AND AWAKENS A TERRIBLE CURSE",
+      "youtubeId": "qWHQT_TopOw",
+      "duration": "1h 25min",
+      "durationMinutes": 85,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/qWHQT_TopOw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=qWHQT_TopOw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/qWHQT_TopOw"
+    },
+    {
+      "id": "cf-myuiyohfwd8-3",
+      "title": "A HORROR AND THRILLER MOVIE THAT SURPRISES FROM START TO FINISH 😨",
+      "youtubeId": "myuiYoHFwD8",
+      "duration": "1h 48min",
+      "durationMinutes": 108,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/myuiYoHFwD8/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=myuiYoHFwD8",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/myuiYoHFwD8"
+    },
+    {
+      "id": "cf-56jvb-fsnlg-4",
+      "title": "A HORROR MOVIE THAT WILL SEND CHILLS DOWN YOUR SPINE",
+      "youtubeId": "56JvB-fSnLg",
+      "duration": "1h 18min",
+      "durationMinutes": 78,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/56JvB-fSnLg/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=56JvB-fSnLg",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/56JvB-fSnLg"
+    },
+    {
+      "id": "cf-qe4k-zbtiow-5",
+      "title": "A HORROR MOVIE YOU NEED TO WATCH",
+      "youtubeId": "QE4k_zbtiOw",
+      "duration": "1h 22min",
+      "durationMinutes": 82,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/QE4k_zbtiOw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=QE4k_zbtiOw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/QE4k_zbtiOw"
+    },
+    {
+      "id": "cf-ff6099f3-cw-6",
+      "title": "A TENSE HORROR MOVIE THAT KEEPS YOU HOOKED UNTIL THE VERY LAST MINUTE 😱",
+      "youtubeId": "fF6099f3-Cw",
+      "duration": "1h 23min",
+      "durationMinutes": 83,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/fF6099f3-Cw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=fF6099f3-Cw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/fF6099f3-Cw"
+    },
+    {
+      "id": "cf-1ob7urodn-c-7",
+      "title": "ALGO TERRÍVEL FOI LIBERTADO EM UMA ILHA E AGORA NINGUÉM ESTÁ SEGURO",
+      "youtubeId": "1oB7urOdN_c",
+      "duration": "1h 27min",
+      "durationMinutes": 87,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/1oB7urOdN_c/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=1oB7urOdN_c",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/1oB7urOdN_c"
+    },
+    {
+      "id": "cf-y6pkdh9ti8c-8",
+      "title": "AN EXORCISM FAILED AND THE PRIEST DISCOVERED A TERRIBLE TRUTH 👿",
+      "youtubeId": "Y6pKDh9TI8c",
+      "duration": "1h 28min",
+      "durationMinutes": 88,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Y6pKDh9TI8c/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Y6pKDh9TI8c",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Y6pKDh9TI8c"
+    },
+    {
+      "id": "cf-zb4kyyy6qso-9",
+      "title": "Death Valley",
+      "youtubeId": "Zb4kyyy6QSo",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Zb4kyyy6QSo/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Zb4kyyy6QSo",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Zb4kyyy6QSo"
+    },
+    {
+      "id": "cf-ox2wa-2bkp0-10",
+      "title": "Delivery Run",
+      "youtubeId": "Ox2wa_2bKp0",
+      "duration": "1h 21min",
+      "durationMinutes": 81,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Ox2wa_2bKp0/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Ox2wa_2bKp0",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Ox2wa_2bKp0"
+    },
+    {
+      "id": "cf-aggeq17gx6o-11",
+      "title": "DON'T WATCH THIS MOVIE BEFORE BED",
+      "youtubeId": "agGeQ17GX6o",
+      "duration": "1h 17min",
+      "durationMinutes": 77,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/agGeQ17GX6o/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=agGeQ17GX6o",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/agGeQ17GX6o"
+    },
+    {
+      "id": "cf-lg4hsyrqayu-12",
+      "title": "ELA COMEÇA A TRABALHAR EM UM HOTEL, MAS DESCOBRE QUE UM MANÍACO ESTÁ À SUA ESPREITA",
+      "youtubeId": "lG4HsYRQAyU",
+      "duration": "1h 20min",
+      "durationMinutes": 80,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/lG4HsYRQAyU/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=lG4HsYRQAyU",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/lG4HsYRQAyU"
+    },
+    {
+      "id": "cf-l-b4d5sbstw-13",
+      "title": "ELA COMEÇOU A VER COISAS QUE NINGUÉM MAIS CONSEGUIA VER",
+      "youtubeId": "l_b4D5sbStw",
+      "duration": "1h 38min",
+      "durationMinutes": 98,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/l_b4D5sbStw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=l_b4D5sbStw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/l_b4D5sbStw"
+    },
+    {
+      "id": "cf-nd4ibrlwhdk-14",
+      "title": "ELES ACORDAM NO ESPAÇO E DESCOBREM QUE ALGO OS ESTÁ CAÇANDO",
+      "youtubeId": "ND4ibrlWhDk",
+      "duration": "1h 48min",
+      "durationMinutes": 108,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/ND4ibrlWhDk/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=ND4ibrlWhDk",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ND4ibrlWhDk"
+    },
+    {
+      "id": "cf-dxlorvtcafg-15",
+      "title": "ELES ACORDAM SEM MEMÓRIA E ALGO SOMBRIO OS ESPREITA",
+      "youtubeId": "DxLorvTcaFg",
+      "duration": "1h 34min",
+      "durationMinutes": 94,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/DxLorvTcaFg/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=DxLorvTcaFg",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/DxLorvTcaFg"
+    },
+    {
+      "id": "cf-5ckhuym-w8w-16",
+      "title": "ELES CHEGARAM A UMA ALDEIA ISOLADA E DESCOBRIRAM UM SEGREDO ASSUSTADOR 🏚",
+      "youtubeId": "5cKHUYm_W8w",
+      "duration": "2h 01min",
+      "durationMinutes": 121,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/5cKHUYm_W8w/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=5cKHUYm_W8w",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/5cKHUYm_W8w"
+    },
+    {
+      "id": "cf-lza-uudgfqe-17",
+      "title": "ELES ENCONTRAM UMA CAIXA, MAS ALGO MALIGNO ESTÁ PRESO DENTRO",
+      "youtubeId": "lZA_UudGFqE",
+      "duration": "1h 27min",
+      "durationMinutes": 87,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/lZA_UudGFqE/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=lZA_UudGFqE",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/lZA_UudGFqE"
+    },
+    {
+      "id": "cf-v9sb7m0pb-m-18",
+      "title": "ELES FICAM PRESOS NO SUBTERRÂNEO E PRECISAM SOBREVIVER A UMA AMEAÇA MORTAL",
+      "youtubeId": "V9SB7m0Pb-M",
+      "duration": "1h 36min",
+      "durationMinutes": 96,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/V9SB7m0Pb-M/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=V9SB7m0Pb-M",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/V9SB7m0Pb-M"
+    },
+    {
+      "id": "cf-y8wfkvy5vdq-19",
+      "title": "ELES FICARAM PRESOS CERCADOS POR CRIATURAS MORTAIS",
+      "youtubeId": "y8WfKvY5VDQ",
+      "duration": "1h 57min",
+      "durationMinutes": 117,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/y8WfKvY5VDQ/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=y8WfKvY5VDQ",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/y8WfKvY5VDQ"
+    },
+    {
+      "id": "cf-lkaw6hfrlz8-20",
+      "title": "ELES FORAM AO CEMITÉRIO E ACABARAM DESPERTANDO ALGO QUE NÃO DEVERIAM",
+      "youtubeId": "LkaW6hfrLz8",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/LkaW6hfrLz8/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=LkaW6hfrLz8",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/LkaW6hfrLz8"
+    },
+    {
+      "id": "cf-q-pg-blugo0-21",
+      "title": "ELES PERCEBERAM QUE NÃO ESTAVAM SOZINHOS",
+      "youtubeId": "Q_pg-blUGO0",
+      "duration": "1h 43min",
+      "durationMinutes": 103,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Q_pg-blUGO0/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Q_pg-blUGO0",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Q_pg-blUGO0"
+    },
+    {
+      "id": "cf-cfbvjjv-3rc-22",
+      "title": "ELES VÃO PARA UMA CABANA ISOLADA, MAS DESCOBREM QUE NÃO ESTÃO SOZINHOS",
+      "youtubeId": "cFBVjJV_3rc",
+      "duration": "1h 18min",
+      "durationMinutes": 78,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/cFBVjJV_3rc/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=cFBVjJV_3rc",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/cFBVjJV_3rc"
+    },
+    {
+      "id": "cf-ksulhak1mly-23",
+      "title": "ELES VÃO PARA UMA ILHA PARADISÍACA, MAS UMA SEREIA ASSASSINA COMEÇA A CAÇÁ-LOS",
+      "youtubeId": "ksULhaK1mlY",
+      "duration": "1h 32min",
+      "durationMinutes": 92,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/ksULhaK1mlY/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=ksULhaK1mlY",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ksULhaK1mlY"
+    },
+    {
+      "id": "cf-jqz77njmxlq-24",
+      "title": "ELES VOLTARAM AO TITANIC E DESCOBRIRAM O INFERNO",
+      "youtubeId": "jQZ77NjMxLQ",
+      "duration": "1h 31min",
+      "durationMinutes": 91,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/jQZ77NjMxLQ/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=jQZ77NjMxLQ",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/jQZ77NjMxLQ"
+    },
+    {
+      "id": "cf-vupfcaoakgs-25",
+      "title": "Enclosure aka Arbor Demon",
+      "youtubeId": "vupfCaOAKGs",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/vupfCaOAKGs/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=vupfCaOAKGs",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/vupfCaOAKGs"
+    },
+    {
+      "id": "cf-xa7nceohe4s-26",
+      "title": "ESSE FILMAÇO DE TERROR MERECE MAIS FAMA",
+      "youtubeId": "XA7nCEOHE4s",
+      "duration": "1h 39min",
+      "durationMinutes": 99,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/XA7nCEOHE4s/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=XA7nCEOHE4s",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/XA7nCEOHE4s"
+    },
+    {
+      "id": "cf-otk0kpag174-27",
+      "title": "ESSE FILME DE LOBISOMEM VALE A PENA ASSISTIR",
+      "youtubeId": "otk0kpAg174",
+      "duration": "1h 24min",
+      "durationMinutes": 84,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/otk0kpAg174/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=otk0kpAg174",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/otk0kpAg174"
+    },
+    {
+      "id": "cf-qnycjtemevc-28",
+      "title": "ESSE FILME DE TERROR É ESPETACULAR",
+      "youtubeId": "QnycJTemEVc",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/QnycJTemEVc/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=QnycJTemEVc",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/QnycJTemEVc"
+    },
+    {
+      "id": "cf-6dgp2iomjji-29",
+      "title": "ESSE FILME DE TERROR É SIMPLESMENTE PERTURBADOR",
+      "youtubeId": "6DGP2iOmJjI",
+      "duration": "1h 37min",
+      "durationMinutes": 97,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/6DGP2iOmJjI/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=6DGP2iOmJjI",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/6DGP2iOmJjI"
+    },
+    {
+      "id": "cf-nn4quw3gutq-30",
+      "title": "ESSE FILME DE TERROR MERECE SUA ATENÇÃO",
+      "youtubeId": "nn4qUw3GUTQ",
+      "duration": "1h 44min",
+      "durationMinutes": 104,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/nn4qUw3GUTQ/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=nn4qUw3GUTQ",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/nn4qUw3GUTQ"
+    },
+    {
+      "id": "cf-jptymysfx3a-31",
+      "title": "ESSE FILME DE TERROR NÃO VAI TE DEIXAR DORMIR EM PAZ",
+      "youtubeId": "jPtYmYsfx3A",
+      "duration": "1h 24min",
+      "durationMinutes": 84,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/jPtYmYsfx3A/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=jPtYmYsfx3A",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/jPtYmYsfx3A"
+    },
+    {
+      "id": "cf-c6rlqiroedo-32",
+      "title": "ESSE FILME DE TERROR VAI TE DEIXAR ASSUSTADO",
+      "youtubeId": "c6RlqiROEdo",
+      "duration": "1h 35min",
+      "durationMinutes": 95,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/c6RlqiROEdo/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=c6RlqiROEdo",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/c6RlqiROEdo"
+    },
+    {
+      "id": "cf-n6zevcr5cty-33",
+      "title": "ESSE FIMAÇO DE SUSPENSE TEM UM FINAL ABSURDO 😱",
+      "youtubeId": "N6ZevcR5ctY",
+      "duration": "2h 09min",
+      "durationMinutes": 129,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/N6ZevcR5ctY/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=N6ZevcR5ctY",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/N6ZevcR5ctY"
+    },
+    {
+      "id": "cf-n6eq2dqw28g-34",
+      "title": "FEZ UM PACTO COM O DIABO E DESPERTOU UMA FORÇA DEMONÍACA!",
+      "youtubeId": "N6eq2dQw28g",
+      "duration": "1h 46min",
+      "durationMinutes": 106,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/N6eq2dQw28g/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=N6eq2dQw28g",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/N6eq2dQw28g"
+    },
+    {
+      "id": "cf-u2ikg5yyfwk-35",
+      "title": "FILME DE TERROR COMO VOCÊ NUNCA VIU",
+      "youtubeId": "u2IKG5YyFwk",
+      "duration": "1h 17min",
+      "durationMinutes": 77,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/u2IKG5YyFwk/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=u2IKG5YyFwk",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/u2IKG5YyFwk"
+    },
+    {
+      "id": "cf-x45-q0yycvw-36",
+      "title": "FILME DE TERROR QUE VOCÊ VAI SE ARREPENDER DE ASSISTIR SOZINHO",
+      "youtubeId": "x45-Q0YYcvw",
+      "duration": "1h 37min",
+      "durationMinutes": 97,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/x45-Q0YYcvw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=x45-Q0YYcvw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/x45-Q0YYcvw"
+    },
+    {
+      "id": "cf-ltxxl9-1c5i-37",
+      "title": "HE TOOK THE WRONG PATH AND REALIZED THERE WAS NO TURNING BACK 😈",
+      "youtubeId": "LtxXl9_1C5I",
+      "duration": "1h 32min",
+      "durationMinutes": 92,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/LtxXl9_1C5I/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=LtxXl9_1C5I",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/LtxXl9_1C5I"
+    },
+    {
+      "id": "cf-5rpwk0yg-cy-38",
+      "title": "Hideout",
+      "youtubeId": "5RPwK0yG-CY",
+      "duration": "1h 55min",
+      "durationMinutes": 115,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/5RPwK0yG-CY/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=5RPwK0yG-CY",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/5RPwK0yG-CY"
+    },
+    {
+      "id": "cf-imdaldnz0ks-39",
+      "title": "HORROR MOVIE YOU'LL REGRET WATCHING ALONE",
+      "youtubeId": "ImdAldnZ0Ks",
+      "duration": "1h 18min",
+      "durationMinutes": 78,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/ImdAldnZ0Ks/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=ImdAldnZ0Ks",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ImdAldnZ0Ks"
+    },
+    {
+      "id": "cf-xoaxgjtxlpi-40",
+      "title": "Invoked",
+      "youtubeId": "xoAXGJtxLpI",
+      "duration": "1h 26min",
+      "durationMinutes": 86,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/xoAXGJtxLpI/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=xoAXGJtxLpI",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/xoAXGJtxLpI"
+    },
+    {
+      "id": "cf-w0b1v94icjs-41",
+      "title": "Nix - The Entity PT",
+      "youtubeId": "W0b1V94icJs",
+      "duration": "1h 39min",
+      "durationMinutes": 99,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/W0b1V94icJs/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=W0b1V94icJs",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/W0b1V94icJs"
+    },
+    {
+      "id": "cf-vqzju6pnqfe-42",
+      "title": "O APOCALIPSE COMEÇOU E ALGO TERRÍVEL ESTÁ VINDO",
+      "youtubeId": "VqZJu6PNqFE",
+      "duration": "1h 26min",
+      "durationMinutes": 86,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/VqZJu6PNqFE/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=VqZJu6PNqFE",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/VqZJu6PNqFE"
+    },
+    {
+      "id": "cf-00utwmsd-ze-43",
+      "title": "O FILME DE TERROR QUE VAI DESTRUIR SEUS NERVOS",
+      "youtubeId": "00UtwMSd_ZE",
+      "duration": "1h 11min",
+      "durationMinutes": 71,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/00UtwMSd_ZE/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=00UtwMSd_ZE",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/00UtwMSd_ZE"
+    },
+    {
+      "id": "cf-xmnztwg2xoi-44",
+      "title": "O ÚLTIMO CAÇADOR DE BRUXAS ENFRENTA ALGO TERRÍVEL",
+      "youtubeId": "xmnzTWg2XoI",
+      "duration": "1h 40min",
+      "durationMinutes": 100,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/xmnzTWg2XoI/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=xmnzTWg2XoI",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/xmnzTWg2XoI"
+    },
+    {
+      "id": "cf-ywzx1jsjvzu-45",
+      "title": "Phobias",
+      "youtubeId": "yWzx1jsjVZU",
+      "duration": "1h 26min",
+      "durationMinutes": 86,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/yWzx1jsjVZU/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=yWzx1jsjVZU",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/yWzx1jsjVZU"
+    },
+    {
+      "id": "cf-4yzs23rmfv0-46",
+      "title": "Risen",
+      "youtubeId": "4yZs23RMFv0",
+      "duration": "1h 50min",
+      "durationMinutes": 110,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/4yZs23RMFv0/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=4yZs23RMFv0",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/4yZs23RMFv0"
+    },
+    {
+      "id": "cf-o08-ndqxd2i-47",
+      "title": "She Came From the Woods",
+      "youtubeId": "o08-NDQXD2I",
+      "duration": "1h 37min",
+      "durationMinutes": 97,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/o08-NDQXD2I/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=o08-NDQXD2I",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/o08-NDQXD2I"
+    },
+    {
+      "id": "cf-zioilhx73gs-48",
+      "title": "She is searching for her missing son, but the town hides a terrible secret",
+      "youtubeId": "ZIoiLHx73gs",
+      "duration": "1h 42min",
+      "durationMinutes": 102,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/ZIoiLHx73gs/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=ZIoiLHx73gs",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ZIoiLHx73gs"
+    },
+    {
+      "id": "cf-b5ka4ypwlvg-49",
+      "title": "THE CRAZIEST HORROR MOVIE YOU NEED TO SEE 🐊",
+      "youtubeId": "b5Ka4ypwlvg",
+      "duration": "1h 28min",
+      "durationMinutes": 88,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/b5Ka4ypwlvg/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=b5Ka4ypwlvg",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/b5Ka4ypwlvg"
+    },
+    {
+      "id": "cf-nidrce3coks-50",
+      "title": "THE DEVIL HAS MANY WAYS TO KILL",
+      "youtubeId": "NIdRcE3COKs",
+      "duration": "1h 40min",
+      "durationMinutes": 100,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/NIdRcE3COKs/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=NIdRcE3COKs",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/NIdRcE3COKs"
+    },
+    {
+      "id": "cf-ah6svm6wcpw-51",
+      "title": "The God Inside My Ear",
+      "youtubeId": "Ah6sVm6wcpw",
+      "duration": "1h 37min",
+      "durationMinutes": 97,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Ah6sVm6wcpw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Ah6sVm6wcpw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Ah6sVm6wcpw"
+    },
+    {
+      "id": "cf-gahblt03qm4-52",
+      "title": "The Haunting of Grady Farm",
+      "youtubeId": "gAhBlt03qm4",
+      "duration": "1h 07min",
+      "durationMinutes": 67,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/gAhBlt03qm4/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=gAhBlt03qm4",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/gAhBlt03qm4"
+    },
+    {
+      "id": "cf-l-p32nytags-53",
+      "title": "THE HORROR MOVIE EVERYONE IGNORED",
+      "youtubeId": "l_P32nytAGs",
+      "duration": "1h 16min",
+      "durationMinutes": 76,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/l_P32nytAGs/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=l_P32nytAGs",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/l_P32nytAGs"
+    },
+    {
+      "id": "cf--vmvx30qpky-54",
+      "title": "THE HORROR MOVIE LEAVING EVERYONE IN SHOCK",
+      "youtubeId": "-VMvX30qpKY",
+      "duration": "1h 34min",
+      "durationMinutes": 94,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/-VMvX30qpKY/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=-VMvX30qpKY",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/-VMvX30qpKY"
+    },
+    {
+      "id": "cf-w9qfkznkszk-55",
+      "title": "THE HORROR MOVIE NO ONE RECOMMENDED TO YOU",
+      "youtubeId": "W9qFKzNKSzk",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/W9qFKzNKSzk/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=W9qFKzNKSzk",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/W9qFKzNKSzk"
+    },
+    {
+      "id": "cf-oibyi6p1jbu-56",
+      "title": "THE HORROR MOVIE THAT KEPT EVERYONE AWAKE AT NIGHT",
+      "youtubeId": "oIbYI6p1JbU",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/oIbYI6p1JbU/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=oIbYI6p1JbU",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/oIbYI6p1JbU"
+    },
+    {
+      "id": "cf-ac16glqwvpc-57",
+      "title": "THE HORROR MOVIE THAT SURPRISES FROM START TO FINISH",
+      "youtubeId": "Ac16GLQWvpc",
+      "duration": "1h 22min",
+      "durationMinutes": 82,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Ac16GLQWvpc/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Ac16GLQWvpc",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Ac16GLQWvpc"
+    },
+    {
+      "id": "cf-byl0ai-jy4a-58",
+      "title": "THE HORROR MOVIE THAT SURPRISES FROM START TO FINISH",
+      "youtubeId": "BYL0aI_jy4A",
+      "duration": "1h 31min",
+      "durationMinutes": 91,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/BYL0aI_jy4A/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=BYL0aI_jy4A",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/BYL0aI_jy4A"
+    },
+    {
+      "id": "cf--l8jg7fedjk-59",
+      "title": "THE HORROR MOVIE THAT WILL MESS WITH YOUR HEAD",
+      "youtubeId": "-L8jG7FedJk",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/-L8jG7FedJk/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=-L8jG7FedJk",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/-L8jG7FedJk"
+    },
+    {
+      "id": "cf-jzvcrj4vdei-60",
+      "title": "The Last Ritual PT",
+      "youtubeId": "JzvcRj4vDEI",
+      "duration": "1h 48min",
+      "durationMinutes": 108,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/JzvcRj4vDEI/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=JzvcRj4vDEI",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/JzvcRj4vDEI"
+    },
+    {
+      "id": "cf-msd4wfsl72g-61",
+      "title": "THE MOST BRUTAL HORROR MOVIE IN YEARS",
+      "youtubeId": "msD4WFsL72g",
+      "duration": "1h 14min",
+      "durationMinutes": 74,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/msD4WFsL72g/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=msD4WFsL72g",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/msD4WFsL72g"
+    },
+    {
+      "id": "cf-j4agyojzole-62",
+      "title": "THE MOST INSANE HORROR MOVIE NO ONE HAS SEEN",
+      "youtubeId": "j4AgYOjZolE",
+      "duration": "1h 56min",
+      "durationMinutes": 116,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/j4AgYOjZolE/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=j4AgYOjZolE",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/j4AgYOjZolE"
+    },
+    {
+      "id": "cf-4dcj5ldxcgu-63",
+      "title": "THE MOST INSANE HORROR MOVIE YOU'LL SEE THIS YEAR",
+      "youtubeId": "4Dcj5LDXcgU",
+      "duration": "1h 32min",
+      "durationMinutes": 92,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/4Dcj5LDXcgU/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=4Dcj5LDXcgU",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/4Dcj5LDXcgU"
+    },
+    {
+      "id": "cf-xrjkeytufv0-64",
+      "title": "THE MOVIE THAT IS TRAUMATIZING EVERYONE WHO WATCHES IT",
+      "youtubeId": "XRjKeYTuFV0",
+      "duration": "1h 46min",
+      "durationMinutes": 106,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/XRjKeYTuFV0/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=XRjKeYTuFV0",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/XRjKeYTuFV0"
+    },
+    {
+      "id": "cf-fruw0xvq-0i-65",
+      "title": "THE SCARIEST MOVIE OF ALL TIME",
+      "youtubeId": "FrUW0xVq-0I",
+      "duration": "1h 46min",
+      "durationMinutes": 106,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/FrUW0xVq-0I/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=FrUW0xVq-0I",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/FrUW0xVq-0I"
+    },
+    {
+      "id": "cf-zx6fljeuxf4-66",
+      "title": "THE VAMPIRE MOVIE THAT WILL MESS WITH YOUR HEAD 🧛Full Movie Dubbed",
+      "youtubeId": "zx6FljEuxF4",
+      "duration": "1h 29min",
+      "durationMinutes": 89,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/zx6FljEuxF4/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=zx6FljEuxF4",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/zx6FljEuxF4"
+    },
+    {
+      "id": "cf-pizz3eg9t6k-67",
+      "title": "THEY DIED… BUT THEY ARE STILL NOT FREE FROM THIS PLACE ☠",
+      "youtubeId": "piZz3Eg9t6k",
+      "duration": "1h 28min",
+      "durationMinutes": 88,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/piZz3Eg9t6k/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=piZz3Eg9t6k",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/piZz3Eg9t6k"
+    },
+    {
+      "id": "cf-tv-qjmbklfa-68",
+      "title": "THEY EMBARKED ON A TRIP, BUT SOMETHING DARK WAS WAITING FOR THEM 🌑",
+      "youtubeId": "TV-QJMbKLFA",
+      "duration": "1h 44min",
+      "durationMinutes": 104,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/TV-QJMbKLFA/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=TV-QJMbKLFA",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/TV-QJMbKLFA"
+    },
+    {
+      "id": "cf-xlhntrdi1tc-69",
+      "title": "THEY FLEE THE INFECTION ON A PLANE, BUT THE DANGER IS WITH THE PASSENGERS ✈",
+      "youtubeId": "xlhnTrdI1Tc",
+      "duration": "1h 31min",
+      "durationMinutes": 91,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/xlhnTrdI1Tc/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=xlhnTrdI1Tc",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/xlhnTrdI1Tc"
+    },
+    {
+      "id": "cf-i6qhtxkkn90-70",
+      "title": "THEY FOUND A DRIFTING SHIP, BUT SOMETHING DEADLY WAS ON BOARD 🩸",
+      "youtubeId": "i6QhTxkkn90",
+      "duration": "1h 35min",
+      "durationMinutes": 95,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/i6QhTxkkn90/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=i6QhTxkkn90",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/i6QhTxkkn90"
+    },
+    {
+      "id": "cf-qjvh61glzyu-71",
+      "title": "THEY MADE A PACT, BUT DISCOVERED THE PRICE WAS TOO HIGH 🤫",
+      "youtubeId": "qjvH61glZYU",
+      "duration": "1h 36min",
+      "durationMinutes": 96,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/qjvH61glZYU/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=qjvH61glZYU",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/qjvH61glZYU"
+    },
+    {
+      "id": "cf-bawm5lgihi0-72",
+      "title": "THEY SAID SHE WAS A WITCH… BUT THEY WERE HIDING A MUCH WORSE SECRET 😨",
+      "youtubeId": "bAWm5LGiHI0",
+      "duration": "1h 51min",
+      "durationMinutes": 111,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/bAWm5LGiHI0/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=bAWm5LGiHI0",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/bAWm5LGiHI0"
+    },
+    {
+      "id": "cf-efrv5xkcwvy-73",
+      "title": "THEY SUMMONED A DEMON AS A PRANK AND PAID A TERRIBLE PRICE",
+      "youtubeId": "efRv5xkCWvY",
+      "duration": "1h 25min",
+      "durationMinutes": 85,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/efRv5xkCWvY/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=efRv5xkCWvY",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/efRv5xkCWvY"
+    },
+    {
+      "id": "cf-6avmawpfffk-74",
+      "title": "THEY THOUGHT THEY WERE SAFE, BUT THE DANGER WAS CLOSE 😨",
+      "youtubeId": "6avMAWPfFFk",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/6avMAWPfFFk/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=6avMAWPfFFk",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/6avMAWPfFFk"
+    },
+    {
+      "id": "cf-z2o9cschkca-75",
+      "title": "THIS HORROR MOVIE IS ABSOLUTELY INSANE",
+      "youtubeId": "Z2O9CScHKCA",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/Z2O9CScHKCA/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=Z2O9CScHKCA",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/Z2O9CScHKCA"
+    },
+    {
+      "id": "cf--h3qx-iwl3m-76",
+      "title": "THIS HORROR MOVIE IS ABSOLUTELY INSANE",
+      "youtubeId": "_h3qx-iWl3M",
+      "duration": "1h 33min",
+      "durationMinutes": 93,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/_h3qx-iWl3M/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=_h3qx-iWl3M",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/_h3qx-iWl3M"
+    },
+    {
+      "id": "cf-haw0ouysmvs-77",
+      "title": "THIS HORROR MOVIE IS TOO GOOD TO MISS",
+      "youtubeId": "hAW0OUYsmVs",
+      "duration": "1h 28min",
+      "durationMinutes": 88,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/hAW0OUYsmVs/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=hAW0OUYsmVs",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/hAW0OUYsmVs"
+    },
+    {
+      "id": "cf-ibaboam1lxo-78",
+      "title": "THIS HORROR MOVIE MADE ME UNCOMFORTABLE",
+      "youtubeId": "ibAboAm1lxo",
+      "duration": "1h 18min",
+      "durationMinutes": 78,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/ibAboAm1lxo/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=ibAboAm1lxo",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ibAboAm1lxo"
+    },
+    {
+      "id": "cf-jgwhbeb4j84-79",
+      "title": "THIS HORROR MOVIE SHOWS NO MERCY",
+      "youtubeId": "JGwHbEb4J84",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/JGwHbEb4J84/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=JGwHbEb4J84",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/JGwHbEb4J84"
+    },
+    {
+      "id": "cf-0eli8eaqyqo-80",
+      "title": "THIS HORROR MOVIE WILL BLOW YOUR MIND",
+      "youtubeId": "0eLi8EaQyQo",
+      "duration": "1h 35min",
+      "durationMinutes": 95,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/0eLi8EaQyQo/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=0eLi8EaQyQo",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/0eLi8EaQyQo"
+    },
+    {
+      "id": "cf-srota7sroro-81",
+      "title": "THIS HORROR MOVIE WILL KEEP YOU UP AT NIGHT",
+      "youtubeId": "SroTa7sRORo",
+      "duration": "1h 21min",
+      "durationMinutes": 81,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/SroTa7sRORo/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=SroTa7sRORo",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/SroTa7sRORo"
+    },
+    {
+      "id": "cf-pkangggirb8-82",
+      "title": "THIS MOVIE IS ABSURD AND HARDLY ANYONE KNOWS IT",
+      "youtubeId": "PkAngGgIrB8",
+      "duration": "1h 39min",
+      "durationMinutes": 99,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/PkAngGgIrB8/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=PkAngGgIrB8",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/PkAngGgIrB8"
+    },
+    {
+      "id": "cf-8hcb5dkjl50-83",
+      "title": "THIS MOVIE PROVES THAT HORROR CAN STILL SURPRISE YOU",
+      "youtubeId": "8hcB5DKjl50",
+      "duration": "1h 38min",
+      "durationMinutes": 98,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/8hcB5DKjl50/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=8hcB5DKjl50",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/8hcB5DKjl50"
+    },
+    {
+      "id": "cf-mqxt-xk6g5g-84",
+      "title": "THIS MOVIE WILL DESTROY YOUR PEACE",
+      "youtubeId": "mQXT_Xk6g5g",
+      "duration": "1h 20min",
+      "durationMinutes": 80,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/mQXT_Xk6g5g/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=mQXT_Xk6g5g",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/mQXT_Xk6g5g"
+    },
+    {
+      "id": "cf-i8txz33xmwm-85",
+      "title": "UM DOS MELHORES FILMES DE TERROR DOS ÚLTIMOS ANOS",
+      "youtubeId": "I8TXZ33XMWM",
+      "duration": "1h 32min",
+      "durationMinutes": 92,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/I8TXZ33XMWM/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=I8TXZ33XMWM",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/I8TXZ33XMWM"
+    },
+    {
+      "id": "cf-pbhr3sxr54k-86",
+      "title": "UM FILME DE LOBISOMEM QUE VOCÊ PRECISA VER",
+      "youtubeId": "pBhr3SXR54k",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/pBhr3SXR54k/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=pBhr3SXR54k",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/pBhr3SXR54k"
+    },
+    {
+      "id": "cf--4y7t5igybq-87",
+      "title": "UM FILME DE LOBISOMEM QUE VOCÊ PRECISA VER",
+      "youtubeId": "_4Y7T5IGYBQ",
+      "duration": "1h 36min",
+      "durationMinutes": 96,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/_4Y7T5IGYBQ/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=_4Y7T5IGYBQ",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/_4Y7T5IGYBQ"
+    },
+    {
+      "id": "cf--6kw5afzsv8-88",
+      "title": "UM FILME DE TERROR MUITO SINISTRO",
+      "youtubeId": "-6Kw5afzsv8",
+      "duration": "1h 37min",
+      "durationMinutes": 97,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/-6Kw5afzsv8/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=-6Kw5afzsv8",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/-6Kw5afzsv8"
+    },
+    {
+      "id": "cf-kpu1iy0-2nm-89",
+      "title": "UM FILME DE TERROR QUE TODOS DEVERIAM VER",
+      "youtubeId": "kpU1Iy0-2nM",
+      "duration": "1h 35min",
+      "durationMinutes": 95,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/kpU1Iy0-2nM/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=kpU1Iy0-2nM",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/kpU1Iy0-2nM"
+    },
+    {
+      "id": "cf-5cohqm4pwam-90",
+      "title": "UM FILME DE TERROR QUE TODOS PRECISAM VER",
+      "youtubeId": "5COHqM4PWAM",
+      "duration": "1h 15min",
+      "durationMinutes": 75,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/5COHqM4PWAM/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=5COHqM4PWAM",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/5COHqM4PWAM"
+    },
+    {
+      "id": "cf-lfllbpculns-91",
+      "title": "UM FILME DE VAMPIRO QUE VOCÊ NÃO PODE PERDER",
+      "youtubeId": "lFlLbpcuLns",
+      "duration": "1h 50min",
+      "durationMinutes": 110,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/lFlLbpcuLns/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=lFlLbpcuLns",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/lFlLbpcuLns"
+    },
+    {
+      "id": "cf-t9c8ysa6ety-92",
+      "title": "UM HOSPITAL ABANDONADO ESCONDE UM PESADELO ATERRORIZANTE",
+      "youtubeId": "T9C8YSA6EtY",
+      "duration": "1h 30min",
+      "durationMinutes": 90,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/T9C8YSA6EtY/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=T9C8YSA6EtY",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/T9C8YSA6EtY"
+    },
+    {
+      "id": "cf-yhbxed6j-cq-93",
+      "title": "UMA FAMÍLIA CHEGA NA FLORESTA E DESPERTA UMA TERRÍVEL MALDIÇÃO",
+      "youtubeId": "yhbxeD6J_cQ",
+      "duration": "1h 47min",
+      "durationMinutes": 107,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/yhbxeD6J_cQ/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=yhbxeD6J_cQ",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/yhbxeD6J_cQ"
+    },
+    {
+      "id": "cf-9cgdi2ykztg-94",
+      "title": "VOCÊ PRECISA VER ESTE FILME DE TERROR",
+      "youtubeId": "9CGdi2YKztg",
+      "duration": "1h 23min",
+      "durationMinutes": 83,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/9CGdi2YKztg/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=9CGdi2YKztg",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/9CGdi2YKztg"
+    },
+    {
+      "id": "cf-kdt0jlypljw-95",
+      "title": "VOCÊ PRECISA VER ESTE FILME DE TERROR",
+      "youtubeId": "KdT0JLyPLjw",
+      "duration": "1h 34min",
+      "durationMinutes": 94,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/KdT0JLyPLjw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=KdT0JLyPLjw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/KdT0JLyPLjw"
+    },
+    {
+      "id": "cf-6piyqie9dh4-96",
+      "title": "We Are Zombies",
+      "youtubeId": "6PIYqiE9Dh4",
+      "duration": "1h 17min",
+      "durationMinutes": 77,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/6PIYqiE9Dh4/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=6PIYqiE9Dh4",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/6PIYqiE9Dh4"
+    },
+    {
+      "id": "cf-ooyzzknyh7e-97",
+      "title": "Wolf Town",
+      "youtubeId": "oOYZZKnYh7E",
+      "duration": "1h 27min",
+      "durationMinutes": 87,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/oOYZZKnYh7E/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=oOYZZKnYh7E",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/oOYZZKnYh7E"
+    },
+    {
+      "id": "cf-heu-sdgbmbk-98",
+      "title": "Wolves",
+      "youtubeId": "HEu_SDGBmBk",
+      "duration": "1h 40min",
+      "durationMinutes": 100,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/HEu_SDGBmBk/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=HEu_SDGBmBk",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/HEu_SDGBmBk"
+    },
+    {
+      "id": "cf-unsufubyi4s-99",
+      "title": "YOU WILL REGRET WATCHING THIS ALONE",
+      "youtubeId": "UnSuFUbYi4s",
+      "duration": "1h 35min",
+      "durationMinutes": 95,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/UnSuFUbYi4s/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=UnSuFUbYi4s",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/UnSuFUbYi4s"
+    }
+  ]
+}
