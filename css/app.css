@@ -192,8 +192,12 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .midia-yt iframe{position:absolute;left:0;top:50%;width:100%!important;height:auto!important;aspect-ratio:16/9;transform:translateY(-50%);border:0;pointer-events:none}
 .midia-iframe{pointer-events:auto}
 
-/* Botão "Pular anúncio": libera o toque no player do YouTube por alguns segundos e mostra o vídeo inteiro
-   (sem cortar em cima/embaixo), para a pessoa tocar no botão "Pular" do próprio YouTube. */
-body.yt-tocavel .midia-yt iframe{pointer-events:auto;top:0;left:50%;height:100%!important;width:auto!important;transform:translateX(-50%)}
-body.yt-tocavel .midia-yt{outline:3px solid #ffd34d;outline-offset:-3px}
+/* Botão "Pular anúncio": por alguns segundos o player do YouTube sai do 3D e fica plano, em tela cheia,
+   para o toque cair certo no botão "Pular" do próprio YouTube (no iPhone o toque num iframe em 3D erra o alvo).
+   Só muda o CSS: o iframe não é movido, então o vídeo não recarrega. */
+body.yt-tocavel .camada-tela{z-index:6;pointer-events:auto;background:#000}
+body.yt-tocavel .camada-tela>div,body.yt-tocavel .camada-tela>div>div{transform:none!important;perspective:none!important;transform-style:flat!important;width:100%!important;height:100%!important}
+body.yt-tocavel .camada-tela .tela-html{position:fixed!important;inset:0!important;transform:none!important;width:100vw!important;height:100vh!important;height:100dvh!important}
+body.yt-tocavel .midia-yt iframe{pointer-events:auto;top:0;left:0;width:100%!important;height:100%!important;aspect-ratio:auto;transform:none}
+body.yt-tocavel .hud-topo{z-index:7}
 #btn-pular-anuncio.ativo{background:#ffd34d;color:#1a1020}
