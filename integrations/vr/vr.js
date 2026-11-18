@@ -438,6 +438,16 @@ class ExperienciaVR {
     this._ligarToque();
     if (tipoTela === 'textura') this._ligarVideo();
     this._tSync = setInterval(() => this._sincronizarOlhos(), 200);
+    // iPhone/Android só liberam som e o segundo player com um toque: a cada toque liga o som do olho esquerdo
+    // e dá play nos dois (o direito fica sempre mudo)
+    this._liberarMidia = () => {
+      for (const [i, o] of (this.olhosHtml || []).entries()) {
+        const m = o.m; if (!m || o.emprestado) continue;
+        try { m.muted = i !== 0; if (i === 0 && m.p?.setVolume) m.p.setVolume(aj.volume * 100); if (i > 0 && m.paused && !this.olhosHtml[0].m?.paused) Promise.resolve(m.play()).catch(() => { }); } catch { }
+      }
+    };
+    this.raiz.addEventListener('touchend', this._liberarMidia, { passive: true });
+    this.raiz.addEventListener('click', this._liberarMidia);
     this._redimensionar = () => this._tamanho(); addEventListener('resize', this._redimensionar);
     this._tamanho();
     $('[data-ctl]', this.raiz).hidden = false;
@@ -694,6 +704,10 @@ class ExperienciaVR {
       }
       if (Math.abs(d) > 1.2) {
         taxa(1); bm.currentTime = am.currentTime + st.lat; st.pulo = true; st.ate = agora + (yt ? 1200 : 500);
+      } else if (yt && MOBILE) {
+        // celular: mudar a velocidade do YouTube faz o vídeo engasgar; só corrige com um pulo quando passa de 0,35 s
+        taxa(1);
+        if (Math.abs(d) > 0.35) { bm.currentTime = am.currentTime + st.lat; st.pulo = true; st.ate = agora + 2500; }
       } else if (Math.abs(d) > 0.05) {
         if (yt) taxa(d > 0 ? 1.25 : 0.75);
         else taxa(1 + Math.max(-0.12, Math.min(0.12, d * 0.6)));
