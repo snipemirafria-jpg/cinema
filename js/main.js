@@ -188,6 +188,7 @@ async function abrirCinema() {
     aoMudarFilme: (f) => {
       $('#sem-filme').hidden = !!f;
       $('#titulo-filme').textContent = f ? f.titulo : 'Sem filme agora';
+      cinema.aplicarTema(f);   // sala temática pelo gênero do filme (sem gênero = sala original)
       if (f) { cinema.mostrarCapa(f.capa_url); } else cinema.mostrarVideo(false);
       cinema.legenda('');
       if ($('#gaveta-programacao').hidden === false) carregarProgramacao();

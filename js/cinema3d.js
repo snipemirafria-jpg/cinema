@@ -6,6 +6,7 @@ import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { criarAvatar, poseSentado, animarOcioso } from './avatar.js';
 import { esc } from './supa.js';
+import { SalaTematica } from './temas-sala.js';
 
 const ASSETS = new URL('../assets/', import.meta.url).href;
 const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
@@ -77,9 +78,13 @@ export class Cinema {
     this.controles.rotateSpeed = MOBILE ? 0.5 : 0.7;
 
     this.assentos = [];
+    this._m = {}; this._l = { pontos: [] };     // materiais e luzes da sala que os temas podem ajustar
+    this._matsPoltrona = [];
     this._montarSala();
     this._montarTela();
     baratear(this.cena);
+    // salas temáticas: a mesma sala, com cores, texturas, luz e decoração do gênero do filme
+    this.tema = new SalaTematica(this, { MOBILE, baratear, TELA, SALA, FILEIRAS, zFila: (i) => this._zFila(i), yFila: (i) => this._yFila(i) });
     this._redimensionar = this._redimensionar.bind(this);
     addEventListener('resize', this._redimensionar);
     this._redimensionar();
@@ -95,10 +100,13 @@ export class Cinema {
     const mat = (cor, rough = 0.85, extra = {}) => new THREE.MeshStandardMaterial({ color: cor, roughness: rough, ...extra });
 
     // piso (carpete) e degraus da plateia
-    const piso = new THREE.Mesh(new THREE.PlaneGeometry(L, P), mat('#1a0b10', 0.95));
+    const M = this._m;
+    const piso = new THREE.Mesh(new THREE.PlaneGeometry(L, P), M.piso = mat('#1a0b10', 0.95));
     piso.rotation.x = -Math.PI / 2; piso.position.z = 0; piso.receiveShadow = true; c.add(piso);
-    const degrauMat = mat('#3a1520', 0.95);
-    const bordaMat = new THREE.MeshBasicMaterial({ color: '#ff3355' });
+    const degrauMat = M.degrau = mat('#3a1520', 0.95);
+    const bordaMat = M.borda = new THREE.MeshBasicMaterial({ color: '#ff3355' });
+    M.neonA = new THREE.MeshBasicMaterial({ color: '#ff1f3d' });
+    M.neonB = new THREE.MeshBasicMaterial({ color: '#ff1f3d' });
     for (let i = 0; i < FILEIRAS; i++) {
       const z = this._zFila(i), y = this._yFila(i);
       if (y <= 0) continue;
@@ -116,8 +124,8 @@ export class Cinema {
     fundoPlat.position.set(0, ultimoY / 2, this._zFila(FILEIRAS - 1) - PASSO_FILA / 2 - 3); c.add(fundoPlat);
 
     // paredes com painéis acústicos
-    const paredeMat = mat('#4a1220', 0.9, { emissive: '#1a0308' });
-    const painelMat = mat('#5c1626', 0.75, { emissive: '#220509' });
+    const paredeMat = M.parede = mat('#4a1220', 0.9, { emissive: '#1a0308' });
+    const painelMat = M.painel = mat('#5c1626', 0.75, { emissive: '#220509' });
     for (const lado of [-1, 1]) {
       const parede = new THREE.Mesh(new THREE.PlaneGeometry(P, A), paredeMat);
       parede.position.set(lado * L / 2, A / 2, 0); parede.rotation.y = -lado * Math.PI / 2; c.add(parede);
@@ -125,27 +133,27 @@ export class Cinema {
         const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 5.5, 3.2), painelMat);
         p.position.set(lado * (L / 2 - 0.08), 5.2, -12 + k * 4.2); c.add(p);
         // neon vertical vermelho entre painéis
-        const neon = new THREE.Mesh(new THREE.BoxGeometry(0.06, 7, 0.08), new THREE.MeshBasicMaterial({ color: '#ff1f3d' }));
+        const neon = new THREE.Mesh(new THREE.BoxGeometry(0.06, 7, 0.08), k % 2 ? M.neonB : M.neonA);
         neon.position.set(lado * (L / 2 - 0.1), 5.6, -14.1 + k * 4.2); c.add(neon);
       }
       // faixa de neon no topo
-      const faixa = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, P), new THREE.MeshBasicMaterial({ color: '#ff2a48' }));
+      const faixa = new THREE.Mesh(new THREE.BoxGeometry(0.08, 0.08, P), M.faixa ||= new THREE.MeshBasicMaterial({ color: '#ff2a48' }));
       faixa.position.set(lado * (L / 2 - 0.15), A - 1.2, 0); c.add(faixa);
       // arandelas
       for (let k = 0; k < 4; k++) {
-        const ar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 0.5, 12, 1, true), new THREE.MeshBasicMaterial({ color: '#ffb36b', side: THREE.DoubleSide }));
+        const ar = new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.28, 0.5, 12, 1, true), M.arandela ||= new THREE.MeshBasicMaterial({ color: '#ffb36b', side: THREE.DoubleSide }));
         ar.position.set(lado * (L / 2 - 0.3), 8.6, -10 + k * 6); c.add(ar);
       }
     }
     const fundo = new THREE.Mesh(new THREE.PlaneGeometry(L, A), paredeMat);
     fundo.position.set(0, A / 2, zFundo); c.add(fundo);
-    const frente = new THREE.Mesh(new THREE.PlaneGeometry(L, A), mat('#0d0508'));
+    const frente = new THREE.Mesh(new THREE.PlaneGeometry(L, A), M.frente = mat('#0d0508'));
     frente.position.set(0, A / 2, TELA.z + 0.6); frente.rotation.y = Math.PI; c.add(frente);
 
     // teto com luzinhas
-    const teto = new THREE.Mesh(new THREE.PlaneGeometry(L, P), mat('#0c0609', 1));
+    const teto = new THREE.Mesh(new THREE.PlaneGeometry(L, P), M.teto = mat('#0c0609', 1));
     teto.rotation.x = Math.PI / 2; teto.position.y = A; c.add(teto);
-    const luz = new THREE.Mesh(new THREE.CircleGeometry(0.09, 10), new THREE.MeshBasicMaterial({ color: '#ffe2c4' }));
+    const luz = new THREE.Mesh(new THREE.CircleGeometry(0.09, 10), M.luzTeto = new THREE.MeshBasicMaterial({ color: '#ffe2c4' }));
     luz.rotation.x = Math.PI / 2;
     const luzes = new THREE.InstancedMesh(luz.geometry, luz.material, 60);
     const m = new THREE.Matrix4(); let n = 0;
@@ -154,7 +162,7 @@ export class Cinema {
     }
     luzes.count = n; c.add(luzes);
     // sanca com neon em volta do teto
-    const sanca = new THREE.Mesh(new THREE.TorusGeometry(1, 0.02, 4, 4), new THREE.MeshBasicMaterial({ color: '#ff2a48' }));
+    const sanca = new THREE.Mesh(new THREE.TorusGeometry(1, 0.02, 4, 4), M.sanca = new THREE.MeshBasicMaterial({ color: '#ff2a48' }));
     sanca.scale.set(L * 0.36, P * 0.36, 1); sanca.rotation.set(Math.PI / 2, 0, Math.PI / 4); sanca.position.y = A - 0.6; c.add(sanca);
 
     // logo na parede do fundo (como na referência)
@@ -169,7 +177,7 @@ export class Cinema {
     }
 
     // cortinas laterais do telão
-    const cortinaMat = new THREE.MeshStandardMaterial({ color: '#7a0a16', roughness: 0.7, side: THREE.DoubleSide });
+    const cortinaMat = M.cortina = new THREE.MeshStandardMaterial({ color: '#7a0a16', roughness: 0.7, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) {
       const g = new THREE.PlaneGeometry(3.2, A - 1, MOBILE ? 16 : 40, 1);
       const pos = g.attributes.position;
@@ -179,22 +187,22 @@ export class Cinema {
       cort.position.set(lado * (TELA.w / 2 + 1.6), (A - 1) / 2, TELA.z - 0.3); cort.rotation.y = Math.PI; c.add(cort);
     }
     // palco
-    const palco = new THREE.Mesh(new THREE.BoxGeometry(L, 0.9, 2.2), mat('#14070b'));
+    const palco = new THREE.Mesh(new THREE.BoxGeometry(L, 0.9, 2.2), M.palco = mat('#14070b'));
     palco.position.set(0, 0.45, TELA.z - 0.9); c.add(palco);
-    const ledPalco = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.04), new THREE.MeshBasicMaterial({ color: '#ff2a48' }));
+    const ledPalco = new THREE.Mesh(new THREE.BoxGeometry(L, 0.04, 0.04), M.ledPalco = new THREE.MeshBasicMaterial({ color: '#ff2a48' }));
     ledPalco.position.set(0, 0.9, TELA.z - 2); c.add(ledPalco);
 
     // iluminação
-    c.add(new THREE.HemisphereLight('#ffc2cc', '#1a0810', 1.1));
-    const ambiente = new THREE.AmbientLight('#3a1420', 1.2); c.add(ambiente);
+    c.add(this._l.hemi = new THREE.HemisphereLight('#ffc2cc', '#1a0810', 1.1));
+    const ambiente = this._l.amb = new THREE.AmbientLight('#3a1420', 1.2); c.add(ambiente);
     if (MOBILE) ambiente.intensity = 2.2;
     for (const lado of (MOBILE ? [] : [-1, 1])) {
       const pl = new THREE.PointLight('#ff2040', 60, 22, 1.4);
-      pl.position.set(lado * 10, 7, 0); c.add(pl);
+      pl.position.set(lado * 10, 7, 0); c.add(pl); this._l.pontos.push(pl);
       const pl2 = new THREE.PointLight('#ff2040', 45, 20, 1.4);
-      pl2.position.set(lado * 10, 6, 10); c.add(pl2);
+      pl2.position.set(lado * 10, 6, 10); c.add(pl2); this._l.pontos.push(pl2);
     }
-    if (!MOBILE) { const fundoLuz = new THREE.PointLight('#ffb070', 14, 14, 1.8); fundoLuz.position.set(0, 9, zFundo + 3); c.add(fundoLuz); }
+    if (!MOBILE) { const fundoLuz = new THREE.PointLight('#ffb070', 14, 14, 1.8); fundoLuz.position.set(0, 9, zFundo + 3); c.add(fundoLuz); this._l.fundo = fundoLuz; }
     // luz do telão (cor varia com o filme)
     this.luzTela = new THREE.SpotLight('#9ab6ff', 60, 40, Math.PI / 3.2, 0.8, 1.2);
     this.luzTela.position.set(0, TELA.y, TELA.z - 1);
@@ -223,7 +231,7 @@ export class Cinema {
     const c = this.cena;
     const moldura = new THREE.Mesh(new THREE.BoxGeometry(TELA.w + 0.6, TELA.h + 0.6, 0.2), new THREE.MeshStandardMaterial({ color: '#050305', roughness: 0.5 }));
     moldura.position.set(0, TELA.y, TELA.z + 0.12); c.add(moldura);
-    const brilho = new THREE.Mesh(new THREE.PlaneGeometry(TELA.w + 1.4, TELA.h + 1.4), new THREE.MeshBasicMaterial({ color: '#ff2a48', transparent: true, opacity: 0.18 }));
+    const brilho = new THREE.Mesh(new THREE.PlaneGeometry(TELA.w + 1.4, TELA.h + 1.4), this._m.brilho = new THREE.MeshBasicMaterial({ color: '#ff2a48', transparent: true, opacity: 0.18 }));
     brilho.position.set(0, TELA.y, TELA.z + 0.24); brilho.rotation.y = Math.PI; c.add(brilho);
 
     this.texturaVideo = new THREE.VideoTexture(this.video);
@@ -332,7 +340,9 @@ export class Cinema {
         inst.setMatrixAt(k, mBloco.clone().multiply(o.matrixWorld));
       });
       baratear(inst); this.cena.add(inst);
+      this._matsPoltrona.push(inst.material);
     });
+    this.tema?.registrarPoltronas(this._matsPoltrona);
     this.assentos.sort((a, b) => a.prioridade - b.prioridade);
     return true;
   }
@@ -498,7 +508,11 @@ export class Cinema {
   _animar(t) {
     if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
+    this.tema?.animar(t);
   }
+
+  // muda o ambiente da sala para o gênero do filme (null = sala original do CineOnline)
+  aplicarTema(filme) { this.tema?.aplicar(filme); }
   animar() {
     this.relogio.getDelta();
     this._animar(this.relogio.elapsedTime);
@@ -529,6 +543,7 @@ export class Cinema {
 
   destruir() {
     this.renderer.setAnimationLoop(null);
+    this.tema?.destruir();
     removeEventListener('resize', this._redimensionar);
     this.renderer.dispose();
   }

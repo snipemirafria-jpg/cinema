@@ -437,7 +437,7 @@ class ExperienciaVR {
     this._ligarSensores();
     this._ligarToque();
     if (tipoTela === 'textura') this._ligarVideo();
-    this._tSync = setInterval(() => this._sincronizarOlhos(), 700);
+    this._tSync = setInterval(() => this._sincronizarOlhos(), 200);
     this._redimensionar = () => this._tamanho(); addEventListener('resize', this._redimensionar);
     this._tamanho();
     $('[data-ctl]', this.raiz).hidden = false;
@@ -655,6 +655,7 @@ class ExperienciaVR {
     o.cont.remove();
   }
   _destruirOlhosHtml() {
+    this._sinc = null;
     while (this.olhosHtml?.length) this._destruirOlho(this.olhosHtml.pop());
     this.olhosHtml = null;
   }
@@ -666,15 +667,38 @@ class ExperienciaVR {
     this._atualizarBotoes();
     this._msg('Este filme usa o player do próprio site: toque no telão para dar play.', 5000);
   }
-  // o olho direito segue o esquerdo (o esquerdo tem o som)
+  // o olho direito segue o esquerdo (o esquerdo tem o som).
+  // Dois players nunca andam juntos sozinhos: em vez de pular (seek) a cada diferença, o que fazia o olho
+  // direito ficar sempre atrasado (cada pulo do YouTube carrega de novo), o direito acelera ou freia até
+  // encostar no esquerdo. Só pula quando a diferença é grande, já descontando o tempo que o pulo leva.
   _sincronizarOlhos() {
     const [a, b] = this.olhosHtml || []; if (!a || !b || this.html?.tipo === 'iframe') return;
     try {
       const am = a.m, bm = b.m; if (!am || !bm) return;
-      if (am.paused !== bm.paused) am.paused ? bm.pause() : Promise.resolve(bm.play()).catch(() => { });
-      const d = am.currentTime - bm.currentTime;
-      if (Math.abs(d) > 0.35) bm.currentTime = am.currentTime + (am.paused ? 0 : 0.15);
       if (!bm.muted) bm.muted = true;
+      const yt = typeof bm.taxa === 'function';
+      const taxa = (r) => { if (yt) bm.taxa(r); else if (bm.playbackRate !== r) bm.playbackRate = r; };
+      const st = this._sinc ||= { lat: yt ? 0.45 : 0.08, ate: 0, pulo: null };
+      const agora = performance.now();
+      if (am.paused) {   // pausado: deixa os dois no mesmo quadro
+        if (!bm.paused) bm.pause();
+        taxa(1);
+        if (Math.abs(am.currentTime - bm.currentTime) > 0.08 && agora > st.ate) { bm.currentTime = am.currentTime; st.ate = agora + 600; }
+        return;
+      }
+      if (bm.paused) Promise.resolve(bm.play()).catch(() => { });
+      if (agora < st.ate || bm.carregando) return;            // esperando o pulo anterior assentar
+      const d = am.currentTime - bm.currentTime;              // > 0: o direito está atrasado
+      if (st.pulo) {                                          // aprende quanto tempo o pulo leva neste aparelho
+        st.lat = Math.min(1.5, Math.max(0, st.lat + d * 0.6)); st.pulo = null;
+      }
+      if (Math.abs(d) > 1.2) {
+        taxa(1); bm.currentTime = am.currentTime + st.lat; st.pulo = true; st.ate = agora + (yt ? 1200 : 500);
+      } else if (Math.abs(d) > 0.05) {
+        if (yt) taxa(d > 0 ? 1.25 : 0.75);
+        else taxa(1 + Math.max(-0.12, Math.min(0.12, d * 0.6)));
+      } else taxa(1);
+      this._difOlhos = d;
     } catch { }
   }
   _htmlVisivel(o, cam) {   // o CSS 3D se desenha errado quando o telão fica atrás da câmera: esconde nesse caso

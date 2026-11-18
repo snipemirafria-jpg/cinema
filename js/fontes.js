@@ -103,6 +103,19 @@ export class MidiaYouTube {
   set volume(_) { }
   play() { if (this.pronto) this.p.playVideo(); return Promise.resolve(); }
   pause() { if (this.pronto) this.p.pauseVideo(); }
+  get carregando() { return this._estado === 3; }
+  // velocidade real do player (o setter playbackRate fica neutro para não mudar a sincronia da sessão).
+  // Usado pelo VR para o olho direito alcançar o esquerdo sem ficar pulando (seek).
+  taxa(r) {
+    if (!this.pronto) return 1;
+    let alvo = 1;
+    if (r !== 1) {
+      let lista = [1]; try { lista = this.p.getAvailablePlaybackRates() || [1]; } catch { }
+      alvo = (r > 1 ? lista.filter(x => x > 1).sort((a, b) => a - b)[0] : lista.filter(x => x < 1).sort((a, b) => b - a)[0]) || 1;
+    }
+    if (this._taxa !== alvo) { this._taxa = alvo; try { this.p.setPlaybackRate(alvo); } catch { } }
+    return alvo;
+  }
   destruir() { try { this.p?.destroy(); } catch { } this.el.remove(); }
 }
 
