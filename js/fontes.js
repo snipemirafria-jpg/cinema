@@ -80,7 +80,7 @@ export class MidiaYouTube {
         videoId: id, width: '100%', height: '100%',
         playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'none', hl: 'pt', start: Math.floor(inicio || 0) },
         events: {
-          onReady: () => { this.pronto = true; this.semLegenda(); this.p.mute(); this.p.playVideo(); eventos.pronto?.(); },
+          onReady: () => { this.pronto = true; this.semLegenda(); this.p.mute(); this.p.playVideo(); this._vigiarAnuncio(); eventos.pronto?.(); },
           onStateChange: (e) => {
             this._estado = e.data;
             if (e.data === 1) { this.semLegenda(); eventos.tocando?.(); }
@@ -91,6 +91,22 @@ export class MidiaYouTube {
         },
       });
     });
+  }
+  // Detecta anúncio: o YouTube diz "tocando" mas o tempo do filme fica parado (a API não avisa de anúncio).
+  // Quando o tempo volta a andar normalmente, o anúncio acabou.
+  _vigiarAnuncio() {
+    this.anuncio = false; let ultimo = null, parado = 0, andando = 0;
+    this._vigia = setInterval(() => {
+      if (!this.pronto || document.hidden) return;
+      let t; try { t = this.p.getCurrentTime(); } catch { return; }
+      const delta = ultimo == null ? null : t - ultimo; ultimo = t;
+      if (delta == null) return;
+      if (this._estado === 1 && Math.abs(delta) < 0.05) { parado++; andando = 0; }
+      else if (delta > 0.5 && delta < 2.5) { andando++; parado = 0; }
+      else { parado = 0; }
+      if (!this.anuncio && parado >= 2) { this.anuncio = true; this.eventos.anuncio?.(true); }
+      else if (this.anuncio && andando >= 2) { this.anuncio = false; this.eventos.anuncio?.(false); }
+    }, 1000);
   }
   get readyState() { return this.pronto ? 4 : 0; }
   get currentTime() { return this.pronto ? this.p.getCurrentTime() : 0; }
@@ -116,7 +132,7 @@ export class MidiaYouTube {
     if (this._taxa !== alvo) { this._taxa = alvo; try { this.p.setPlaybackRate(alvo); } catch { } }
     return alvo;
   }
-  destruir() { try { this.p?.destroy(); } catch { } this.el.remove(); }
+  destruir() { clearInterval(this._vigia); if (this.anuncio) this.eventos.anuncio?.(false); try { this.p?.destroy(); } catch { } this.el.remove(); }
 }
 
 // Página qualquer (sem controle de tempo): mostrada como está no telão.

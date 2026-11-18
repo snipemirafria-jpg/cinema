@@ -14,11 +14,11 @@ function carregarDash() {
 }
 
 export class PlayerSincronizado {
-  constructor(video, { aoMudarFilme, aoLegenda, aoEstado, aoModo } = {}) {
+  constructor(video, { aoMudarFilme, aoLegenda, aoEstado, aoModo, aoAnuncio } = {}) {
     this.v = video;            // <video crossorigin> cujo quadro vira textura do telão 3D
     this.m = video;            // mídia ativa (video, video livre, YouTube ou iframe)
     this.modo = 'textura';
-    this.aoMudarFilme = aoMudarFilme; this.aoLegenda = aoLegenda; this.aoEstado = aoEstado; this.aoModo = aoModo;
+    this.aoMudarFilme = aoMudarFilme; this.aoLegenda = aoLegenda; this.aoEstado = aoEstado; this.aoModo = aoModo; this.aoAnuncio = aoAnuncio;
     // <video> sem crossorigin: toca links sem CORS (Drive, sites comuns), mostrado como elemento no telão
     const vl = this.vLivre = document.createElement('video');
     vl.className = 'midia-video'; vl.playsInline = true; vl.setAttribute('webkit-playsinline', ''); vl.muted = true; vl.preload = 'auto';
@@ -119,6 +119,7 @@ export class PlayerSincronizado {
         tocando: () => this.aoEstado?.('tocando'), carregando: () => this.aoEstado?.('carregando'),
         fim: () => setTimeout(() => this.atualizar(), 800), erro: (msg) => this.aoEstado?.('erro', msg),
         pronto: () => this._corrigir(true),
+        anuncio: (sim) => { this.emAnuncio = sim; this.aoAnuncio?.(sim); if (!sim) this._corrigir(true); },
       });
       this._usar('youtube', yt);
       return;
@@ -175,7 +176,7 @@ export class PlayerSincronizado {
 
   _corrigir(forcar = false) {
     const v = this.m;
-    if (v.semControle || this.controleLocal) return;   // controleLocal: a pessoa controla o filme só para ela (modo VR)
+    if (v.semControle || this.controleLocal || this.emAnuncio) return;   // durante anúncio não mexe no tempo   // controleLocal: a pessoa controla o filme só para ela (modo VR)
     if (!this.estado?.filme || v.readyState < 1) return;
     if (this.estado.pausado) { if (!v.paused) v.pause(); return; }
     const alvo = this.posicaoAlvo();

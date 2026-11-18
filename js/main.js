@@ -209,16 +209,21 @@ async function abrirCinema() {
     else { player.silenciar(); $('#btn-som').textContent = '🔇 Ativar som'; }
   };
   // "Pular anúncio": por 20 s o player sai do 3D e o toque vai para o player do YouTube, para tocar no botão "Pular" dele
+  // Quando o app percebe um anúncio, aparece o botão grande no telão; ao fim do anúncio volta sozinho ao cinema 3D.
   let tPular;
-  $('#btn-pular-anuncio').onclick = () => {
-    const ligar = !document.body.classList.contains('yt-tocavel');
+  const modoPular = (ligar) => {
     document.body.classList.toggle('yt-tocavel', ligar); $('#btn-pular-anuncio').classList.toggle('ativo', ligar);
+    $('#aviso-anuncio').hidden = ligar || !player.emAnuncio;
     clearTimeout(tPular);
-    if (ligar) {
-      toast('Toque em "Pular" no vídeo. Toque de novo em ⏭ para voltar ao cinema', 'ok');
-      tPular = setTimeout(() => { document.body.classList.remove('yt-tocavel'); $('#btn-pular-anuncio').classList.remove('ativo'); }, 20000);
-    }
+    if (ligar) tPular = setTimeout(() => modoPular(false), 60000);   // segurança: volta ao 3D depois de 1 min
   };
+  $('#btn-pular-anuncio').onclick = () => modoPular(!document.body.classList.contains('yt-tocavel'));
+  $('#aviso-anuncio').onclick = () => modoPular(true);
+  eventosPlayer.aoAnuncio = (sim) => {
+    if (!sim) { $('#aviso-anuncio').hidden = true; if (document.body.classList.contains('yt-tocavel')) modoPular(false); return; }
+    if (!document.body.classList.contains('yt-tocavel')) $('#aviso-anuncio').hidden = false;
+  };
+  player.aoAnuncio = eventosPlayer.aoAnuncio;
   // navegadores só liberam som após um toque do usuário
   $('#toque-iniciar').hidden = false;
   if (!estado.sala) player.atualizar();      // na sala do filme, o início vem de quem já está assistindo
