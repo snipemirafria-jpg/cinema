@@ -25,6 +25,8 @@ async function iniciar() {
 
   const antes = menu.querySelector('[data-ir="painel"]') || menu.querySelector('[data-ir="sair"]');
   for (const f of FORNECEDORES) {
+    // fornecedor sem nenhum filme ainda: não mostra o botão
+    try { const d = await (await fetch(new URL(f.catalogo, BASE))).json(); if (!(d.items || d).length) continue; } catch { continue; }
     const painel = document.createElement('div');
     painel.className = 'fornecedor-painel';
     painel.id = f.id === 'netmovies' ? 'netmovies-painel' : `fornecedor-${f.id}-painel`;

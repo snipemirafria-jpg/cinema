@@ -1,0 +1,12 @@
+{
+  "source": {
+    "id": "cineonline-r2",
+    "name": "Cine Online",
+    "ads": false,
+    "subtitle": "Filmes sem anúncios",
+    "channelUrl": "",
+    "licenseNote": "Arquivos MP4 próprios hospedados no Cloudflare R2.",
+    "lastChecked": "2026-11-18"
+  },
+  "items": []
+}

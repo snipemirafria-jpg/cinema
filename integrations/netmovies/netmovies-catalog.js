@@ -19,7 +19,7 @@
     .aviso-anuncio{display:flex;gap:10px;align-items:center;background:#3a2a06;border:1px solid #a87b12;color:#ffe2a0;border-radius:10px;padding:10px 12px;font-size:.88rem;margin:0 0 14px}.aviso-anuncio b{color:#fff}
     .empty{padding:24px;text-align:center;opacity:.7}.credit{font-size:.75rem;opacity:.65;margin:16px 0 0}
     dialog{width:min(900px,94vw);padding:0;border:1px solid #444;border-radius:14px;background:#08090c;color:white}
-    dialog::backdrop{background:#000c}.player{aspect-ratio:16/9;background:#000}.player iframe{width:100%;height:100%;border:0}
+    dialog::backdrop{background:#000c}.player{aspect-ratio:16/9;background:#000}.player iframe,.player video{width:100%;height:100%;border:0;display:block}
     .modalhead{display:flex;justify-content:space-between;align-items:center;padding:12px 16px;gap:10px}.modalhead button{background:#30343d;color:white;border:0;border-radius:8px;padding:8px 12px;cursor:pointer}
     @media(max-width:480px){.wrap{padding:12px}.grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.info{padding:8px}}
   `;
@@ -35,7 +35,9 @@
       const url=this.getAttribute('catalog')||window.NETMOVIES_CATALOG_URL||'./catalogo-netmovies.json';
       let data;try{const res=await fetch(url);if(!res.ok)throw new Error('HTTP '+res.status);data=await res.json();this.items=Array.isArray(data)?data:(data.items||[]);}
       catch(err){this.shadowRoot.querySelector('.grid').innerHTML='<p class="empty">Não foi possível carregar o catálogo. Confira o caminho do arquivo JSON.</p>';console.error('[NetMovies]',err);return;}
-      const src=data.source||{};if(src.name){const nome=src.name;this.shadowRoot.querySelector('h2').textContent=`${nome} — Filmes gratuitos`;this.shadowRoot.querySelector('.sub').textContent=`Filmes publicados no canal oficial ${nome}`;const a=this.shadowRoot.querySelector('.credit a');a.textContent=`Canal oficial ${nome}`;if(src.channelUrl)a.href=src.channelUrl;}
+      const src=data.source||{};if(src.ads===false){this.shadowRoot.querySelector('.aviso-anuncio').remove();}
+      if(src.name){const nome=src.name;this.shadowRoot.querySelector('h2').textContent=`${nome} — Filmes gratuitos`;this.shadowRoot.querySelector('.sub').textContent=`Filmes publicados no canal oficial ${nome}`;const a=this.shadowRoot.querySelector('.credit a');a.textContent=`Canal oficial ${nome}`;if(src.channelUrl)a.href=src.channelUrl;}
+      if(src.ads===false){this.shadowRoot.querySelector('.sub').textContent=src.subtitle||'Filmes sem anúncios';this.shadowRoot.querySelector('.credit').textContent='Sem anúncios: todos na sala veem o mesmo ponto do filme.';}
       const genres=[...new Set(this.items.flatMap(x=>x.genres||[]))].sort();
       const select=this.shadowRoot.querySelector('select');genres.forEach(g=>{const o=document.createElement('option');o.value=g;o.textContent=g;select.append(o);});
       this.render();
@@ -63,7 +65,7 @@
       const ev=new CustomEvent('netmovies-assistir',{detail:item,bubbles:true,composed:true,cancelable:true});
       if(!this.dispatchEvent(ev))return;
       this.shadowRoot.querySelector('dialog strong').textContent=item.title;
-      const frame=document.createElement('iframe');frame.src=item.embedUrl;frame.title=`Reprodutor: ${item.title}`;frame.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';frame.allowFullscreen=true;frame.referrerPolicy='strict-origin-when-cross-origin';
+      const frame=/\.(mp4|webm|m4v|mov)(\?|#|$)/i.test(item.embedUrl||'')?Object.assign(document.createElement('video'),{src:item.embedUrl,controls:true,autoplay:true,playsInline:true}):document.createElement('iframe');if(frame.tagName==='IFRAME')frame.src=item.embedUrl;frame.title=`Reprodutor: ${item.title}`;frame.allow='accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share';frame.allowFullscreen=true;frame.referrerPolicy='strict-origin-when-cross-origin';
       const player=this.shadowRoot.querySelector('.player');player.replaceChildren(frame);
       if(typeof this.dialog.showModal==='function')this.dialog.showModal();else this.dialog.setAttribute('open','');
     }
