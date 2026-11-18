@@ -138,7 +138,7 @@ async function filmes() {
   const visiveis = st.pasta === 'Todas' ? data : data.filter(f => (f.categoria || 'Outros') === st.pasta);
   const icone = (n) => st.cats.find(c => c.nome === n)?.icone || '🎬';
   C.innerHTML = `
-    <div class="linha-acoes"><button class="btn p" id="f-novo">+ Adicionar filme por link</button><button class="btn" id="f-archive">🔎 Buscar filmes gratuitos</button><button class="btn" id="f-pasta">+ Nova pasta</button></div>
+    <div class="linha-acoes"><button class="btn p" id="f-novo">+ Adicionar filme por link</button><button class="btn p" id="f-drive">📂 Importar pasta do Drive</button><button class="btn" id="f-archive">🔎 Buscar filmes gratuitos</button><button class="btn" id="f-pasta">+ Nova pasta</button></div>
     <div class="pastas">
       <button class="pasta ${st.pasta === 'Todas' ? 'ativa' : ''}" data-pasta="Todas">📁 Todas <small>${data.length}</small></button>
       ${st.cats.map(c => `<button class="pasta ${st.pasta === c.nome ? 'ativa' : ''}" data-pasta="${esc(c.nome)}">${esc(c.icone)} ${esc(c.nome)} <small>${conta(c.nome)}</small></button>`).join('')}
@@ -157,6 +157,7 @@ async function filmes() {
       </div>`).join('') || '<p class="dica">Nenhum filme nesta pasta ainda. Clique em “Adicionar filme por link”.</p>'}</div>`;
   $('#f-novo').onclick = () => formFilme({ categoria: st.pasta !== 'Todas' ? st.pasta : 'Outros' });
   $('#f-archive').onclick = buscarInternetArchive;
+  $('#f-drive').onclick = importarDrive;
   $('#f-pasta').onclick = () => modal(`<h3>Nova pasta</h3>
       <div class="form-grid"><label>Nome<input name="nome" required maxlength="30" placeholder="Ex: Filmes de herói"></label>
       <label>Ícone (emoji)<input name="icone" maxlength="4" value="🎬"></label></div>`, async (fm) => {
@@ -242,6 +243,67 @@ async function buscarInternetArchive() {
   };
   $('#archive-buscar', fm).onclick = buscar;
   $('[name=q]', fm).addEventListener('keydown', e => { if (e.key === 'Enter') { e.preventDefault(); buscar(); } });
+}
+
+// --------------------------------------------- importar pasta do Google Drive
+async function importarDrive() {
+  const { analisarPasta, CHAVE_LS } = await import('./drive-import.js');
+  const chaveSalva = localStorage.getItem(CHAVE_LS) || '';
+  const cats = st.cats || [];
+  const opc = (sel) => cats.map(c => `<option ${sel === c.nome ? 'selected' : ''}>${esc(c.nome)}</option>`).join('');
+  const fm = modal(`
+    <h3>Importar filmes de uma pasta do Drive</h3>
+    <label class="todo">Link da pasta (compartilhada como “Qualquer pessoa com o link”)
+      <input name="pasta" placeholder="https://drive.google.com/drive/folders/…"></label>
+    <details class="todo" ${chaveSalva ? '' : 'open'}><summary>Chave da Google Drive API ${chaveSalva ? '✓ salva' : '(necessária, só uma vez)'}</summary>
+      <label class="todo">Chave<input name="chave" value="${esc(chaveSalva)}" placeholder="AIza…" autocomplete="off"></label>
+      <p class="dica">Grátis: console.cloud.google.com → crie um projeto → ative “Google Drive API” → Credenciais → Criar chave de API. Restrinja a chave ao seu site. Fica salva só neste navegador.</p>
+    </details>
+    <p class="dica">Pode ser a pasta de um filme (vídeo + capa), uma pasta com vários vídeos ou uma pasta com subpastas (uma por filme). Título, duração, capa, sinopse e gênero vêm sozinhos.</p>
+    <div class="linha-acoes"><button type="button" class="btn p" id="dr-ler">Ler pasta</button></div>
+    <p class="dica" id="dr-info"></p>
+    <div id="dr-lista" class="archive-resultados todo"></div>`, async (f) => {
+    const linhas = $$('[data-dr]', f).filter(l => $('[name=ok]', l).checked);
+    const info = $('#dr-info', f);
+    if (!st.drive?.length || !linhas.length) { info.textContent = 'Leia a pasta e marque ao menos um filme.'; return false; }
+    let n = 0;
+    for (const l of linhas) {
+      const d = st.drive[+l.dataset.dr], min = parseFloat($('[name=min]', l).value);
+      if (!(min > 0)) { info.textContent = `❌ Falta a duração de “${d.titulo}”.`; return false; }
+      const categoria = $('[name=cat]', l).value;
+      const reg = {
+        titulo: $('[name=tit]', l).value.trim() || d.titulo, descricao: d.descricao, origem: 'drive', categoria,
+        genero: d.genero || categoria, classificacao: 'L', idioma: 'Português', duracao_seg: Math.round(min * 60),
+        capa_url: d.capa_url, fonte_url: d.fonte_url, legendas: [], licenca_tipo: 'Não informado', criado_por: st.uid,
+      };
+      info.textContent = `Salvando ${++n}/${linhas.length}…`;
+      if (erro((await sb.from('filmes').insert(reg)).error)) return false;
+    }
+    toast(`${n} filme(s) importado(s)`, 'ok'); filmes();
+  });
+  $('button[value=ok]', fm).textContent = 'Importar marcados';
+  const info = $('#dr-info', fm), lista = $('#dr-lista', fm);
+  const ler = async () => {
+    const chave = $('[name=chave]', fm).value.trim();
+    if (chave) localStorage.setItem(CHAVE_LS, chave);
+    lista.innerHTML = ''; st.drive = [];
+    try {
+      st.drive = await analisarPasta($('[name=pasta]', fm).value, chave, cats, (t) => info.textContent = t);
+      const pad = st.pasta !== 'Todas' ? st.pasta : 'Outros';
+      lista.innerHTML = st.drive.map((d, i) => `<article class="archive-item" data-dr="${i}">
+        <img src="${esc(d.capa_url)}" alt="" loading="lazy" onerror="this.style.visibility='hidden'">
+        <div class="archive-meta"><label class="linha-check"><input type="checkbox" name="ok" checked style="width:auto"> <input name="tit" value="${esc(d.titulo)}"></label>
+          <small>${esc(d.ano || '')}${d.genero ? ' · ' + esc(d.genero) : ''}</small>
+          <p>${esc((d.descricao || 'Sem sinopse encontrada.').slice(0, 220))}</p>
+          <div class="linha-acoes"><label>Minutos<input name="min" type="number" min="1" style="width:80px" value="${d.duracao_seg ? Math.round(d.duracao_seg / 60) : ''}"></label>
+          <label>Pasta<select name="cat">${opc(d.categoria || pad)}</select></label></div>
+          ${d.formato_ok ? '' : '<small>⚠️ MKV/AVI: o Drive pode não tocar no navegador; prefira MP4.</small>'}
+        </div></article>`).join('');
+      info.textContent = `✓ ${st.drive.length} filme(s) encontrado(s). Confira e clique em “Importar marcados”.`;
+    } catch (e) { info.textContent = '❌ ' + e.message; }
+  };
+  $('#dr-ler', fm).onclick = ler;
+  $('[name=pasta]', fm).addEventListener('paste', () => setTimeout(() => { if ($('[name=chave]', fm).value.trim()) ler(); }, 50));
 }
 
 async function addFila(filme) {
