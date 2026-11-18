@@ -99,6 +99,7 @@
       <button data-ir="chat" title="Chat">💬<span>Chat</span></button>
       <button data-ir="pessoas" title="Participantes">👥<span>Pessoas</span></button>
       <button data-ir="programacao" title="Programação">🗓️<span>Próximos</span></button>
+      <button data-ir="vr" id="menu-vr" title="Entrar no VR">🥽<span>VR</span></button>
       <button data-ir="painel" id="menu-painel" hidden title="Painel do criador">👑<span>Painel</span></button>
       <button data-ir="sair" title="Sair">🚪<span>Sair</span></button>
     </nav>
@@ -155,6 +156,35 @@
       <div class="acoes"><button value="cancelar" class="btn-sec" formnovalidate>Cancelar</button><button value="ok" class="btn-perigo">Enviar denúncia</button></div>
     </form>
   </dialog>
+
+  <!-- MODO VR -->
+  <dialog id="modal-vr" class="modal modal-vr">
+    <form method="dialog">
+      <h3>🥽 Entrar no VR</h3>
+      <p class="dica">Você continua na mesma sala do CineOnline, sentado na sua poltrona, olhando para o telão. O filme e a sincronia com a galera seguem iguais.</p>
+      <div id="vr-opcoes" class="vr-opcoes"><p class="dica">Verificando o que este aparelho suporta…</p></div>
+      <label class="vr-qual">Qualidade
+        <select id="vr-qualidade"><option value="baixa">Baixa (aparelhos mais simples)</option><option value="media">Média</option><option value="alta">Alta</option></select>
+      </label>
+      <p class="dica" id="vr-aviso-fonte" hidden></p>
+      <div class="acoes"><button value="cancelar" class="btn-sec">Fechar</button></div>
+    </form>
+  </dialog>
+  <div id="vr-ui" class="vr-ui" hidden>
+    <div class="vr-barra">
+      <button data-vr="centro" title="Centralizar visão">↻</button>
+      <button data-vr="perto" title="Telão mais perto">⇡</button>
+      <button data-vr="longe" title="Telão mais longe">⇣</button>
+      <button data-vr="menor" title="Telão menor">−</button>
+      <button data-vr="maior" title="Telão maior">+</button>
+      <button data-vr="ipd-" title="Olhos mais juntos" class="so-cardboard">◂▸</button>
+      <button data-vr="ipd+" title="Olhos mais separados" class="so-cardboard">◃ ▹</button>
+      <button data-vr="lente" title="Lente do óculos liga/desliga" class="so-cardboard">◐</button>
+      <button data-vr="sair" class="sair" title="Sair do VR">✕ Sair</button>
+    </div>
+    <small id="vr-valores"></small>
+  </div>
+  <div id="vr-divisor" class="vr-divisor" hidden></div>
 
   <div id="toasts"></div>
   <script type="module" src="js/main.js"></script>

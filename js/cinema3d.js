@@ -231,6 +231,7 @@ export class Cinema {
     const c = this.cena;
     const moldura = new THREE.Mesh(new THREE.BoxGeometry(TELA.w + 0.6, TELA.h + 0.6, 0.2), new THREE.MeshStandardMaterial({ color: '#050305', roughness: 0.5 }));
     moldura.position.set(0, TELA.y, TELA.z + 0.12); c.add(moldura);
+    this.TELA = TELA;
     const brilho = new THREE.Mesh(new THREE.PlaneGeometry(TELA.w + 1.4, TELA.h + 1.4), this._m.brilho = new THREE.MeshBasicMaterial({ color: '#ff2a48', transparent: true, opacity: 0.18 }));
     brilho.position.set(0, TELA.y, TELA.z + 0.24); brilho.rotation.y = Math.PI; c.add(brilho);
 
@@ -248,6 +249,8 @@ export class Cinema {
     this.texLegenda = new THREE.CanvasTexture(this.cvLegenda); this.texLegenda.colorSpace = THREE.SRGBColorSpace;
     const leg = new THREE.Mesh(new THREE.PlaneGeometry(TELA.w * 0.9, TELA.w * 0.9 * 220 / 1600), new THREE.MeshBasicMaterial({ map: this.texLegenda, transparent: true, toneMapped: false }));
     leg.position.set(0, TELA.y - TELA.h / 2 + 0.9, TELA.z - 0.02); leg.rotation.y = Math.PI; c.add(leg);
+    this.legendaMesh = leg;
+    this.objetosTela = [moldura, brilho, this.tela];   // o modo VR pode ajustar o tamanho aparente do telão
 
     // amostrador de cor média do vídeo para tingir a luz da sala
     this._cvCor = document.createElement('canvas'); this._cvCor.width = 8; this._cvCor.height = 8;
@@ -476,6 +479,8 @@ export class Cinema {
   }
 
   _redimensionar() {
+    if (this.renderer.xr.isPresenting) return;            // durante o WebXR o próprio runtime define o tamanho
+    if (this.vr?.ativo) return this.vr.redimensionar();    // Cardboard: tela dividida
     const w = this.canvas.clientWidth || innerWidth, h = this.canvas.clientHeight || innerHeight;
     this.renderer.setSize(w, h, false);
     this.css.setSize(w, h);
@@ -519,6 +524,13 @@ export class Cinema {
   }
 
   _loop() {
+    // modo VR: o mesmo loop e a mesma cena; o módulo VR só troca a câmera e a forma de desenhar
+    if (this.vr?.ativo) {
+      const dt = Math.min(this.relogio.getDelta(), 0.1);
+      this._animar(this.relogio.elapsedTime);
+      this.vr.quadro(dt);
+      return;
+    }
     if (MOBILE) {                       // celular: ~30 fps e pausa com a aba escondida
       const agora = performance.now();
       if (document.hidden || agora - (this._ult || 0) < 32) return;

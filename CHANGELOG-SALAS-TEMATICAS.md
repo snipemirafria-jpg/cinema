@@ -19,3 +19,12 @@
 
 ## 2026-11-18
 - Modo VR removido por completo (integrations/vr, testes de VR e vídeos 360°).
+
+## 2026-11-18 — Modo VR refeito (js/vr.js)
+- Mesma cena, mesmo loop (setAnimationLoop da sala), mesmo player e mesma textura do telão; nada da sala é clonado.
+- WebXR (headset): renderer.xr do Three.js r170, sessão immersive-vr com referência 'local'; a câmera vai num suporte na poltrona; recentralizar pelo botão de apertar (squeeze) do controle; sair pelo headset volta ao modo normal.
+- Cardboard (celular): sistema separado; StereoCamera (perspectiva por olho, IPD ajustável 50–75 mm), lente em barril opcional, giroscópio (só rotação, 3DoF) com permissão pedida no toque (iPhone); sem sensor/permissão: olhar arrastando o dedo.
+- Controles discretos que somem em 4 s: centralizar, telão perto/longe, maior/menor, olhos, lente, sair. Qualidade baixa/média/alta + redução automática se ficar abaixo de ~24 fps.
+- Estados: NORMAL, VR_CHECKING, VR_WEBXR, VR_CARDBOARD, VR_EXITING, VR_ERROR; toques duplos ignorados; ao sair tudo é restaurado sem recarregar.
+- YouTube, Drive (player do Drive), Internet Archive e sites em iframe não podem virar textura WebGL: no VR o telão mostra um aviso e o som continua.
+- Testado (navegador Chromium simulando celular deitado 844x390): menu mostra só o Cardboard quando não há headset; 10 entradas/saídas seguidas sem listeners sobrando nem erros; vídeo MP4/WebM aparece nos dois olhos; aviso do YouTube; modo normal restaurado. NÃO testado em headset WebXR real, em óculos Cardboard real nem em iPhone real.

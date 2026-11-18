@@ -366,9 +366,66 @@ function configurarMenu() {
     if (ir === 'chat') { $('#chat').classList.toggle('oculto'); $('#chat-input').focus(); }
     if (ir === 'pessoas') { fecharGavetas(); $('#gaveta-pessoas').hidden = false; desenharPessoas(); estado.cinema.visaoGeral(); }
     if (ir === 'programacao') { fecharGavetas(); $('#gaveta-programacao').hidden = false; carregarProgramacao(); }
+    if (ir === 'vr') { fecharGavetas(); abrirVR(); b.classList.remove('ativo'); $('[data-ir="sala"]').classList.add('ativo'); }
     if (ir === 'painel') location.href = 'admin.html';
     if (ir === 'sair') sair();
   });
+}
+
+// ------------------------------------------------------------------ modo VR (js/vr.js)
+// Carregado só quando a pessoa toca em VR: o cinema normal não muda nada.
+async function abrirVR() {
+  if (!estado.cinema || !estado.player) return;
+  const { ModoVR } = await import('./vr.js');
+  const vr = estado.vr || (estado.vr = estado.cinema.vr = new ModoVR(estado.cinema, estado.player, { aviso: (t) => toast(t) }));
+  if (vr.estado !== 'NORMAL' && vr.estado !== 'VR_ERROR') return;   // já entrando/saindo: ignora toque duplo
+  const dlg = $('#modal-vr'), opcoes = $('#vr-opcoes');
+  $('#vr-qualidade').value = vr.qualidade;
+  $('#vr-qualidade').onchange = (e) => vr.definirQualidade(e.target.value);
+  const fonteTextura = estado.player.modo === 'textura';
+  $('#vr-aviso-fonte').hidden = fonteTextura;
+  $('#vr-aviso-fonte').textContent = '⚠️ O filme de agora vem do YouTube, Drive ou de um site, que não deixam a imagem entrar no VR. Você ouve o som, mas o telão mostra um aviso. Filmes em MP4, HLS ou DASH aparecem normalmente.';
+  opcoes.innerHTML = '<p class="dica">Verificando o que este aparelho suporta…</p>';
+  dlg.showModal();
+  const cap = await vr.detectar();
+  let html = '';
+  if (cap.webxr) html += `<button type="button" class="vr-op" data-modo="webxr">Óculos VR (WebXR)<small>Rastreamento da cabeça do próprio óculos, uma imagem para cada olho.</small></button>`;
+  if (cap.cardboard) html += `<button type="button" class="vr-op ${cap.webxr ? 'sec' : ''}" data-modo="cardboard">Celular no óculos (VR Box / Cardboard)<small>Experimental. Tela dividida em dois olhos, ${cap.giroscopio ? 'movimento pelo giroscópio (só giro da cabeça)' : 'olhar arrastando o dedo'}. Deite o celular e coloque no óculos.</small></button>`;
+  if (!html) html = `<div class="vr-indisp">VR indisponível neste aparelho. ${esc(cap.motivoXR)} O modo Cardboard precisa de celular ou tablet. O cinema normal continua funcionando.</div>`;
+  else if (!cap.webxr) html += `<div class="vr-indisp">Óculos VR (WebXR) não disponível aqui: ${esc(cap.motivoXR)}</div>`;
+  opcoes.innerHTML = html;
+  opcoes.querySelectorAll('[data-modo]').forEach(bt => bt.onclick = async () => {
+    // a permissão do sensor precisa ser pedida já no toque (iPhone)
+    const perm = bt.dataset.modo === 'cardboard' ? vr.pedirPermissaoSensor() : null;
+    dlg.close();
+    if (estado.player.mutado) { estado.player.ativarSom(); $('#btn-som').textContent = '🔊'; $('#toque-iniciar').hidden = true; }
+    const ok = bt.dataset.modo === 'webxr' ? await vr.entrarWebXR() : await vr.entrarCardboard(await perm);
+    if (ok) mostrarControlesVR(vr);
+  });
+}
+
+function mostrarControlesVR(vr) {
+  const ui = $('#vr-ui');
+  ui.hidden = false; $('#vr-divisor').hidden = vr.estado !== 'VR_CARDBOARD';
+  let t;
+  const revelar = () => { ui.classList.remove('some'); clearTimeout(t); t = setTimeout(() => ui.classList.add('some'), 4000); };
+  vr.aoToque = revelar;
+  vr.aoValores = ({ ipd, tamanho, distancia }) => { $('#vr-valores').textContent = `Telão ${tamanho}% · distância ${distancia > 0 ? '+' : ''}${distancia.toFixed(1)} m${vr.estado === 'VR_CARDBOARD' ? ` · olhos ${ipd} mm` : ''}`; revelar(); };
+  vr.aoValores({ ipd: Math.round(vr.ipd * 1000), tamanho: 100, distancia: 0 });
+  const acoes = {
+    centro: () => vr.recentralizar(), perto: () => vr.ajustarDistancia(0.5), longe: () => vr.ajustarDistancia(-0.5),
+    menor: () => vr.ajustarTamanho(-0.05), maior: () => vr.ajustarTamanho(0.05),
+    'ipd-': () => vr.ajustarIPD(-0.002), 'ipd+': () => vr.ajustarIPD(0.002),
+    lente: () => toast(vr.alternarLente() ? 'Lente do óculos ligada' : 'Lente do óculos desligada'),
+    sair: () => vr.sair(),
+  };
+  $$('#vr-ui [data-vr]').forEach(b => b.onclick = (e) => { e.stopPropagation(); acoes[b.dataset.vr]?.(); revelar(); });
+  vr.aoSair = () => {
+    clearTimeout(t); ui.hidden = true; ui.classList.remove('some'); $('#vr-divisor').hidden = true;
+    vr.aoToque = vr.aoValores = vr.aoSair = null;
+    $$('#vr-ui [data-vr]').forEach(b => b.onclick = null);
+  };
+  revelar();
 }
 
 function desenharPessoas() {
