@@ -384,7 +384,9 @@ async function abrirVR() {
   $('#vr-qualidade').onchange = (e) => vr.definirQualidade(e.target.value);
   const fonteTextura = estado.player.modo === 'textura';
   $('#vr-aviso-fonte').hidden = fonteTextura;
-  $('#vr-aviso-fonte').textContent = '⚠️ O filme de agora vem do YouTube, Drive ou de um site, que não deixam a imagem entrar no VR. Você ouve o som, mas o telão mostra um aviso. Filmes em MP4, HLS ou DASH aparecem normalmente.';
+  $('#vr-aviso-fonte').textContent = estado.player.modo === 'youtube'
+    ? '▶️ Filme do YouTube: aparece no modo celular (Cardboard), com um player por olho sincronizado. No óculos VR (WebXR) só o som funciona.'
+    : '⚠️ O filme de agora vem do Drive, Archive ou de um site, que não deixam a imagem entrar no VR. Você ouve o som, mas o telão mostra um aviso. Filmes em MP4, HLS, DASH e YouTube aparecem.';
   opcoes.innerHTML = '<p class="dica">Verificando o que este aparelho suporta…</p>';
   dlg.showModal();
   const cap = await vr.detectar();
@@ -405,12 +407,27 @@ async function abrirVR() {
 }
 
 function mostrarControlesVR(vr) {
-  const ui = $('#vr-ui');
-  ui.hidden = false; $('#vr-divisor').hidden = vr.estado !== 'VR_CARDBOARD';
-  let t;
+  const ui = $('#vr-ui'), cardboard = vr.estado === 'VR_CARDBOARD';
+  ui.querySelectorAll('.vr-lado + .vr-lado').forEach(x => x.remove());
+  if (cardboard) ui.appendChild(ui.querySelector('.vr-lado').cloneNode(true));   // uma barra para cada olho
+  ui.hidden = false; $('#vr-divisor').hidden = !cardboard;
+  let t, foco = 0;
   const revelar = () => { ui.classList.remove('some'); clearTimeout(t); t = setTimeout(() => ui.classList.add('some'), 4000); };
+  const botoesDe = (lado) => [...lado.querySelectorAll('[data-vr]')].filter(b => cardboard || !b.classList.contains('so-cardboard'));
+  const marcar = () => ui.querySelectorAll('.vr-lado').forEach(l => botoesDe(l).forEach((b, i) => b.classList.toggle('foco', i === foco)));
+  // controle Bluetooth: joystick escolhe o botão, A aperta, B esconde, cima centraliza
+  vr.aoControle = (a) => {
+    const n = botoesDe(ui.querySelector('.vr-lado')).length;
+    if (ui.classList.contains('some') && a !== 'voltar' && a !== 'cima') { marcar(); revelar(); return; }
+    if (a === 'esquerda') foco = (foco - 1 + n) % n;
+    if (a === 'direita') foco = (foco + 1) % n;
+    if (a === 'cima') vr.recentralizar();
+    if (a === 'ok') botoesDe(ui.querySelector('.vr-lado'))[foco]?.click();
+    if (a === 'voltar') { clearTimeout(t); ui.classList.add('some'); return; }
+    if (vr.ativo) { marcar(); revelar(); }
+  };
   vr.aoToque = revelar;
-  vr.aoValores = ({ ipd, tamanho, distancia }) => { $('#vr-valores').textContent = `Telão ${tamanho}% · distância ${distancia > 0 ? '+' : ''}${distancia.toFixed(1)} m${vr.estado === 'VR_CARDBOARD' ? ` · olhos ${ipd} mm` : ''}`; revelar(); };
+  vr.aoValores = ({ ipd, tamanho, distancia }) => { const txt = `Telão ${tamanho}% · distância ${distancia > 0 ? '+' : ''}${distancia.toFixed(1)} m${vr.estado === 'VR_CARDBOARD' ? ` · olhos ${ipd} mm` : ''}`; $$('#vr-ui .vr-valores').forEach(x => x.textContent = txt); revelar(); };
   vr.aoValores({ ipd: Math.round(vr.ipd * 1000), tamanho: 100, distancia: 0 });
   const acoes = {
     centro: () => vr.recentralizar(), perto: () => vr.ajustarDistancia(0.5), longe: () => vr.ajustarDistancia(-0.5),
@@ -422,8 +439,9 @@ function mostrarControlesVR(vr) {
   $$('#vr-ui [data-vr]').forEach(b => b.onclick = (e) => { e.stopPropagation(); acoes[b.dataset.vr]?.(); revelar(); });
   vr.aoSair = () => {
     clearTimeout(t); ui.hidden = true; ui.classList.remove('some'); $('#vr-divisor').hidden = true;
-    vr.aoToque = vr.aoValores = vr.aoSair = null;
-    $$('#vr-ui [data-vr]').forEach(b => b.onclick = null);
+    vr.aoToque = vr.aoValores = vr.aoSair = vr.aoControle = null;
+    $$('#vr-ui [data-vr]').forEach(b => { b.onclick = null; b.classList.remove('foco'); });
+    ui.querySelectorAll('.vr-lado + .vr-lado').forEach(x => x.remove());
   };
   revelar();
 }

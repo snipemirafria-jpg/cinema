@@ -28,3 +28,10 @@
 - Estados: NORMAL, VR_CHECKING, VR_WEBXR, VR_CARDBOARD, VR_EXITING, VR_ERROR; toques duplos ignorados; ao sair tudo é restaurado sem recarregar.
 - YouTube, Drive (player do Drive), Internet Archive e sites em iframe não podem virar textura WebGL: no VR o telão mostra um aviso e o som continua.
 - Testado (navegador Chromium simulando celular deitado 844x390): menu mostra só o Cardboard quando não há headset; 10 entradas/saídas seguidas sem listeners sobrando nem erros; vídeo MP4/WebM aparece nos dois olhos; aviso do YouTube; modo normal restaurado. NÃO testado em headset WebXR real, em óculos Cardboard real nem em iPhone real.
+
+## 2026-11-18 — VR: YouTube nos dois olhos + controle Bluetooth
+- Cardboard + YouTube: o player original (com som) fica sobre o telão do olho esquerdo; uma cópia muda fica sobre o do olho direito. Cada um é projetado com a câmera do seu olho e a mesma lente (homografia em matrix3d), seguindo cabeça, tamanho e distância do telão.
+- Sincronia do olho direito: segue o tempo do esquerdo; acima de 0,5 s pula direto, entre 30 ms e 0,5 s acelera/freia (1,25×/0,75×) até ficar abaixo de 10 ms. Pausa junto, espera durante anúncio do olho esquerdo.
+- No WebXR (headset) o YouTube continua só com som. Drive (player do Drive), Archive e sites continuam com aviso.
+- Controle Bluetooth (VR Box): Gamepad API (joystick/D-pad, botões) e teclas (setas, Enter, Esc, mídia). Joystick escolhe o botão da barra, A aperta, B esconde, cima centraliza. Barra duplicada, uma por olho.
+- Teste em Chromium com YouTube simulado: alinhamento com a moldura do telão conferido em imagem; diferença entre olhos ~10 ms; navegação por teclado. NÃO testado com YouTube real (bloqueado no ambiente), VR Box real nem controle real.

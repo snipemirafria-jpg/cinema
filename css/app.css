@@ -245,3 +245,15 @@ body.em-vr .gaveta,body.em-vr .sem-filme,body.em-vr .toque-iniciar,body.em-vr .a
 body:not(.em-cardboard) .vr-barra .so-cardboard{display:none}
 .vr-divisor{position:fixed;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:#ffffff40;z-index:15;pointer-events:none}
 .modal-vr{max-height:92vh;max-height:92dvh;overflow-y:auto}
+
+/* VR: YouTube um player por olho (Cardboard) e controle Bluetooth */
+body.em-vr.vr-yt .camada-tela{display:block!important;position:fixed!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;width:50%!important;height:100%!important;overflow:hidden!important;z-index:5!important;pointer-events:none!important;background:transparent!important}
+body.em-vr.vr-yt .camada-tela>div,body.em-vr.vr-yt .camada-tela>div>div{transform:none!important;perspective:none!important;transform-style:preserve-3d!important;width:100%!important;height:100%!important;position:absolute!important;left:0!important;top:0!important}
+.vr-olho-dir{position:fixed;left:50%;top:0;width:50%;height:100%;overflow:hidden;z-index:5;pointer-events:none}
+.vr-tela-dir>.midia-yt{position:relative;overflow:hidden;width:100%;height:100%;background:#000}
+body.em-vr .midia-yt iframe{pointer-events:none!important}
+.vr-lado{display:flex;flex-direction:column;align-items:center;gap:4px}
+body.em-cardboard .vr-ui{left:0;right:0;transform:none;flex-direction:row;justify-content:space-around;gap:0}
+body.em-cardboard .vr-lado{width:50%}
+body.em-cardboard .vr-barra button{min-width:28px;height:28px;font-size:12px;padding:0 6px}
+.vr-barra button.foco{outline:2px solid #fff;outline-offset:1px;background:var(--roxo)}

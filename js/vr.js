@@ -4,6 +4,7 @@
 //  - Cardboard (celular em óculos VR Box): sistema separado; duas câmeras com perspectiva própria (StereoCamera),
 //    orientação pelo giroscópio (só rotação, sem rastreamento de posição) ou arrastando o dedo.
 import * as THREE from 'three';
+import { MidiaYouTube } from './fontes.js';
 
 export const ESTADOS = { NORMAL: 'NORMAL', CHECANDO: 'VR_CHECKING', WEBXR: 'VR_WEBXR', CARDBOARD: 'VR_CARDBOARD', SAINDO: 'VR_EXITING', ERRO: 'VR_ERROR' };
 
@@ -19,6 +20,28 @@ const _zee = new THREE.Vector3(0, 0, 1), _euler = new THREE.Euler(), _q0 = new T
 const _q1 = new THREE.Quaternion(-Math.sqrt(0.5), 0, 0, Math.sqrt(0.5));   // câmera olhando para o "fundo" do aparelho
 const _qYaw = new THREE.Quaternion(), _eixoY = new THREE.Vector3(0, 1, 0), _qDisp = new THREE.Quaternion(), _qAlvo = new THREE.Quaternion();
 const _eTmp = new THREE.Euler(0, 0, 0, 'YXZ'), _v = new THREE.Vector3();
+const _v4 = new THREE.Vector4(), _mInv = new THREE.Matrix4(), _mTela = new THREE.Matrix4();
+
+// matrix3d que leva o retângulo W×H (canto 0,0) para o quadrilátero p0..p3 (homografia, como o telão projetado)
+function matrizQuad(W, H, p) {
+  const [x0, y0, x1, y1, x2, y2, x3, y3] = p;
+  const dx1 = x1 - x2, dx2 = x3 - x2, dx3 = x0 - x1 + x2 - x3, dy1 = y1 - y2, dy2 = y3 - y2, dy3 = y0 - y1 + y2 - y3;
+  let g = 0, h = 0;
+  if (Math.abs(dx3) > 1e-9 || Math.abs(dy3) > 1e-9) {
+    const den = dx1 * dy2 - dy1 * dx2;
+    g = (dx3 * dy2 - dy3 * dx2) / den; h = (dx1 * dy3 - dy1 * dx3) / den;
+  }
+  const a = (x1 - x0 + g * x1) / W, b = (x3 - x0 + h * x3) / H, d = (y1 - y0 + g * y1) / W, e = (y3 - y0 + h * y3) / H;
+  return `matrix3d(${a},${d},0,${g / W},${b},${e},0,${h / H},0,0,1,0,${x0},${y0},0,1)`;
+}
+// inverso da lente (mesma fórmula do shader): ponto da imagem sem lente -> ponto visto na tela
+function desfazerLente(qx, qy, k1, k2, esc) {
+  let px = qx / esc, py = qy / esc;
+  for (let i = 0; i < 10; i++) { const r2 = px * px + py * py, f = esc * (1 + k1 * r2 + k2 * r2 * r2); px = qx / f; py = qy / f; }
+  return [px, py];
+}
+// teclas que controles Bluetooth (VR Box) mandam quando estão no modo teclado/mídia
+const TECLAS = { ArrowLeft: 'esquerda', ArrowRight: 'direita', ArrowUp: 'cima', ArrowDown: 'baixo', Enter: 'ok', ' ': 'ok', MediaPlayPause: 'ok', Select: 'ok', Escape: 'voltar', Backspace: 'voltar', GoBack: 'voltar', BrowserBack: 'voltar' };
 
 // Lente do óculos de celular (VR Box/Cardboard): distorção em barril que compensa a lente de aumento.
 // Um único alvo de renderização reaproveitado para os dois olhos (sem cópias extras de cena ou vídeo).
@@ -52,6 +75,9 @@ export class ModoVR {
     this._orient = this._orient.bind(this);
     this._arrastar = this._arrastar.bind(this);
     this._toque = this._toque.bind(this);
+    this._tecla = this._tecla.bind(this);
+    this._padLigou = () => this.aviso('🎮 Controle conectado: joystick escolhe o botão, A aperta, B esconde.');
+    this._padAntes = {};
     this._fimXR = this._fimXR.bind(this);
     this._recentrarXR = this._recentrarXR.bind(this);
   }
@@ -104,10 +130,16 @@ export class ModoVR {
   // Fontes em iframe (YouTube, Drive pelo player do Drive, Internet Archive, sites) não podem virar textura WebGL
   // (proteção de origem do navegador). No VR o telão mostra um aviso; o som e a sincronia continuam no player original.
   _conferirFonte() {
-    const modo = this.player?.modo || 'textura';
+    this._ytConferir();
+    let modo = this.player?.modo || 'textura';
+    if (this._yt) modo = 'yt-olhos';   // Cardboard + YouTube: um player por olho cobre o telão
     if (modo === this._modoFonte) return;
     this._modoFonte = modo;
     const m = this.c.materialTela;
+    if (modo === 'yt-olhos') {
+      if (this._texAviso && m.map === this._texAviso) { m.map = null; m.color.set('#000000'); m.needsUpdate = true; }
+      return;
+    }
     if (modo === 'textura') {
       if (this._texAviso) { m.map = this._mapAntes; m.color.copy(this._corAntes); m.needsUpdate = true; }
       if (!this.player.v.paused) this.c.mostrarVideo(true);
@@ -128,7 +160,114 @@ export class ModoVR {
       this._mapAntes = m.map; this._corAntes = m.color.clone();
     }
     m.map = this._texAviso; m.color.set('#ffffff'); m.needsUpdate = true;
-    this.aviso('Este filme vem de YouTube/Drive/site e não aparece dentro do VR. O som continua; para ver a imagem, saia do VR.');
+    this.aviso(this.estado === ESTADOS.WEBXR && modo === 'youtube'
+      ? 'No óculos VR (WebXR) o YouTube não aparece no telão: o som continua. No modo celular (Cardboard) ele aparece.'
+      : 'Este filme vem de Drive/Archive/site e não aparece dentro do VR. O som continua; para ver a imagem, saia do VR.');
+  }
+
+  // ------------------------------------------------ YouTube nos dois olhos (só Cardboard)
+  // O YouTube não vira textura, então cada olho recebe um player posto exatamente sobre o telão daquele olho:
+  // o da esquerda é o player original (com som e sincronia da sala); o da direita é uma cópia muda que segue o tempo dele.
+  _ytConferir() {
+    const m = this.player?.m;
+    const pode = this.estado === ESTADOS.CARDBOARD && this.player?.modo === 'youtube' && this.c.objTela && m?.id;
+    if (!pode) { if (this._yt) this._ytParar(); return; }
+    if (this._yt?.main === m) return;
+    if (this._yt) this._ytParar();
+    const caixaE = this.c.objTela.element;
+    const W = parseFloat(caixaE.style.width) || 1280, H = parseFloat(caixaE.style.height) || 720;
+    const dir = document.createElement('div'); dir.className = 'vr-olho-dir';
+    const caixaD = document.createElement('div'); caixaD.className = 'vr-tela-dir';
+    caixaD.style.cssText = `position:absolute;left:0;top:0;width:${W}px;height:${H}px;transform-origin:0 0;visibility:hidden`;
+    dir.appendChild(caixaD); document.body.appendChild(dir);
+    const yt2 = new MidiaYouTube(m.id, m.currentTime, {});
+    caixaD.appendChild(yt2.el);
+    document.body.classList.add('vr-yt');
+    this._yt = { main: m, yt2, caixaE, caixaD, dir, W, H, estiloE: caixaE.getAttribute('style'), taxa: 1, espera: performance.now() + 1500, rel: {} };
+  }
+  _ytParar() {
+    const y = this._yt; if (!y) return;
+    this._yt = null;
+    try { y.yt2.destruir(); } catch { }
+    y.dir.remove();
+    if (y.caixaE.isConnected) y.caixaE.setAttribute('style', y.estiloE);   // o CSS3D da sala volta a posicionar como antes
+    document.body.classList.remove('vr-yt');
+    this._modoFonte = null;
+  }
+  // coloca cada player sobre o telão como cada olho o vê (mesma câmera do olho e, se ligada, mesma lente)
+  _ytDesenhar() {
+    const y = this._yt, c = this.c; if (!y) return;
+    const m = this._w / 2, h = this._h, T = c.TELA;
+    const u = this._matLente?.uniforms || SHADER_LENTE.uniforms;
+    c.tela.updateMatrixWorld();
+    for (const [cam, el] of [[this.stereo.cameraL, y.caixaE], [this.stereo.cameraR, y.caixaD]]) {
+      _mTela.copy(cam.projectionMatrix).multiply(_mInv.copy(cam.matrixWorld).invert()).multiply(c.tela.matrixWorld);
+      const pts = []; let atras = false;
+      for (const [s, t] of [[0, 0], [1, 0], [1, 1], [0, 1]]) {
+        _v4.set((s - 0.5) * T.w, (0.5 - t) * T.h, 0, 1).applyMatrix4(_mTela);
+        if (_v4.w <= 0.05) { atras = true; break; }
+        let qx = _v4.x / _v4.w, qy = _v4.y / _v4.w;
+        if (this.lente) [qx, qy] = desfazerLente(qx, qy, u.k1.value, u.k2.value, u.escala.value);
+        pts.push((qx * 0.5 + 0.5) * m, (0.5 - qy * 0.5) * h);
+      }
+      const st = el.style;
+      if (atras) { st.setProperty('visibility', 'hidden', 'important'); continue; }
+      st.setProperty('visibility', 'visible', 'important');
+      st.setProperty('position', 'absolute', 'important'); st.setProperty('left', '0', 'important'); st.setProperty('top', '0', 'important');
+      st.setProperty('width', y.W + 'px', 'important'); st.setProperty('height', y.H + 'px', 'important');
+      st.setProperty('transform-origin', '0 0', 'important');
+      st.setProperty('transform', matrizQuad(y.W, y.H, pts), 'important');
+    }
+  }
+  // tempo estimado entre as leituras do YouTube (a API só atualiza o tempo de tempos em tempos)
+  _ytTempo(chave, bruto, taxa, agora) {
+    const r = this._yt.rel[chave] || (this._yt.rel[chave] = {});
+    if (bruto !== r.b) { r.b = bruto; r.t = agora; }
+    return bruto + Math.min(agora - r.t, 400) / 1000 * taxa;
+  }
+  _ytSincronizar() {
+    const y = this._yt, p = y?.yt2.p; if (!y || !y.yt2.pronto || !p?.getCurrentTime) return;
+    const agora = performance.now();
+    const pausar = y.main.paused || this.player.emAnuncio || y.main.carregando;
+    if (pausar) { if (y.yt2._estado === 1) p.pauseVideo(); y.rel = {}; return; }
+    if (y.yt2._estado !== 1 && y.yt2._estado !== 3) { p.playVideo(); return; }
+    if (y.yt2.anuncio || y.yt2._estado === 3 || agora < y.espera) return;
+    const t1 = this._ytTempo('a', y.main.currentTime, 1, agora), t2 = this._ytTempo('b', p.getCurrentTime(), y.taxa, agora);
+    const d = t1 - t2, ad = Math.abs(d);
+    if (!y.taxas) y.taxas = p.getAvailablePlaybackRates?.() || [1];
+    const fino = y.taxas.includes(1.25) && y.taxas.includes(0.75);
+    if (ad > (fino ? 0.5 : 0.12)) {   // muito longe: pula direto para o tempo do olho esquerdo
+      p.seekTo(t1 + 0.08, true); y.espera = agora + 1200; y.rel = {};
+      if (y.taxa !== 1) { p.setPlaybackRate(1); y.taxa = 1; }
+      return;
+    }
+    if (!fino) return;
+    let alvo = y.taxa;
+    if (ad > 0.03) alvo = d > 0 ? 1.25 : 0.75;   // ajuste fino: acelera ou freia por alguns instantes
+    else if (ad < 0.01) alvo = 1;
+    if (alvo !== y.taxa) { p.setPlaybackRate(alvo); y.taxa = alvo; }
+  }
+
+  // ------------------------------------------------ controle Bluetooth (gamepad ou teclado)
+  _tecla(e) {
+    const a = TECLAS[e.key]; if (!a) return;
+    e.preventDefault(); this.aoControle?.(a);
+  }
+  _lerControle() {
+    const pads = navigator.getGamepads?.(); if (!pads) return;
+    const agora = {};
+    for (const g of pads) {
+      if (!g || !g.connected) continue;
+      const b = (i) => !!g.buttons[i]?.pressed, ax = (i) => g.axes[i] || 0;
+      agora.esquerda ||= ax(0) < -0.6 || b(14); agora.direita ||= ax(0) > 0.6 || b(15);
+      agora.cima ||= ax(1) < -0.6 || b(12); agora.baixo ||= ax(1) > 0.6 || b(13);
+      agora.ok ||= b(0) || b(2) || b(4) || b(5) || b(6) || b(7) || b(9);
+      agora.voltar ||= b(1) || b(3) || b(8);
+    }
+    for (const a of ['esquerda', 'direita', 'cima', 'baixo', 'ok', 'voltar']) {
+      if (agora[a] && !this._padAntes[a]) this.aoControle?.(a);
+      this._padAntes[a] = !!agora[a];
+    }
   }
 
   _restaurarTela() {
@@ -244,6 +383,9 @@ export class ModoVR {
       this.c.canvas.addEventListener('pointermove', this._arrastar);
       addEventListener('pointerup', this._arrastar);
       addEventListener('pointerdown', this._toque, true);
+      addEventListener('keydown', this._tecla);
+      addEventListener('gamepadconnected', this._padLigou);
+      this._padAntes = {};
       this._fsSaiu = () => { if (!document.fullscreenElement && this.estado === ESTADOS.CARDBOARD) this.sairCardboard(); };
       if (document.fullscreenElement) document.addEventListener('fullscreenchange', this._fsSaiu);
       this._semSensorTimer = this._usarSensor ? setTimeout(() => {
@@ -303,6 +445,8 @@ export class ModoVR {
     this.c.canvas.removeEventListener('pointermove', this._arrastar);
     removeEventListener('pointerup', this._arrastar);
     removeEventListener('pointerdown', this._toque, true);
+    removeEventListener('keydown', this._tecla);
+    removeEventListener('gamepadconnected', this._padLigou);
     if (this._fsSaiu) document.removeEventListener('fullscreenchange', this._fsSaiu);
     clearTimeout(this._semSensorTimer);
     try { screen.orientation?.unlock?.(); } catch { }
@@ -324,6 +468,7 @@ export class ModoVR {
     if (this.rig.parent) { this.rig.remove(c.camera); c.cena.remove(this.rig); }
     r.xr.enabled = false;
     r.setScissorTest(false);
+    this._ytParar();
     this._liberarLente();
     this._restaurarTela();
     if (s) {
@@ -385,6 +530,8 @@ export class ModoVR {
       r.setScissor(m, 0, m, h); r.setViewport(m, 0, m, h); r.render(c.cena, this.stereo.cameraR);
     }
     r.setScissorTest(false); r.setViewport(0, 0, w, h);
+    if (this._yt) { this._ytDesenhar(); if (this._conta % 4 === 0) this._ytSincronizar(); }
+    this._lerControle();
     this._medirDesempenho(dt);
   }
 

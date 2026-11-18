@@ -72,6 +72,7 @@ export class MidiaYouTube {
     tirar(); [300, 1000, 2500, 5000].forEach(ms => setTimeout(tirar, ms));   // o YouTube religa a legenda logo depois de começar
   }
   constructor(id, inicio, eventos = {}) {
+    this.id = id;
     this.el = document.createElement('div'); this.el.className = 'midia-yt';
     const alvo = document.createElement('div'); this.el.appendChild(alvo);
     this.pronto = false; this._mudo = true; this._estado = -1; this.eventos = eventos;
