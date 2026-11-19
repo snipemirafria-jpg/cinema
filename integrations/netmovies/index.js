@@ -1,4 +1,4 @@
-// Módulo de fornecedores de filmes gratuitos (NetMovies, Capivara Filmes...) — independente do resto do CineOnline.
+// Módulo de fornecedores de filmes gratuitos (NetMovies, Capivara Filmes...) — independente do resto da Sessão Juntos.
 // Acrescenta um botão por fornecedor no menu lateral e um painel por cima da sala. "Assistir" abre a sala
 // própria do filme (js/sala-filme.js); a sala principal e o Supabase continuam iguais.
 // Para remover de vez: apague a linha <script ... integrations/netmovies/index.js> do index.html.

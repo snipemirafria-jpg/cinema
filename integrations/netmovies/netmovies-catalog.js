@@ -1,4 +1,4 @@
-/* NetMovies catalog module - standalone, no changes to existing CineOnline files required.
+/* NetMovies catalog module - standalone, no changes to existing Sessão Juntos files required.
    Usage: <netmovies-catalog catalog="./catalogo-netmovies.json"></netmovies-catalog>
    Or set window.NETMOVIES_CATALOG_URL before loading this script. */
 (() => {

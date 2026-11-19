@@ -1,6 +1,6 @@
 {
-  "name": "Cine Online",
-  "short_name": "Cine Online",
+  "name": "Sessão Juntos",
+  "short_name": "Sessão Juntos",
   "description": "Seu cinema virtual 3D. Assista, converse, faça parte!",
   "start_url": "./",
   "scope": "./",

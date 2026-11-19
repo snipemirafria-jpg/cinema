@@ -262,8 +262,8 @@ export class Cinema {
     g.beginPath(); g.arc(205, 205, 150, 0, Math.PI * 2); g.lineWidth = 26; g.strokeStyle = '#ff3355'; g.stroke();
     for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.beginPath(); g.arc(205 + Math.cos(a) * 82, 205 + Math.sin(a) * 82, 36, 0, Math.PI * 2); g.fill(); }
     g.font = 'bold 150px system-ui, sans-serif'; g.textBaseline = 'middle';
-    g.fillStyle = '#ffffff'; g.fillText('Cine', 380, 150);
-    g.fillStyle = '#ff3355'; g.fillText('Online', 380, 300);
+    g.fillStyle = '#ffffff'; g.fillText('Sessão', 380, 150);
+    g.fillStyle = '#ff3355'; g.fillText('Juntos', 380, 300);
     const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
   }
 
@@ -558,7 +558,7 @@ export class Cinema {
     if (this._ledCamera) { const on = (t % 1.2) < 0.6; this._ledCamera.visible = on; this._brilhoCamera.intensity = on ? 0.6 : 0; }
   }
 
-  // muda o ambiente da sala para o gênero do filme (null = sala original do CineOnline)
+  // muda o ambiente da sala para o gênero do filme (null = sala original da Sessão Juntos)
   aplicarTema(filme) { this.tema?.aplicar(filme); }
   animar() {
     this.relogio.getDelta();

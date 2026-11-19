@@ -1,5 +1,5 @@
 // Painel da conversa por voz: botão 🎙️ no topo + gaveta com os controles individuais.
-// Não mexe no player nem no 3D. Se a voz falhar, o resto do CineOnline continua.
+// Não mexe no player nem no 3D. Se a voz falhar, o resto da Sessão Juntos continua.
 import { gerenciadorVoz } from './voz.js';
 
 const ROTULO_ESTADO = {

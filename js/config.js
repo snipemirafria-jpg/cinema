@@ -1,4 +1,4 @@
-// Configuração pública do Cine Online.
+// Configuração pública da Sessão Juntos.
 // A chave "anon" do Supabase é PÚBLICA por design: a segurança fica nas
 // regras RLS do banco (supabase/migrations). Nunca coloque a service_role aqui.
 export const SUPABASE_URL = 'https://mbunkvouhdveruyezuof.supabase.co';

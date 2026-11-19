@@ -1,4 +1,4 @@
-// Modo VR do CineOnline.
+// Modo VR da Sessão Juntos.
 // Usa a MESMA cena, os MESMOS objetos e o MESMO player da sala 3D: só muda a câmera e a forma de desenhar.
 //  - WebXR (headsets): o WebGLRenderer do Three.js cuida das vistas dos olhos e da pose da cabeça.
 //  - Cardboard (celular em óculos VR Box): sistema separado; duas câmeras com perspectiva própria (StereoCamera),
@@ -150,7 +150,7 @@ export class ModoVR {
       const g = cv.getContext('2d');
       g.fillStyle = '#0b0710'; g.fillRect(0, 0, 1024, 430);
       g.fillStyle = '#ff2a48'; g.font = 'bold 54px system-ui,sans-serif'; g.textAlign = 'center';
-      g.fillText('🎬 CineOnline', 512, 120);
+      g.fillText('🎬 Sessão Juntos', 512, 120);
       g.fillStyle = '#fff'; g.font = 'bold 40px system-ui,sans-serif';
       g.fillText('Este filme não pode aparecer no VR', 512, 215);
       g.fillStyle = '#c9c0d8'; g.font = '30px system-ui,sans-serif';

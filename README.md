@@ -1,4 +1,4 @@
-# 🎬 Cine Online
+# 🎬 Sessão Juntos
 
 Cinema virtual 3D (Three.js) com login Google, chat em tempo real, programação contínua sincronizada pelo servidor e painel do criador. Backend: **Supabase** (PostgreSQL + Auth + Realtime + Storage). Frontend estático (PWA) publicado no **GitHub Pages** — funciona em Android, iOS e PC (dá para “Adicionar à tela inicial”).
 
@@ -54,7 +54,7 @@ Abra http://localhost:8080. Cada push na branch `main` republica o site automati
 ## ⏳ Falta (passo a passo)
 1. **Ativar o GitHub Pages**: Settings → Pages → Source: **GitHub Actions**. O workflow `Publicar no GitHub Pages` publica em `https://snipemirafria-jpg.github.io/cinema/`.
 2. **Login Google**:
-   - Google Cloud Console → crie um projeto → *Google Auth Platform* → Branding (nome “Cine Online”), Audience **External** → **Publish app**.
+   - Google Cloud Console → crie um projeto → *Google Auth Platform* → Branding (nome “Sessão Juntos”), Audience **External** → **Publish app**.
    - Clients → Create client → *Web application* → Authorized redirect URI: `https://mbunkvouhdveruyezuof.supabase.co/auth/v1/callback`.
    - Supabase → Authentication → Sign In / Providers → **Google** → cole Client ID e Client Secret → Enable.
 3. **Conversão HLS de uploads (opcional)**: Settings → Secrets and variables → Actions → crie `SUPABASE_URL` (`https://mbunkvouhdveruyezuof.supabase.co`) e `SUPABASE_SERVICE_ROLE_KEY` (Supabase → Project Settings → API Keys → service_role). Observação: o plano grátis do Supabase aceita uploads de até 50 MB; para filmes longos use links HLS/DASH/MP4 externos ou o plano Pro.

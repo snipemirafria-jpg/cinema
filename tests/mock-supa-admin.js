@@ -5,7 +5,7 @@ const TABELAS = {
   banimentos: [{ id: 'b1', usuario: 'u3', tipo: 'expulsao', motivo: 'spam', ate: iso(8), criado_em: iso(-2), alvo: { apelido: 'Caio' } }],
   pedidos_ajuda: [{ id: 'p1', usuario: 'u4', sala: 'sala-principal', criado_em: iso(-1), status: 'pendente', perfis: { apelido: 'Duda', avatar: {} } }],
   auditoria: [{ criado_em: iso(-5), acao: 'MODERAR_SILENCIAR_VOZ', tabela: 'silenciamentos', registro: 's1', dados: { alvo: 'u2' } }],
-  configuracoes: [{ id: 1, nome_cinema: 'Cine Online', slogan: '', boas_vindas: '', chat_ativo: true, intervalo_chat_seg: 2, lotacao: 120, palavras_bloqueadas: [] }],
+  configuracoes: [{ id: 1, nome_cinema: 'Sessão Juntos', slogan: '', boas_vindas: '', chat_ativo: true, intervalo_chat_seg: 2, lotacao: 120, palavras_bloqueadas: [] }],
 };
 export const chamadas = window.__chamadas = [];
 function consulta(t) {

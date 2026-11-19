@@ -1,4 +1,4 @@
-// Moderação do criador dentro da sala, "Pedir ajuda" e o canal global do CineOnline.
+// Moderação do criador dentro da sala, "Pedir ajuda" e o canal global da Sessão Juntos.
 //
 // Segurança: tudo que pune ou lê dados de moderação passa pelo banco (RLS + funções moderar(),
 // revogar_moderacao(), atender_pedido_ajuda(), que conferem eh_owner()). Os avisos em tempo real
@@ -132,7 +132,7 @@ export function iniciarModeracao({ sb, sala, eu, owner, canalSala, nomeDe, toast
       const d = document.createElement('dialog');
       d.className = 'modal mod-confirmar';
       d.innerHTML = `<form method="dialog"><h3>⛔ Banir ${esc(nome)} para sempre?</h3>
-        <p class="dica">A conta fica bloqueada em todo o CineOnline até você desfazer em Painel → Moderação.</p>
+        <p class="dica">A conta fica bloqueada em toda a Sessão Juntos até você desfazer em Painel → Moderação.</p>
         <div class="acoes"><button value="nao" class="btn-sec">Cancelar</button><button value="sim" class="btn-perigo">Banir permanentemente</button></div></form>`;
       document.body.appendChild(d);
       d.onclose = () => { ok(d.returnValue === 'sim'); d.remove(); };

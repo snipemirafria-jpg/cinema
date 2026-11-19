@@ -17,7 +17,7 @@ const { data: { session } } = await sb.auth.getSession();
 if (!session) { location.href = './'; throw new Error('sem sessão'); }
 st.uid = session.user.id;
 const { data: ehOwner } = await sb.rpc('eh_owner');
-if (!ehOwner) { $('#bloqueio').textContent = 'Acesso restrito ao proprietário do Cine Online.'; throw new Error('sem permissão'); }
+if (!ehOwner) { $('#bloqueio').textContent = 'Acesso restrito ao proprietário da Sessão Juntos.'; throw new Error('sem permissão'); }
 $('#bloqueio').hidden = true; $('#layout').hidden = false;
 $('#eu').textContent = '👑 ' + (session.user.email || '');
 

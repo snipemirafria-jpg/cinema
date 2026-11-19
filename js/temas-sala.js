@@ -1,4 +1,4 @@
-// Salas temáticas do CineOnline.
+// Salas temáticas da Sessão Juntos.
 // A sala é sempre a MESMA (arquitetura, telão, poltronas, cortinas e logo): o tema muda cores e texturas
 // dos materiais, a iluminação, a cor do tecido das poltronas e acrescenta decoração 3D do gênero.
 // A troca é suave: as luzes baixam como no início de uma sessão, a decoração troca e as luzes voltam.
@@ -37,7 +37,7 @@ export function temasDoFilme(filme) {
 }
 
 // ---------------------------------------------------------------- paletas
-// PADRAO = valores exatos da sala original do CineOnline
+// PADRAO = valores exatos da sala original da Sessão Juntos
 const PADRAO = {
   fundo: '#06030a', nevoa: '#06030a', nevoaPerto: 22, nevoaLonge: 48,
   parede: '#4a1220', paredeEm: '#1a0308', painel: '#5c1626', painelEm: '#220509', piso: '#1a0b10', degrau: '#3a1520',

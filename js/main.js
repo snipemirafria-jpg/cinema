@@ -298,7 +298,7 @@ function meuEstadoPresenca() {
 // sala de um filme do NetMovies: título, botão de voltar para a sala principal
 function marcarSalaFilme() {
   $('#titulo-filme').textContent = estado.sala.filme.titulo;
-  document.title = estado.sala.filme.titulo + ' · CineOnline';
+  document.title = estado.sala.filme.titulo + ' · Sessão Juntos';
   const b = document.createElement('button');
   b.className = 'chip'; b.id = 'btn-sala-principal'; b.title = 'Voltar para a sala principal'; b.textContent = '⬅ Sala principal';
   b.onclick = () => { location.href = location.pathname; };

@@ -1,4 +1,4 @@
-// Decoração 3D de cada sala temática. Tudo é montado sobre a MESMA sala do CineOnline:
+// Decoração 3D de cada sala temática. Tudo é montado sobre a MESMA sala da Sessão Juntos:
 // os objetos ficam nos painéis das paredes, nos corredores laterais, no teto e nas pontas do palco,
 // sem cobrir o telão, as poltronas, as cortinas nem a logo.
 // Cada tema devolve "camadas" (paredes, piso, teto, palco, particulas) para que filmes com dois gêneros
