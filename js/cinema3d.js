@@ -82,6 +82,7 @@ export class Cinema {
     this._matsPoltrona = [];
     this._montarSala();
     this._montarTela();
+    this._montarCameraSeguranca();
     baratear(this.cena);
     // salas temáticas: a mesma sala, com cores, texturas, luz e decoração do gênero do filme
     this.tema = new SalaTematica(this, { MOBILE, baratear, TELA, SALA, FILEIRAS, zFila: (i) => this._zFila(i), yFila: (i) => this._yFila(i) });
@@ -210,6 +211,46 @@ export class Cinema {
     this.luzTela.castShadow = !MOBILE;
     this.luzTela.shadow.mapSize.set(1024, 1024);
     c.add(this.luzTela, this.luzTela.target);
+  }
+
+  // câmera de segurança no canto direito do fundo (visto de quem olha para o telão), com luz vermelha piscando.
+  // É de onde o criador assiste ao vivo quando abre a sala pelo painel (modoCamera).
+  _montarCameraSeguranca() {
+    const { L, A, zFundo } = SALA;
+    const g = new THREE.Group();
+    const corpoMat = new THREE.MeshStandardMaterial({ color: '#d9d9de', roughness: 0.45, metalness: 0.3 });
+    const pretoMat = new THREE.MeshStandardMaterial({ color: '#141418', roughness: 0.6, metalness: 0.4 });
+    const suporte = new THREE.Mesh(new THREE.BoxGeometry(0.12, 0.5, 0.12), pretoMat); suporte.position.set(0, 0.25, 0); g.add(suporte);
+    const base = new THREE.Mesh(new THREE.BoxGeometry(0.34, 0.06, 0.34), pretoMat); base.position.set(0, 0.5, 0); g.add(base);
+    const cabeca = new THREE.Group(); cabeca.position.set(0, 0.25, 0.05); g.add(cabeca);
+    const corpo = new THREE.Mesh(new THREE.BoxGeometry(0.32, 0.3, 0.75), corpoMat); corpo.position.z = 0.28; cabeca.add(corpo);
+    const aba = new THREE.Mesh(new THREE.BoxGeometry(0.4, 0.04, 0.85), corpoMat); aba.position.set(0, 0.18, 0.32); cabeca.add(aba);
+    const lente = new THREE.Mesh(new THREE.CylinderGeometry(0.11, 0.11, 0.06, 20), pretoMat); lente.rotation.x = Math.PI / 2; lente.position.z = 0.67; cabeca.add(lente);
+    const vidro = new THREE.Mesh(new THREE.CircleGeometry(0.075, 20), new THREE.MeshBasicMaterial({ color: '#1d3b66' })); vidro.position.z = 0.705; cabeca.add(vidro);
+    const led = this._ledCamera = new THREE.Mesh(new THREE.SphereGeometry(0.035, 10, 8), new THREE.MeshBasicMaterial({ color: '#ff1a1a' }));
+    led.position.set(0.11, 0.08, 0.66); cabeca.add(led);
+    const brilho = this._brilhoCamera = new THREE.PointLight('#ff2020', 0.6, 1.6, 2); brilho.position.copy(led.position); cabeca.add(brilho);
+    // presa na parede do fundo, no alto, inclinada para a plateia e o telão
+    g.scale.setScalar(1.6);
+    g.position.set(-(L / 2 - 0.5), A - 2.6, zFundo + 0.3);
+    const alvo = new THREE.Vector3(-2, TELA.y - 1.5, TELA.z);
+    this.cena.add(g);
+    g.updateMatrixWorld(true);
+    cabeca.lookAt(alvo);
+    this.camSeguranca = { grupo: g, cabeca, alvo };
+  }
+  // visão do criador observando: da câmera de segurança, girando no lugar (arrastar = olhar em volta)
+  modoCamera() {
+    this.modo = 'camera';
+    this._primeiraPessoa(false);
+    const { L, A, zFundo } = SALA;
+    const pos = new THREE.Vector3(-(L / 2 - 1.0), A - 2.4, zFundo + 1.5);
+    const dir = this.camSeguranca.alvo.clone().sub(pos).normalize();
+    this._alvoCam = { pos, alvo: pos.clone().add(dir.multiplyScalar(0.05)) };
+    this.controles.minDistance = 0.01; this.controles.maxDistance = 0.05; this.controles.enableZoom = false;
+    this.controles.rotateSpeed = (MOBILE ? 0.5 : 0.7) * -0.6; this.controles.maxPolarAngle = Math.PI * 0.8;
+    this._pularCamera();
+    this._redimensionar();
   }
 
   _texturaLogo() {
@@ -488,7 +529,7 @@ export class Cinema {
     this.camera.aspect = w / h;
     if (this.modo === 'poltrona') {   // 90° de campo de visão horizontal (limitado no celular em pé)
       this.camera.fov = Math.min(100, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(45)) / (w / h))));
-    } else this.camera.fov = w / h < 0.8 ? 72 : 55;
+    } else this.camera.fov = this.modo === 'camera' ? 68 : w / h < 0.8 ? 72 : 55;
     this.camera.updateProjectionMatrix();
   }
 
@@ -514,6 +555,7 @@ export class Cinema {
     if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
     for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
     this.tema?.animar(t);
+    if (this._ledCamera) { const on = (t % 1.2) < 0.6; this._ledCamera.visible = on; this._brilhoCamera.intensity = on ? 0.6 : 0; }
   }
 
   // muda o ambiente da sala para o gênero do filme (null = sala original do CineOnline)
@@ -531,9 +573,9 @@ export class Cinema {
       this.vr.quadro(dt);
       return;
     }
-    if (MOBILE) {                       // celular: ~30 fps e pausa com a aba escondida
+    if (MOBILE || this.fpsMax) {        // celular: ~30 fps e pausa com a aba escondida (miniatura ao vivo: fpsMax)
       const agora = performance.now();
-      if (document.hidden || agora - (this._ult || 0) < 32) return;
+      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : 32)) return;
       this._ult = agora;
     }
     const dt = Math.min(this.relogio.getDelta(), 0.1);

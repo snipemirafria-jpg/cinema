@@ -1,0 +1,18 @@
+<!doctype html><html><head><link rel="stylesheet" href="../css/app.css">
+<script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script></head><body>
+<section id="tela-cinema" class="tela"><canvas id="cena3d"></canvas><div id="rotulos"></div><video id="video" muted></video></section>
+<script type="module">
+import { Cinema } from '../js/cinema3d.js';
+const c=new Cinema(document.getElementById('cena3d'),document.getElementById('rotulos'),document.getElementById('video'));
+c.meuId='u0';
+const nomes=['Rone333','LucasBR','Tainar','AnaVitoria','VictorHugo','Bia','Leo','Duda','Gabi','Caio','Nina','Theo'];
+const bases=['male','female'],cab=['simpleparted','long','buns','buzzed','buzzedfemale'],roupas=['#151515','#c1121f','#1d4ed8','#f2f2f2','#7c3aed','#16a34a'];
+const lista=nomes.map((n,i)=>({id:'u'+i,apelido:n,papel:i==0?'owner':'espectador',desde:i,avatar:{base:bases[i%2],cabelo:i%2?cab[(i+1)%3+1]:cab[i%2? 1:0],roupa:roupas[i%6],pele:['#f3d2b8','#c68e6b','#7a4a2f','#e0ac8a'][i%4]}}));
+await c.atualizarPessoas(lista);
+c.mostrarCapa('../assets/capas/sintel.jpg');
+await new Promise(r=>setTimeout(r,4000));
+if(location.hash=='#camera'){c.meuId=null;c.modoCamera();} else if(location.hash=='#vercam'){c.visaoGeral(true);c.camera.position.set(-8,8,-10);c.controles.target.set(-12.5,10.4,-15.6);} else if(location.hash=='#geral'){c.visaoGeral(true);} else c.focarEm('u0',true);
+c.balao('u3','Que filme top! 😍');
+await new Promise(r=>setTimeout(r,1500));
+window.DONE=1;
+</script></body></html>

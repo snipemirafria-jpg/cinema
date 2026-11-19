@@ -8,6 +8,15 @@ const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
 const estado = { sessao: null, perfil: null, owner: false, cinema: null, player: null, canal: null, pessoas: new Map(), voz: null, mod: null };
 
+// Criador observando uma sala pelo painel (Câmeras das Salas): ?observar=<sala>[&mini=1].
+// Entra sem aparecer (não marca presença), vê da câmera de segurança da sala e pode ouvir a conversa.
+const PEDIDO_OBS = (() => {
+  const q = new URLSearchParams(location.search), s = q.get('observar');
+  return s && /^(sala-principal|netmovies-[a-z0-9-]{1,80})$/i.test(s) ? { sala: s, mini: q.get('mini') === '1' } : null;
+})();
+if (PEDIDO_OBS?.mini) document.body.classList.add('obs-mini');
+const visivel = () => !estado.observando;
+
 function mostrar(id) {
   $$('.tela').forEach(t => t.hidden = t.id !== id);
   $('#carregando').classList.add('some');
@@ -30,6 +39,17 @@ async function iniciar() {
 
 async function entrar() {
   if (estado._entrando) return; estado._entrando = true;
+  if (PEDIDO_OBS) {   // só o criador observa; para qualquer outra pessoa o link abre a sala normal
+    const { data: dono } = await sb.rpc('eh_owner');
+    if (dono) {
+      estado.owner = true; estado.observando = PEDIDO_OBS;
+      const { data: perfil } = await sb.rpc('meu_perfil');
+      estado.perfil = perfil || { apelido: 'Criador' };
+      return abrirCinema();
+    }
+    document.body.classList.remove('obs-mini');
+    history.replaceState(null, '', location.pathname);
+  }
   const { data: st, error } = await sb.rpc('registrar_acesso', { p_dispositivo: idDispositivo(), p_plataforma: plataforma() });
   if (error) { toast('Erro ao entrar: ' + error.message, 'erro'); mostrar('tela-login'); estado._entrando = false; return; }
   if (st.banido) return telaBanido(st);
@@ -171,14 +191,20 @@ async function abrirCinema() {
 
   const [{ Cinema }, { PlayerSincronizado }] = await Promise.all([import('./cinema3d.js'), import('./player.js')]);
   // NetMovies: ?netmovies=<filme> abre a sala própria daquele filme (quem abrir o mesmo filme entra junto)
-  const idFilme = new URLSearchParams(location.search).get('netmovies');
+  const obs = estado.observando;
+  if (obs) document.body.classList.add('observando');
+  const idFilme = obs ? (obs.sala.startsWith('netmovies-') ? obs.sala.slice(10) : null) : new URLSearchParams(location.search).get('netmovies');
   if (idFilme) {
     try { estado.sala = await (await import('./sala-filme.js')).prepararSalaFilme(idFilme); } catch (e) { console.warn(e); }
     if (!estado.sala) { toast('Esse filme não está disponível. Voltando para a sala principal.', 'erro'); history.replaceState(null, '', location.pathname); }
   }
   const video = $('#video');
   const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
-  cinema.meuId = estado.sessao.user.id;
+  cinema.meuId = obs ? null : estado.sessao.user.id;
+  if (obs) {
+    cinema.modoCamera();
+    if (obs.mini) { cinema.fpsMax = 12; cinema.renderer.setPixelRatio(0.6); cinema.renderer.shadowMap.enabled = false; cinema._redimensionar(); }
+  }
   cinema.aoClicarPessoa = (id, ev) => id !== cinema.meuId && (estado.owner && estado.mod ? estado.mod.abrirMenu(id, ev) : abrirDenuncia(id));
   cinema.controles.addEventListener('start', () => cinema.interromperCamera());
 
@@ -224,15 +250,24 @@ async function abrirCinema() {
   };
   player.aoAnuncio = eventosPlayer.aoAnuncio;
   // navegadores só liberam som após um toque do usuário
-  $('#toque-iniciar').hidden = false;
+  $('#toque-iniciar').hidden = !!obs?.mini;
   if (!estado.sala) player.atualizar();      // na sala do filme, o início vem de quem já está assistindo
 
-  cinema.atualizarPessoas([meuEstadoPresenca()]);   // eu apareço mesmo antes da conexão em tempo real
-  $('#qtd-online').textContent = 1;
+  if (visivel()) { cinema.atualizarPessoas([meuEstadoPresenca()]); $('#qtd-online').textContent = 1; }   // eu apareço mesmo antes da conexão em tempo real
   conectarSala();
+  if (obs?.mini) return;      // miniatura do painel: só a sala e o filme, sem chat, menus nem voz
   iniciarChat();
   configurarMenu();
-  iniciarVozEModeracao();
+  if (obs) iniciarObservador();
+  else iniciarVozEModeracao();
+}
+
+async function iniciarObservador() {
+  try {
+    const { iniciarObservacao } = await import('./observar.js');
+    const eu = { id: estado.sessao.user.id, apelido: estado.perfil.apelido || 'Criador', cor: estado.perfil.avatar?.roupa || '#7c3aed' };
+    estado.voz = iniciarObservacao({ sb, sala: salaAtual(), eu, cinema: estado.cinema, toast, esc });
+  } catch (e) { console.warn('observação indisponível', e); }
 }
 
 const salaAtual = () => estado.sala ? estado.sala.canal : 'sala-principal';
@@ -274,23 +309,23 @@ function conectarSala() {
   canal.on('presence', { event: 'sync' }, () => {
     const st = canal.presenceState();
     const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
-    if (!lista.some(p => p.id === estado.sessao.user.id)) lista.push(meuEstadoPresenca());
+    if (visivel() && !lista.some(p => p.id === estado.sessao.user.id)) lista.push(meuEstadoPresenca());
     estado.pessoas = new Map(lista.map(p => [p.id, p]));
     $('#qtd-online').textContent = lista.length;
     estado.cinema.atualizarPessoas(lista);
     if (!$('#gaveta-pessoas').hidden) desenharPessoas();
-    if (estado.sala) estado.sala.aoSync(lista, estado.sessao.user.id).then(mudou => mudou && canal.track(meuEstadoPresenca()));
+    if (estado.sala) estado.sala.aoSync(lista, estado.sessao.user.id).then(mudou => mudou && visivel() && canal.track(meuEstadoPresenca()));
   });
   if (estado.sala) {   // chat ao vivo só desta sala
     canal.on('broadcast', { event: 'chat' }, ({ payload }) => payload?.usuario && adicionarMsg({ ...payload, sala: true, texto: String(payload.texto || '').slice(0, 300) }, true));
-    estado.sala.esperar(() => canal.track(meuEstadoPresenca()));
+    estado.sala.esperar(() => visivel() && canal.track(meuEstadoPresenca()));
   }
   canal.on('broadcast', { event: 'moderacao' }, ({ payload }) => {
     if (payload?.alvo !== estado.sessao.user.id) return;
     if (['silenciar_voz', 'silenciar_texto', 'silenciar_ajuda', 'revogar'].includes(payload.acao)) estado.voz?.atualizarSilenciados();   // mutes: confere no banco
     else location.reload();                                                                                                          // ban/expulsão
   });
-  canal.subscribe(async (s) => { if (s === 'SUBSCRIBED') await canal.track(meuEstadoPresenca()); });
+  canal.subscribe(async (s) => { if (s === 'SUBSCRIBED' && visivel()) await canal.track(meuEstadoPresenca()); });
 }
 
 // ------------------------------------------------------------------ chat

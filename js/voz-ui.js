@@ -61,15 +61,21 @@ export function iniciarVozUI({ sb, sala, eu, player, toast, esc }) {
   };
   g.querySelector('[data-fechar]').onclick = () => g.hidden = true;
 
+  let ouvintesAvisados = new Set();
   function desenhar() {
     const con = gv.conectado;
+    // criador ouvindo pelo painel (js/observar.js): todos na conversa ficam sabendo
+    const ouvintes = con ? gv.participantes.filter(p => p.ouvinte && !p.eu) : [];
+    if (ouvintes.some(p => !ouvintesAvisados.has(p.pid))) toast('🎧 O criador está ouvindo a conversa');
+    ouvintesAvisados = new Set(ouvintes.map(p => p.pid));
+    chip.dataset.ouvinte = ouvintes.length ? '1' : '';
     chip.dataset.estado = gv.estado; chip.dataset.mic = gv.mic;
     chip.setAttribute('aria-label', 'Conversa por voz: ' + ROTULO_ESTADO[gv.estado] + (con ? ', ' + ROTULO_MIC[gv.mic] : ''));
     if (g.hidden) return;
     const sil = gv.meuSilencio('voz');
     $('#voz-status').textContent = ROTULO_ESTADO[gv.estado] + (con ? ' · ' + ROTULO_MIC[gv.mic] : '') +
       (sil ? ' · silenciado pelo criador' + (sil.ate ? ' até ' + new Date(sil.ate).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) : '') : '') +
-      (gv.detalhe && !con ? ' — ' + gv.detalhe : '');
+      (gv.detalhe && !con ? ' — ' + gv.detalhe : '') + (ouvintes.length ? ' · 🎧 o criador está ouvindo' : '');
     $('#voz-entrar').hidden = con;
     $('#voz-entrar').textContent = gv.estado === 'erro' || gv.estado === 'cheia' ? 'Tentar entrar de novo' : 'Entrar na conversa';
     const mic = $('#voz-mic');
@@ -87,6 +93,8 @@ export function iniciarVozUI({ sb, sala, eu, player, toast, esc }) {
     $('#voz-lista').innerHTML = !con ? '' : lista.length ? lista.map(p => {
       const silC = gv.usuarioSilenciado(p.id, 'voz'), fala = gv.falando(p.pid);
       const rede = p.eu ? '' : p.estadoPeer === 'falhou' ? ' · sem conexão (rede)' : p.estadoPeer === 'conectando' ? ' · conectando…' : '';
+      if (p.ouvinte) return `<li class="ouvinte"><span class="n"><span class="bolinha" style="background:#f5b301">👑</span>
+        <span>${esc(p.apelido || 'Criador')}${p.eu ? ' (você)' : ''}<small>criador · só ouvindo</small></span></span><span aria-hidden="true">🎧</span></li>`;
       return `<li class="${fala ? 'falando' : ''}"><span class="n"><span class="bolinha" style="background:${esc(p.cor || '#7c3aed')}">${esc((p.apelido || '?')[0].toUpperCase())}</span>
         <span>${esc(p.apelido || '?')}${p.eu ? ' (você)' : ''}<small>${silC ? 'silenciado pelo criador' : p.mic ? 'mic ligado' : 'mic desligado'}${fala ? ' · falando' : ''}${rede}</small></span></span>
         <span aria-hidden="true">${silC ? '🚫' : p.mic ? '🎙️' : '🔇'}</span></li>`;

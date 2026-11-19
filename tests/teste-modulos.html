@@ -2,6 +2,6 @@
 <!-- Confere que os módulos novos carregam (imports e sintaxe) sem abrir o app -->
 <script type="module">
 const r = {};
-for (const m of ['../js/voz.js','../js/voz-ui.js','../js/moderacao.js','../js/vr.js']) { try { const x = await import(m); r[m] = Object.keys(x).join(','); } catch (e) { r[m] = 'ERRO ' + e.message; } }
+for (const m of ['../js/voz.js','../js/voz-ui.js','../js/moderacao.js','../js/vr.js','../js/observar.js']) { try { const x = await import(m); r[m] = Object.keys(x).join(','); } catch (e) { r[m] = 'ERRO ' + e.message; } }
 window.RES = r;
 </script></body></html>

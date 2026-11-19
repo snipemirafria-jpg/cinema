@@ -119,3 +119,12 @@ details summary{cursor:pointer;margin:6px 0;font-weight:600}
 .cam-info small{color:#b7aec4}
 .cam-info .btn{margin-top:6px;text-align:center;text-decoration:none}
 .cam-vivo{color:#ff2d55;font-weight:700}
+.cam-tela{position:relative;aspect-ratio:16/9;background:#0b0710;overflow:hidden}
+.cam-tela canvas{position:absolute;inset:0;width:100%;height:100%}
+.cam-vivo-quadro{position:absolute;inset:0;width:100%;height:100%;border:0;pointer-events:none;z-index:1;background:#0b0710}
+.cam-rec{position:absolute;top:6px;left:8px;z-index:2;font:700 11px system-ui;color:#fff;background:rgba(0,0,0,.55);padding:2px 7px;border-radius:6px;display:none}
+.cam.ao-vivo .cam-rec{display:block}
+.cam-rec{animation:cam-pisca 1.2s steps(1) infinite}
+@keyframes cam-pisca{50%{color:transparent}}
+.cam-info .linha-acoes{display:flex;gap:8px;flex-wrap:wrap}
+.cam-info .linha-acoes .btn{flex:1}

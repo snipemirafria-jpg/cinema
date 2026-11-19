@@ -308,3 +308,19 @@ body.chat-oculto-local .chat,body.chat-oculto-local .balao{display:none!importan
 @media (max-width:760px){.ajuda-notifs{bottom:auto;top:calc(56px + var(--seg-top))}}
 /* VR: painéis de voz/moderação somem (o áudio da conversa continua) */
 body.em-vr .mod-menu,body.em-vr .ajuda-notifs,body.em-vr .gaveta-voz,body.em-vr .mod-confirmar{display:none!important}
+
+/* ---- criador observando ao vivo (js/observar.js) ---- */
+body.observando .menu-lateral,body.observando #chat-form,body.observando #btn-eu,body.observando #btn-sala-principal,body.observando #btn-voz{display:none!important}
+body.observando .hud-topo{padding-top:calc(54px + var(--seg-top))}
+.obs-barra{position:absolute;top:calc(8px + var(--seg-top));left:calc(10px + var(--seg-esq));right:calc(10px + var(--seg-dir));display:flex;align-items:center;gap:8px;flex-wrap:wrap;z-index:8}
+.obs-barra .chip{text-decoration:none}
+.obs-barra .chip.ligado{background:#16a34a;border-color:#16a34a;color:#fff}
+.obs-rec{display:inline-flex;align-items:center;gap:7px;background:rgba(0,0,0,.65);border:1px solid rgba(255,255,255,.15);padding:6px 11px;border-radius:999px;font-size:13px;font-weight:600}
+.obs-rec i{width:9px;height:9px;border-radius:50%;background:#ff2020;animation:obs-pisca 1.2s steps(1) infinite}
+.obs-voz{font-size:12px;color:#d6cfe4;background:rgba(0,0,0,.5);padding:4px 9px;border-radius:999px}
+.obs-voz:empty{display:none}
+@keyframes obs-pisca{50%{opacity:0}}
+body.obs-mini .hud-topo,body.obs-mini .menu-lateral,body.obs-mini .chat,body.obs-mini .gaveta,body.obs-mini .toque-iniciar,body.obs-mini .sem-filme,body.obs-mini #aviso-anuncio,body.obs-mini .obs-barra,body.obs-mini #carregando,body.obs-mini #toasts{display:none!important}
+body.obs-mini #rotulos{font-size:9px}
+.voz-lista li.ouvinte{opacity:.9;font-style:italic}
+#btn-voz[data-ouvinte="1"]::after{content:'🎧';font-size:10px;margin-left:2px}

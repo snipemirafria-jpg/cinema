@@ -606,38 +606,70 @@ async function ajuda() {
 }
 
 // ------------------------------------------------------------------ Câmeras das Salas
-// Miniatura ESQUEMÁTICA da sala virtual (telão + poltronas + avatares por cor/nome), desenhada no
-// aparelho do criador a partir da presença em tempo real. Não acessa câmera, microfone nem tela de
-// ninguém, não toca áudio, e o painel não entra na contagem (só observa a presença).
-const MAX_PREVIAS = 12, ATUALIZA_MS = 5000;
+// Cada sala com gente ganha uma miniatura AO VIVO: a própria sala 3D aberta num quadro pequeno
+// (index.html?observar=<sala>&mini=1), vista da câmera de segurança do fundo, com o filme passando
+// no mesmo ponto, sem som e sem o criador aparecer. Para não pesar, no máximo MAX_AO_VIVO ao vivo e só
+// as que estão visíveis na tela; as outras usam o desenho esquemático leve.
+// "Assistir ao vivo" abre a sala inteira nesse modo, com a opção de ouvir a conversa.
+const MAX_PREVIAS = 12, MAX_AO_VIVO = 4, ATUALIZA_MS = 5000;
 const SEM_PREVIA = { youtube: 1, drive: 1, link: 1, archive: 1 };
 const capas = new Map();
 let camTimer = null, camObs = null;
+const urlObservar = (sala, mini) => 'index.html?observar=' + encodeURIComponent(sala) + (mini ? '&mini=1' : '');
 function pararCameras() { clearInterval(camTimer); camTimer = null; camObs?.disconnect(); camObs = null; }
 async function cameras() {
-  C.innerHTML = `<p class="dica">Visão do ambiente virtual de cada sala (miniatura esquemática atualizada a cada ${ATUALIZA_MS / 1000} s). Você observa sem aparecer na sala e sem áudio.</p><div class="grade-cameras" id="cams"></div>`;
-  desenharCameras();
+  C.innerHTML = `<p class="dica">Câmeras ao vivo de cada sala: a sala 3D de verdade, com as pessoas e o filme passando, vista da câmera do fundo. Ninguém vê você. Toque em <b>Assistir ao vivo</b> para abrir em tela cheia e ouvir a conversa.</p><div class="grade-cameras" id="cams"></div>`;
   pararCameras();
+  camObs = new IntersectionObserver((es) => es.forEach(e => { e.target.dataset.visivel = e.isIntersecting ? '1' : ''; ligarAoVivo(); }));
+  desenharCameras();
   camTimer = setInterval(() => { if (!document.hidden) desenharCameras(true); }, ATUALIZA_MS);
+}
+// liga o quadro ao vivo nas primeiras salas visíveis e desliga nas outras (libera memória e rede)
+function ligarAoVivo() {
+  const cams = [...document.querySelectorAll('#cams .cam')];
+  let n = 0;
+  cams.forEach(c => {
+    const quer = c.dataset.visivel === '1' && n < MAX_AO_VIVO; if (quer) n++;
+    const fr = c.querySelector('iframe');
+    if (quer && !fr) {
+      const f = document.createElement('iframe');
+      f.src = urlObservar(c.dataset.sala, true); f.title = 'Câmera ao vivo'; f.setAttribute('allow', 'autoplay');
+      f.setAttribute('tabindex', '-1'); f.className = 'cam-vivo-quadro';
+      c.querySelector('.cam-tela').prepend(f); c.classList.add('ao-vivo');
+    } else if (!quer && fr) { fr.remove(); c.classList.remove('ao-vivo'); }
+  });
 }
 function desenharCameras(soMiniaturas = false) {
   const box = $('#cams'); if (!box) return;
   const salas = [...st.salas.values()].filter(s => s.pessoas.size).sort((a, b) => b.pessoas.size - a.pessoas.size);
   if (!soMiniaturas) {
-    camObs?.disconnect();
-    camObs = new IntersectionObserver((es) => es.forEach(e => e.target.dataset.visivel = e.isIntersecting ? '1' : ''));
-    box.innerHTML = salas.length ? salas.map((s, i) => `
-      <div class="cam" data-sala="${esc(s.sala)}">
-        ${i < MAX_PREVIAS ? `<canvas width="320" height="180" aria-label="Miniatura da ${esc(nomeSala(s.sala, s.titulo))}"></canvas>` : '<div class="cam-sem">Miniatura pausada (muitas salas)</div>'}
-        <div class="cam-info"><b>${esc(nomeSala(s.sala, s.titulo))}</b><small><span class="cam-vivo">● ao vivo</span> · ${s.pessoas.size} espectador${s.pessoas.size > 1 ? 'es' : ''}${s.titulo && s.sala === 'sala-principal' ? ' · ' + esc(s.titulo) : ''}</small>
-          <small>${SEM_PREVIA[s.fonte] ? 'Prévia do telão indisponível para esta fonte' : 'Telão: capa do filme (miniatura econômica)'}</small>
-          <a class="btn p" href="${esc(urlSala(s.sala))}">Abrir / Teletransportar</a></div></div>`).join('')
-      : '<div class="card"><p class="dica">Nenhuma sala com gente agora.</p></div>';
-    box.querySelectorAll('.cam').forEach(c => camObs.observe(c));
+    // atualiza sem recriar os quadros que já estão ao vivo
+    const vivas = new Set(salas.map(s => s.sala));
+    box.querySelectorAll('.cam').forEach(c => { if (!vivas.has(c.dataset.sala)) { camObs?.unobserve(c); c.remove(); } });
+    box.querySelector('.cam-vazia')?.remove();
+    salas.forEach((s, i) => {
+      let c = box.querySelector(`.cam[data-sala="${CSS.escape(s.sala)}"]`);
+      if (!c) {
+        c = document.createElement('div'); c.className = 'cam'; c.dataset.sala = s.sala;
+        c.innerHTML = `<div class="cam-tela">${i < MAX_PREVIAS ? '<canvas width="320" height="180"></canvas>' : '<div class="cam-sem">Miniatura pausada (muitas salas)</div>'}<span class="cam-rec">● REC</span></div>
+          <div class="cam-info"><b></b><small class="cam-linha"></small><small class="cam-fonte"></small>
+          <div class="linha-acoes"><a class="btn p" data-assistir>👁 Assistir ao vivo</a><a class="btn" data-entrar>Entrar na sala</a></div></div>`;
+        camObs?.observe(c);
+      }
+      box.appendChild(c);   // mantém a ordem (mais gente primeiro)
+      c.querySelector('canvas')?.setAttribute('aria-label', 'Miniatura da ' + nomeSala(s.sala, s.titulo));
+      c.querySelector('.cam-info b').textContent = nomeSala(s.sala, s.titulo);
+      c.querySelector('.cam-linha').innerHTML = `<span class="cam-vivo">● ao vivo</span> · ${s.pessoas.size} espectador${s.pessoas.size > 1 ? 'es' : ''}${s.titulo && s.sala === 'sala-principal' ? ' · ' + esc(s.titulo) : ''}`;
+      c.querySelector('.cam-fonte').textContent = [...s.pessoas.values()].map(p => p.apelido).filter(Boolean).slice(0, 6).join(', ');
+      c.querySelector('[data-assistir]').href = urlObservar(s.sala, false);
+      c.querySelector('[data-entrar]').href = urlSala(s.sala);
+    });
+    if (!salas.length) box.innerHTML = '<div class="card cam-vazia"><p class="dica">Nenhuma sala com gente agora.</p></div>';
+    ligarAoVivo();
   }
-  box.querySelectorAll('.cam').forEach(c => {
+  box.querySelectorAll('.cam:not(.ao-vivo)').forEach(c => {   // salas sem quadro ao vivo: desenho leve
     const s = st.salas.get(c.dataset.sala), cv = c.querySelector('canvas');
-    if (s && cv && (c.dataset.visivel !== '' || !soMiniaturas)) miniatura(cv, s);
+    if (s && cv) miniatura(cv, s);
   });
 }
 function miniatura(cv, s) {
