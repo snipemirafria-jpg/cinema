@@ -585,9 +585,9 @@ export class Cinema {
       this.vr.quadro(dt);
       return;
     }
-    if (MOBILE || this.fpsMax) {        // celular: ~30 fps e pausa com a aba escondida (miniatura ao vivo: fpsMax)
+    if (MOBILE || this.fpsMax) {        // celular: até 60 fps para reduzir judder em filmes 24/30 fps; miniatura usa fpsMax
       const agora = performance.now();
-      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : 32)) return;
+      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : 15)) return;
       this._ult = agora;
     }
     const dt = Math.min(this.relogio.getDelta(), 0.1);
