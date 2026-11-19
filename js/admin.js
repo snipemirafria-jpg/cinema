@@ -1,6 +1,7 @@
 // Painel do criador (OWNER). Toda permissão é garantida no banco (RLS + funções),
 // esta tela só organiza as ferramentas.
 import { sb, esc, toast, urlPublica } from './supa.js';
+import { CANAL_GLOBAL, nomeSala, urlSala } from './moderacao.js';
 import { detectarTipo, NOME_TIPO, idArchive, idYouTube, idDrive, urlDriveDireto, capaYouTube, capaDrive, carregarApiYouTube } from './fontes.js';
 
 const $ = (s, el = document) => el.querySelector(s);
@@ -28,10 +29,22 @@ canal.on('presence', { event: 'sync' }, () => {
 }).subscribe();
 
 // ------------------------------------------------------------------ navegação
-const SECOES = { dashboard, programacao, filmes, usuarios, mensagens, denuncias, banimentos, acessos, auditoria, config };
+const SECOES = { dashboard, programacao, filmes, usuarios, mensagens, denuncias, banimentos, moderacao, ajuda, cameras, acessos, auditoria, config };
+
+// canal global: presença de todas as salas (só observa: o painel não entra na contagem) + avisos de moderação
+const global = sb.channel(CANAL_GLOBAL);
+st.salas = new Map();
+global.on('presence', { event: 'sync' }, () => {
+  const m = new Map();
+  Object.values(global.presenceState()).forEach(a => { const p = a[0]; if (!p?.sala) return; const s = m.get(p.sala) || m.set(p.sala, { sala: p.sala, titulo: '', capa: '', fonte: '', pessoas: new Map() }).get(p.sala); s.pessoas.set(p.id, p); if (p.titulo) Object.assign(s, { titulo: p.titulo, capa: p.capa, fonte: p.fonte }); });
+  st.salas = m;
+  if (st.secao === 'cameras') desenharCameras();
+}).subscribe();
+const avisar = (alvo, acao) => { const msg = { type: 'broadcast', event: 'moderacao', payload: { alvo, acao } }; canal.send(msg); global.send(msg); };
 $$('nav button').forEach(b => b.onclick = () => ir(b.dataset.sec));
 $('#menu-mob').onclick = () => $('#lateral').classList.toggle('aberta');
 function ir(sec) {
+  if (st.secao === 'cameras' && sec !== 'cameras') pararCameras();
   st.secao = sec;
   $$('nav button').forEach(b => b.classList.toggle('ativo', b.dataset.sec === sec));
   $('#titulo-sec').textContent = $(`nav button[data-sec="${sec}"]`).textContent.replace(/\d+$/, '').trim();
@@ -469,7 +482,7 @@ async function expulsar(usuario, nome) {
   if (!confirm(`Expulsar ${nome} da sala? A pessoa poderá voltar em 10 minutos.`)) return;
   const reg = { usuario, tipo: 'temporario', motivo: 'Expulso da sala pelo dono', criado_por: st.uid, ate: new Date(Date.now() + 10 * 60e3).toISOString() };
   if (erro((await sb.from('banimentos').insert(reg)).error)) return;
-  canal.send({ type: 'broadcast', event: 'moderacao', payload: { alvo: usuario } });
+  avisar(usuario, 'expulsar');
   toast(nome + ' foi expulso', 'ok'); ir(st.secao);
 }
 
@@ -482,7 +495,7 @@ function formBan(usuario, nome) {
     const v = Object.fromEntries(new FormData(fm));
     const reg = { usuario, tipo: v.tipo, motivo: v.motivo, criado_por: st.uid, ate: v.tipo === 'temporario' ? new Date(Date.now() + v.horas * 3600e3).toISOString() : null };
     if (erro((await sb.from('banimentos').insert(reg)).error)) return false;
-    canal.send({ type: 'broadcast', event: 'moderacao', payload: { alvo: usuario } });
+    avisar(usuario, 'banir');
     toast('Banimento aplicado', 'ok'); ir(st.secao);
   });
   const t = $('[name=tipo]', form); t.onchange = () => $('.c-dur', form).hidden = t.value !== 'temporario';
@@ -542,6 +555,120 @@ async function banimentos() {
   $$('[data-rev]').forEach(b => b.onclick = async () => {
     if (!erro((await sb.from('banimentos').update({ revogado_em: new Date().toISOString(), revogado_por: st.uid }).eq('id', b.dataset.rev)).error)) { toast('Revogado', 'ok'); banimentos(); }
   });
+}
+
+// ------------------------------------------------------------------ moderação (bans + silenciamentos ativos)
+async function moderacao() {
+  const agora = new Date().toISOString();
+  const [bans, sils, log] = await Promise.all([
+    sb.from('banimentos').select('id, usuario, tipo, motivo, ate, criado_em, alvo:perfis!banimentos_usuario_fkey(apelido)').is('revogado_em', null).or('ate.is.null,ate.gt.' + agora).order('criado_em', { ascending: false }),
+    sb.from('silenciamentos').select('id, usuario, tipo, motivo, ate, criado_em, alvo:perfis!silenciamentos_usuario_fkey(apelido)').is('revogado_em', null).or('ate.is.null,ate.gt.' + agora).order('criado_em', { ascending: false }),
+    sb.from('auditoria').select('criado_em, acao, dados').or('acao.like.MODERAR_%,acao.eq.REVOGAR,acao.like.AJUDA_%').order('criado_em', { ascending: false }).limit(100),
+  ]);
+  if (erro(bans.error)) return;
+  const semSil = !!sils.error;   // migration 007 ainda não aplicada
+  const nomes = { voz: '🎙️ Voz', texto: '💬 Mensagens', ajuda: '🆘 Pedidos de ajuda' };
+  const linha = (r, tab, tipo) => `<tr><td><b>${esc(r.alvo?.apelido || '—')}</b></td><td>${tipo}</td><td>${esc(r.motivo || '—')}</td><td>${r.ate ? dataBR(r.ate) : 'até revogar'}</td><td>${dataBR(r.criado_em)}</td>
+    <td><button class="btn" data-rev="${r.id}" data-tab="${tab}" data-alvo="${r.usuario}">Revogar</button></td></tr>`;
+  C.innerHTML = `
+    <div class="card"><h3>⛔ Banimentos vigentes (site inteiro)</h3><table><thead><tr><th>Usuário</th><th>Tipo</th><th>Motivo</th><th>Até</th><th>Desde</th><th></th></tr></thead><tbody>
+      ${bans.data.map(b => linha(b, 'banimentos', b.tipo)).join('') || '<tr><td colspan=6 class="dica">Ninguém banido agora.</td></tr>'}</tbody></table></div>
+    <div class="card"><h3>🔇 Silenciamentos vigentes</h3>${semSil ? '<p class="dica">Disponível depois de aplicar a migration 007.</p>' : `<table><thead><tr><th>Usuário</th><th>O quê</th><th>Motivo</th><th>Até</th><th>Desde</th><th></th></tr></thead><tbody>
+      ${sils.data.map(x => linha(x, 'silenciamentos', nomes[x.tipo])).join('') || '<tr><td colspan=6 class="dica">Ninguém silenciado agora.</td></tr>'}</tbody></table>`}</div>
+    <div class="card"><h3>🧾 Histórico de moderação</h3><table><thead><tr><th>Quando</th><th>Ação</th><th>Alvo</th><th>Sala</th><th>Motivo</th><th>Até</th></tr></thead><tbody>
+      ${(log.data || []).map(a => `<tr><td>${dataBR(a.criado_em)}</td><td><span class="tag roxo">${esc(a.acao)}</span></td><td class="dica">${esc(String(a.dados?.target_id || '').slice(0, 8))}</td><td>${esc(a.dados?.sala ? nomeSala(a.dados.sala) : '—')}</td><td>${esc(a.dados?.motivo || '—')}</td><td>${a.dados?.ate ? dataBR(a.dados.ate) : '—'}</td></tr>`).join('') || '<tr><td colspan=6 class="dica">Sem ações ainda.</td></tr>'}</tbody></table></div>`;
+  $$('[data-rev]').forEach(b => b.onclick = async () => {
+    if (!confirm('Revogar esta punição?')) return;
+    if (erro((await sb.rpc('revogar_moderacao', { p_tabela: b.dataset.tab, p_id: b.dataset.rev })).error)) return;
+    avisar(b.dataset.alvo, 'revogar'); toast('Revogado', 'ok'); moderacao();
+  });
+}
+
+// ------------------------------------------------------------------ pedidos de ajuda (últimos 30 min)
+let canalAjuda = null;
+async function ajuda() {
+  const { data, error } = await sb.from('pedidos_ajuda').select('id, usuario, sala, criado_em, status, perfis!pedidos_ajuda_usuario_fkey(apelido, avatar)')
+    .gt('criado_em', new Date(Date.now() - 30 * 60e3).toISOString()).order('criado_em', { ascending: false });
+  if (error) { C.innerHTML = '<p class="dica">Pedidos de ajuda ficam disponíveis depois de aplicar a migration 007.</p>'; return; }
+  const pend = data.filter(p => p.status === 'pendente').length;
+  $('#badge-ajuda').textContent = pend || '';
+  C.innerHTML = `<div class="card"><h3>🆘 Pedidos dos últimos 30 minutos</h3><table><thead><tr><th>Quando</th><th>Quem</th><th>Sala</th><th>Situação</th><th></th></tr></thead><tbody>
+    ${data.map(p => `<tr><td>${dataBR(p.criado_em)}</td><td><b>${esc(p.perfis?.apelido || '—')}</b></td><td>${esc(nomeSala(p.sala, st.salas.get(p.sala)?.titulo))}</td>
+      <td><span class="tag ${p.status === 'pendente' ? 'amar' : ''}">${p.status}</span></td>
+      <td class="linha-acoes">${p.status === 'pendente' ? `<button class="btn p" data-ir="${p.id}" data-sala="${esc(p.sala)}">Ir para a sala</button><button class="btn" data-ign="${p.id}">Ignorar</button>` : ''}
+      <button class="btn" data-pausa="${p.usuario}" data-sala="${esc(p.sala)}" title="Pausar pedidos desta pessoa por 1 hora">Pausar 1 h</button></td></tr>`).join('') || '<tr><td colspan=5 class="dica">Nenhum pedido.</td></tr>'}</tbody></table></div>`;
+  $$('[data-ir]').forEach(b => b.onclick = async () => { if (!erro((await sb.rpc('atender_pedido_ajuda', { p_id: b.dataset.ir, p_status: 'atendido' })).error)) location.href = urlSala(b.dataset.sala); });
+  $$('[data-ign]').forEach(b => b.onclick = async () => { if (!erro((await sb.rpc('atender_pedido_ajuda', { p_id: b.dataset.ign, p_status: 'ignorado' })).error)) ajuda(); });
+  $$('[data-pausa]').forEach(b => b.onclick = async () => { if (!erro((await sb.rpc('moderar', { p_alvo: b.dataset.pausa, p_acao: 'silenciar_ajuda', p_minutos: 60, p_motivo: null, p_sala: b.dataset.sala })).error)) toast('Pedidos pausados por 1 h', 'ok'); });
+  if (!canalAjuda) canalAjuda = sb.channel('ajuda-painel').on('postgres_changes', { event: 'INSERT', schema: 'public', table: 'pedidos_ajuda' }, () => {
+    toast('🆘 Novo pedido de ajuda'); if (st.secao === 'ajuda') ajuda(); else $('#badge-ajuda').textContent = (+$('#badge-ajuda').textContent || 0) + 1;
+  }).subscribe();
+}
+
+// ------------------------------------------------------------------ Câmeras das Salas
+// Miniatura ESQUEMÁTICA da sala virtual (telão + poltronas + avatares por cor/nome), desenhada no
+// aparelho do criador a partir da presença em tempo real. Não acessa câmera, microfone nem tela de
+// ninguém, não toca áudio, e o painel não entra na contagem (só observa a presença).
+const MAX_PREVIAS = 12, ATUALIZA_MS = 5000;
+const SEM_PREVIA = { youtube: 1, drive: 1, link: 1, archive: 1 };
+const capas = new Map();
+let camTimer = null, camObs = null;
+function pararCameras() { clearInterval(camTimer); camTimer = null; camObs?.disconnect(); camObs = null; }
+async function cameras() {
+  C.innerHTML = `<p class="dica">Visão do ambiente virtual de cada sala (miniatura esquemática atualizada a cada ${ATUALIZA_MS / 1000} s). Você observa sem aparecer na sala e sem áudio.</p><div class="grade-cameras" id="cams"></div>`;
+  desenharCameras();
+  pararCameras();
+  camTimer = setInterval(() => { if (!document.hidden) desenharCameras(true); }, ATUALIZA_MS);
+}
+function desenharCameras(soMiniaturas = false) {
+  const box = $('#cams'); if (!box) return;
+  const salas = [...st.salas.values()].filter(s => s.pessoas.size).sort((a, b) => b.pessoas.size - a.pessoas.size);
+  if (!soMiniaturas) {
+    camObs?.disconnect();
+    camObs = new IntersectionObserver((es) => es.forEach(e => e.target.dataset.visivel = e.isIntersecting ? '1' : ''));
+    box.innerHTML = salas.length ? salas.map((s, i) => `
+      <div class="cam" data-sala="${esc(s.sala)}">
+        ${i < MAX_PREVIAS ? `<canvas width="320" height="180" aria-label="Miniatura da ${esc(nomeSala(s.sala, s.titulo))}"></canvas>` : '<div class="cam-sem">Miniatura pausada (muitas salas)</div>'}
+        <div class="cam-info"><b>${esc(nomeSala(s.sala, s.titulo))}</b><small><span class="cam-vivo">● ao vivo</span> · ${s.pessoas.size} espectador${s.pessoas.size > 1 ? 'es' : ''}${s.titulo && s.sala === 'sala-principal' ? ' · ' + esc(s.titulo) : ''}</small>
+          <small>${SEM_PREVIA[s.fonte] ? 'Prévia do telão indisponível para esta fonte' : 'Telão: capa do filme (miniatura econômica)'}</small>
+          <a class="btn p" href="${esc(urlSala(s.sala))}">Abrir / Teletransportar</a></div></div>`).join('')
+      : '<div class="card"><p class="dica">Nenhuma sala com gente agora.</p></div>';
+    box.querySelectorAll('.cam').forEach(c => camObs.observe(c));
+  }
+  box.querySelectorAll('.cam').forEach(c => {
+    const s = st.salas.get(c.dataset.sala), cv = c.querySelector('canvas');
+    if (s && cv && (c.dataset.visivel !== '' || !soMiniaturas)) miniatura(cv, s);
+  });
+}
+function miniatura(cv, s) {
+  const g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.fillStyle = '#0b0710'; g.fillRect(0, 0, W, H);
+  // telão
+  const tx = 40, ty = 12, tw = W - 80, th = 64;
+  g.fillStyle = '#000'; g.fillRect(tx, ty, tw, th);
+  let img = s.capa && capas.get(s.capa);
+  if (s.capa && !img) { img = new Image(); img.referrerPolicy = 'no-referrer'; img.src = s.capa; img.onload = () => miniatura(cv, s); capas.set(s.capa, img); }
+  if (img?.complete && img.naturalWidth) { g.globalAlpha = .55; g.drawImage(img, tx, ty, tw, th); g.globalAlpha = 1; }
+  g.strokeStyle = '#ff2d55'; g.lineWidth = 2; g.strokeRect(tx, ty, tw, th);
+  g.fillStyle = '#fff'; g.font = 'bold 11px system-ui'; g.textAlign = 'center';
+  g.fillText((s.titulo || nomeSala(s.sala)).slice(0, 40), W / 2, ty + th / 2);
+  g.font = '9px system-ui'; g.fillStyle = '#cfc6dd';
+  g.fillText(SEM_PREVIA[s.fonte] ? 'prévia indisponível' : 'capa', W / 2, ty + th / 2 + 14);
+  // poltronas (3 blocos por lado do corredor) e avatares por ordem de chegada
+  const pessoas = [...s.pessoas.values()].sort((a, b) => (b.papel === 'owner') - (a.papel === 'owner') || (a.desde || 0) - (b.desde || 0));
+  const filas = 4, porFila = 12, sx = 26, sy = 92, dx = (W - 2 * sx) / porFila, dy = 20;
+  let k = 0;
+  for (let f = 0; f < filas; f++) for (let c = 0; c < porFila; c++) {
+    const x = sx + c * dx + dx / 2 + (c >= porFila / 2 ? 6 : -6), y = sy + f * dy;
+    g.fillStyle = '#5b1424'; g.fillRect(x - 7, y - 6, 14, 12);
+    const p = pessoas[k++];
+    if (p) {
+      g.fillStyle = /^#[0-9a-f]{3,8}$/i.test(p.cor || '') ? p.cor : '#7c3aed';
+      g.beginPath(); g.arc(x, y - 2, 6, 0, Math.PI * 2); g.fill();
+      g.fillStyle = '#fff'; g.font = 'bold 8px system-ui'; g.fillText(String(p.apelido || '?')[0].toUpperCase(), x, y + 1);
+    }
+  }
+  if (pessoas.length > filas * porFila) { g.fillStyle = '#fff'; g.font = '10px system-ui'; g.fillText('+' + (pessoas.length - filas * porFila), W - 16, H - 6); }
 }
 
 // ------------------------------------------------------------------ acessos / auditoria
