@@ -1,3 +1,4 @@
+import { observarQualidade } from './qualidade-video.js';
 import { controlesAnuncio } from './anuncio-youtube.js';
 import { carregarFilmesR2 } from './catalogo-r2.js';
 // Fluxo do app dos espectadores: login Google → perfil → sala 3D.
@@ -234,6 +235,12 @@ async function abrirCinema() {
     },
   };
   const player = estado.player = estado.sala ? estado.sala.criarPlayer(video, eventosPlayer) : new PlayerSincronizado(video, eventosPlayer);
+  if (!obs?.mini) {
+    const leitura = observarQualidade(video);
+    $('#medir-video').onclick = () => {
+      $('#qualidade-video').textContent = player.modo === 'textura' && video.currentSrc ? leitura() : 'Diagnóstico disponível durante um filme reproduzido no player de vídeo direto.';
+    };
+  }
   if (estado.sala) marcarSalaFilme();
   $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
   $('#btn-som').onclick = () => {
@@ -300,6 +307,45 @@ function marcarSalaFilme() {
 function conectarSala() {
   const canal = estado.canal = sb.channel(estado.sala ? estado.sala.canal : 'sala-principal', { config: { presence: { key: estado.sessao.user.id } } });
   let conectado = false;
+  const reacoes = ['❤️','😂','👏','😮','🍿'];
+  const ultima = new Map();
+  const podeReagir = id => !estado.mod?.textoSilenciado(id);
+  function exibirReacao(id, emoji) {
+    if (!estado.pessoas.has(id) || !reacoes.includes(emoji) || !podeReagir(id)) return false;
+    const agora = performance.now();
+    if (agora - (ultima.get(id) ?? -Infinity) < 3000) return false;
+    ultima.set(id, agora);
+    if (localStorage.getItem('cine-ocultar-reacoes') !== '1' && !document.body.classList.contains('tela-limpa')) estado.cinema.reagir(id,emoji);
+    return true;
+  }
+  canal.on('broadcast', {event:'reacao'}, ({payload}) => {
+    if (payload?.id !== estado.sessao.user.id) exibirReacao(payload?.id,payload?.emoji);
+  });
+  const opcoes = $('#reacoes-rapidas');
+  if (visivel()) {
+    for (const emoji of reacoes) {
+      const b = document.createElement('button'); b.type = 'button'; b.textContent = emoji;
+      b.onclick = () => {
+        if (!conectado) return toast('Aguarde a conexão com a sala.');
+        const id = estado.sessao.user.id;
+        if (!podeReagir(id)) return toast('Seu chat está silenciado.');
+        if (!exibirReacao(id,emoji)) return toast('Aguarde três segundos entre reações.');
+        canal.send({type:'broadcast',event:'reacao',payload:{id,emoji}});
+      };
+      opcoes.append(b);
+    }
+  }
+  const ocultar = $('#ocultar-reacoes');
+  ocultar.checked = localStorage.getItem('cine-ocultar-reacoes') === '1';
+  ocultar.onchange = () => localStorage.setItem('cine-ocultar-reacoes',ocultar.checked ? '1' : '0');
+  $('#convidar-sala').onclick = async () => {
+    const url = new URL(location.pathname, location.origin);
+    if (estado.sala) url.searchParams.set('netmovies',estado.sala.id);
+    try {
+      if (navigator.share) await navigator.share({title:'Sessão Juntos',url:url.href});
+      else { await navigator.clipboard.writeText(url.href); toast('Link da sala copiado.'); }
+    } catch (e) { if (e.name !== 'AbortError') window.prompt('Copie o link desta sala',url.href); }
+  };
   estado.cinema.aoPose = pose => { if (conectado && visivel() && estado.pessoas.size > 1) canal.send({type:'broadcast',event:'pose',payload:pose}); };
   canal.on('broadcast', {event:'pose'}, ({payload}) => {
     if (payload?.id !== estado.sessao.user.id && estado.pessoas.has(payload?.id)) estado.cinema.receberPose(payload);
@@ -309,6 +355,7 @@ function conectarSala() {
     const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
     if (visivel() && !lista.some(p => p.id === estado.sessao.user.id)) lista.push(meuEstadoPresenca());
     estado.pessoas = new Map(lista.map(p => [p.id, p]));
+    for (const id of ultima.keys()) if (!estado.pessoas.has(id)) ultima.delete(id);
     $('#qtd-online').textContent = lista.length;
     estado.cinema.atualizarPessoas(lista);
     if (!$('#gaveta-pessoas').hidden) desenharPessoas();

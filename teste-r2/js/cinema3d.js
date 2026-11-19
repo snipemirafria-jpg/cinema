@@ -507,7 +507,7 @@ export class Cinema {
   _criarRotulo(p) {
     const div = document.createElement('div');
     div.className = 'rotulo3d';
-    div.innerHTML = `<div class="balao" hidden></div><div class="fala" hidden>◖))) Falando</div><div class="nome"></div>`;
+    div.innerHTML = `<span class="reacao-avatar" hidden></span><div class="balao" hidden></div><div class="fala" hidden>◖))) Falando</div><div class="nome"></div>`;
     const obj = new CSS2DObject(div);
     obj.position.set(0, 1.5, 0);
     obj.center.set(0.5, 1);
@@ -521,6 +521,14 @@ export class Cinema {
     div.classList.toggle('moderador', p.papel === 'moderador');
     div.classList.toggle('eu', p.id === this.meuId);
     div.querySelector('.nome').innerHTML = `${p.papel === 'owner' ? '👑 ' : p.papel === 'moderador' ? '🛡️ ' : ''}${esc(p.apelido || 'Convidado')}<i></i>`;
+  }
+
+  reagir(id, emoji) {
+    const reg = this.avatares.get(id);
+    const n = reg?.rotulo?.element.querySelector('.reacao-avatar');
+    if (!n) return;
+    n.textContent = emoji; n.hidden = false;
+    clearTimeout(reg.tReacao); reg.tReacao = setTimeout(() => { n.hidden = true; },2000);
   }
 
   balao(id, texto) {
@@ -537,6 +545,7 @@ export class Cinema {
     if (!reg) return;
     if (reg.wrap) { reg.rotulo?.removeFromParent(); reg.rotulo?.element.remove(); this.cena.remove(reg.wrap); }
     reg.placa?.material.map.dispose(); reg.placa?.material.dispose();
+    clearTimeout(reg.tReacao);
     this.avatares.delete(id);
   }
 

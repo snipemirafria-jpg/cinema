@@ -120,12 +120,15 @@
 
     <aside class="gaveta" id="gaveta-pessoas" hidden>
       <header><h3>Na sala agora</h3><button class="fechar" data-fechar>✕</button></header>
+      <button type="button" class="chip" id="convidar-sala">Compartilhar link da sala</button>
+      <fieldset><legend>Reações rápidas</legend><div id="reacoes-rapidas"></div><label><input type="checkbox" id="ocultar-reacoes"> Ocultar reações sobre os avatares</label></fieldset>
       <ul id="lista-pessoas"></ul>
     </aside>
 
     <aside class="gaveta" id="gaveta-programacao" hidden>
       <header><h3>Programação</h3><button class="fechar" data-fechar>✕</button></header>
       <a href="saguao.html" class="chip" style="display:inline-block;color:inherit">Abrir saguão e mural de cartazes</a>
+      <details><summary>Qualidade da reprodução</summary><button class="chip" type="button" id="medir-video">Medir vídeo neste aparelho</button><p id="qualidade-video" role="status"></p></details>
       <div id="lista-programacao" class="lista-prog"></div>
     </aside>
 

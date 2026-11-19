@@ -339,3 +339,5 @@ body.obs-mini #btn-tela-limpa,body.em-vr #btn-tela-limpa{display:none!important}
 @media (max-width:760px){#btn-tela-limpa{bottom:calc(76px + var(--seg-bot));width:40px;height:40px;font-size:18px}}
 
 .rotulo3d .fala{background:#093a2b;color:#adffdb;border-radius:1em;padding:2px 7px;font-size:11px;font-weight:700}
+
+#reacoes-rapidas{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:8px}#reacoes-rapidas button{font-size:20px;background:#231b2a;color:white;border:0;border-radius:8px;padding:6px;cursor:pointer}.reacao-avatar{font-size:22px}.tela-limpa .reacao-avatar{display:none!important}
