@@ -16,6 +16,11 @@ Branch: `moderacao-voz` (NADA vai para `main`, NADA de deploy, NADA aplicado no 
   - Validada no banco real DENTRO de BEGIN…ROLLBACK com `supabase/tests/007_validar_rollback.sql`: 23/23 OK.
     DOWN também testado em transação com ROLLBACK (remove tudo). Conferido depois: o banco real NÃO tem as tabelas novas.
 
+- Passo 2a (FEITO): `js/voz.js` — GerenciadorVoz (único por página) + TransporteP2P (WebRTC malha, só áudio,
+  sinalização/presença no canal Realtime `voz-<sala>`, STUN Google, máx. 8, backoff limitado, ICE restart 2x,
+  silenciamento do criador via `silenciados_ativos()`, indicador de fala por AnalyserNode a cada 200 ms, `diagnostico()`).
+  Ainda NÃO ligado à interface.
+
 ## Falta (ordem)
 2. `js/voz.js` (VoiceManager + transporte P2P Supabase) e UI de voz em `index.html`/`css/app.css`/`js/main.js`.
 3. `js/moderacao.js`: menu do criador no avatar/nome, mutes, Pedir ajuda, notificações ao criador.
