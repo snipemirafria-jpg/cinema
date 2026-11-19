@@ -11,7 +11,7 @@ async function iniciar() {
   if (!NETMOVIES_ENABLED) return;
   const menu = document.getElementById('menu-lateral');
   if (!menu || document.getElementById('netmovies-botao')) return;
-  await import('./netmovies-catalog.js');
+
 
   const estilo = document.createElement('style');
   estilo.textContent = `
@@ -34,7 +34,7 @@ async function iniciar() {
     painel.innerHTML = '<div class="nm-topo"><button type="button" class="nm-fechar">✕ Voltar para a sala</button></div>';
     const catalogo = document.createElement('netmovies-catalog');
     catalogo.setAttribute('catalog', new URL(f.catalogo, BASE).href);
-    painel.appendChild(catalogo);
+
     // "Assistir" abre a sala 3D própria do filme: quem abrir o mesmo filme entra junto com quem já está vendo
     catalogo.addEventListener('netmovies-assistir', (e) => {
       if (!document.getElementById('tela-cinema')) return;     // fora do app: usa o player do catálogo
@@ -53,7 +53,13 @@ async function iniciar() {
     botao.id = f.id === 'netmovies' ? 'netmovies-botao' : `fornecedor-${f.id}-botao`;
     botao.type = 'button'; botao.title = `${f.nome} — Filmes gratuitos (com anúncios)`;
     botao.innerHTML = `${f.icone}<span>${f.nome}</span>`;
-    botao.addEventListener('click', (e) => { e.stopPropagation(); painel.hidden = false; });
+    botao.addEventListener('click', async e => {
+      e.stopPropagation(); painel.hidden = false;
+      try {
+        await import('./netmovies-catalog.js');
+        if (!catalogo.isConnected && !painel.hidden) painel.appendChild(catalogo);
+      } catch { painel.hidden = true; botao.title = 'Falha ao abrir. Toque para tentar novamente.'; }
+    });
     menu.insertBefore(botao, antes);
   }
 }

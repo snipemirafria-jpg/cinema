@@ -119,6 +119,8 @@ export class Cinema {
     const bordaMat = M.borda = new THREE.MeshBasicMaterial({ color: '#ff3355' });
     M.neonA = new THREE.MeshBasicMaterial({ color: '#ff1f3d' });
     M.neonB = new THREE.MeshBasicMaterial({ color: '#ff1f3d' });
+    const guias = new THREE.InstancedMesh(new THREE.BoxGeometry(0.05, 0.03, PASSO_FILA * 0.9), bordaMat, (FILEIRAS - 1) * 2);
+    const deslocamento = new THREE.Matrix4(); let guia = 0;
     for (let i = 0; i < FILEIRAS; i++) {
       const z = this._zFila(i), y = this._yFila(i);
       if (y <= 0) continue;
@@ -126,10 +128,10 @@ export class Cinema {
       d.position.set(0, y / 2, z - 0.1); d.receiveShadow = true; c.add(d);
       // fitinha de luz no degrau do corredor
       for (const x of [-CORREDOR / 2 - 0.05, CORREDOR / 2 + 0.05]) {
-        const led = new THREE.Mesh(new THREE.BoxGeometry(0.05, 0.03, PASSO_FILA * 0.9), bordaMat);
-        led.position.set(x, y + 0.02, z - 0.1); c.add(led);
+        guias.setMatrixAt(guia++, deslocamento.makeTranslation(x, y + 0.02, z - 0.1));
       }
     }
+    guias.count = guia; c.add(guias);
     // degraus traseiros até a parede
     const ultimoY = this._yFila(FILEIRAS - 1);
     const fundoPlat = new THREE.Mesh(new THREE.BoxGeometry(L - 0.2, ultimoY, 6), degrauMat);
