@@ -10,6 +10,9 @@ import { SalaTematica } from './temas-sala.js';
 
 const ASSETS = new URL('../assets/', import.meta.url).href;
 const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+// Android: mantém o filme em camada 2D independente e economiza GPU na sala WebGL.
+// ?gpu=normal permite comparar a renderização antiga, sem mexer nas configurações da conta.
+const ANDROID_LEVE = /Android/i.test(navigator.userAgent) && new URLSearchParams(location.search).get('gpu') !== 'normal';
 
 // Geometria da sala (a plateia olha para +Z, onde fica o telão)
 const TELA = { z: 15.5, y: 5.6, w: 17.6, h: 7.4 };
@@ -48,7 +51,7 @@ export class Cinema {
     this.modo = 'poltrona';
 
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: MOBILE ? 'default' : 'high-performance' });
-    r.setPixelRatio(Math.min(devicePixelRatio, MOBILE ? 1 : 2));
+    r.setPixelRatio(Math.min(devicePixelRatio, ANDROID_LEVE ? 0.65 : MOBILE ? 1 : 2));
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = MOBILE ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
     r.toneMappingExposure = 1.05;
@@ -60,7 +63,15 @@ export class Cinema {
     const camadaTela = document.createElement('div'); camadaTela.className = 'camada-tela';
     canvas.after(camadaTela);
     this.css3d = new CSS3DRenderer({ element: camadaTela });
+    // O iframe do YouTube em CSS3D pode prejudicar a composição de vídeo no Chrome Android.
+    // Esta camada alternativa conserva o player original, mas elimina a transformação 3D do iframe.
+    this.camadaPlana = document.createElement('div');
+    this.camadaPlana.className = 'camada-tela-plana';
+    camadaTela.after(this.camadaPlana);
     this.cenaHtml = new THREE.Scene();
+    this._telaPlana = false;
+    this._planaSuspensa = false;
+    this._planaUltima = '';
 
     this.cena = new THREE.Scene();
     this.cena.background = new THREE.Color('#06030a');
@@ -313,6 +324,10 @@ export class Cinema {
   // coloca um elemento HTML (iframe/video) exatamente sobre o telão; null remove
   mostrarNaTela(el) {
     if (this.objTela) { this.cenaHtml.remove(this.objTela); this.objTela.element.remove(); this.objTela = null; }
+    this._telaPlana = false;
+    this._planaSuspensa = false;
+    this._planaUltima = '';
+    this.camadaPlana.style.display = '';
     if (!el) return;
     const W = 1280, H = Math.round(W * TELA.h / TELA.w);
     const caixa = document.createElement('div'); caixa.className = 'tela-html';
@@ -321,7 +336,44 @@ export class Cinema {
     const o = this.objTela = new CSS3DObject(caixa);
     o.position.set(0, TELA.y, TELA.z - 0.03); o.rotation.y = Math.PI; o.scale.setScalar(TELA.w / W);
     this.cenaHtml.add(o);
+    this._telaPlana = ANDROID_LEVE && el.classList.contains('midia-yt');
+    if (this._telaPlana) this.camadaPlana.appendChild(caixa);
     this.materialTela.map = null; this.materialTela.color.set('#000000'); this.materialTela.needsUpdate = true;
+  }
+
+  // Projeta a posição do telão na tela como um retângulo 2D com corte nos cantos.
+  // O vídeo segue na mesma sala e o mesmo player sincronizado, mas sem transformar o iframe em 3D.
+  _atualizarTelaPlana() {
+    const caixa = this.objTela?.element;
+    if (!this._telaPlana || !caixa || caixa.parentElement !== this.camadaPlana) return;
+    const w = this.canvas.clientWidth || innerWidth, h = this.canvas.clientHeight || innerHeight;
+    if (!w || !h) return;
+    this.camera.updateMatrixWorld();
+    this.tela.updateWorldMatrix(true, false);
+    const pts = [];
+    for (const [x, y] of [[-TELA.w / 2, TELA.h / 2], [TELA.w / 2, TELA.h / 2], [TELA.w / 2, -TELA.h / 2], [-TELA.w / 2, -TELA.h / 2]]) {
+      const p = new THREE.Vector3(x, y, 0).applyMatrix4(this.tela.matrixWorld);
+      const cam = p.clone().applyMatrix4(this.camera.matrixWorldInverse);
+      if (cam.z >= -0.05) { caixa.style.visibility = 'hidden'; return; }
+      p.project(this.camera);
+      pts.push([(p.x * 0.5 + 0.5) * w, (0.5 - p.y * 0.5) * h]);
+    }
+    const xs = pts.map(p => p[0]), ys = pts.map(p => p[1]);
+    const x0 = Math.min(...xs), y0 = Math.min(...ys), x1 = Math.max(...xs), y1 = Math.max(...ys);
+    const rw = x1 - x0, rh = y1 - y0;
+    if (!(rw > 1 && rh > 1 && rw < w * 8 && rh < h * 8 && x1 > 0 && x0 < w && y1 > 0 && y0 < h)) {
+      caixa.style.visibility = 'hidden'; return;
+    }
+    const chave = pts.flat().map(v => Math.round(v)).join(',');
+    if (this._planaUltima === chave && caixa.style.visibility === 'visible') return;
+    this._planaUltima = chave;
+    caixa.style.left = x0 + 'px';
+    caixa.style.top = y0 + 'px';
+    caixa.style.width = rw + 'px';
+    caixa.style.height = rh + 'px';
+    // Só recorta o polígono, sem distorcer a camada de vídeo nem forçar CSS3D.
+    caixa.style.clipPath = 'polygon(' + pts.map(([x,y]) => ((x-x0)/rw*100).toFixed(2) + '% ' + ((y-y0)/rh*100).toFixed(2) + '%').join(',') + ')';
+    caixa.style.visibility = 'visible';
   }
 
   mostrarVideo(sim) {
@@ -579,6 +631,19 @@ export class Cinema {
   }
 
   _loop() {
+    // O VR usa o posicionamento tridimensional original; a otimização Android vale só fora do VR.
+    if (this._telaPlana && this.objTela) {
+      if (this.vr?.ativo && !this._planaSuspensa) {
+        this.camadaPlana.style.display = 'none';
+        this.css3d.render(this.cenaHtml, this.camera);
+        this._planaSuspensa = true;
+      } else if (!this.vr?.ativo && this._planaSuspensa) {
+        this.camadaPlana.appendChild(this.objTela.element);
+        this.camadaPlana.style.display = '';
+        this._planaSuspensa = false;
+        this._planaUltima = '';
+      }
+    }
     // modo VR: o mesmo loop e a mesma cena; o módulo VR só troca a câmera e a forma de desenhar
     if (this.vr?.ativo) {
       const dt = Math.min(this.relogio.getDelta(), 0.1);
@@ -594,7 +659,7 @@ export class Cinema {
         const perdidos = q.droppedVideoFrames - this._qualidadeAnterior.droppedVideoFrames;
         if (total > 50 && perdidos / total > 0.06 && !this._modoEconomiaVideo) {
           this._modoEconomiaVideo = true;
-          this.renderer.setPixelRatio(Math.min(devicePixelRatio, 0.75));
+          this.renderer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 0.6));
           this._redimensionar();
           console.info('[CineOnline] Modo leve ativado: perda de quadros no Android');
         }
@@ -603,7 +668,7 @@ export class Cinema {
     }
     if (MOBILE || this.fpsMax) {        // celular: taxa adaptativa quando decodificação do vídeo perde quadros
       const agora = performance.now();
-      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : this._modoEconomiaVideo ? 32 : 15)) return;
+      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : ANDROID_LEVE ? (this._telaPlana ? 1000 / 15 : 1000 / 30) : this._modoEconomiaVideo ? 32 : 15)) return;
       this._ult = agora;
     }
     const dt = Math.min(this.relogio.getDelta(), 0.1);
@@ -618,7 +683,10 @@ export class Cinema {
     this._animar(t);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);
-    if (this.objTela) this.css3d.render(this.cenaHtml, this.camera);
+    if (this.objTela) {
+      if (this._telaPlana) this._atualizarTelaPlana();
+      else this.css3d.render(this.cenaHtml, this.camera);
+    }
   }
 
   interromperCamera() { this._alvoCam = null; }
@@ -627,6 +695,7 @@ export class Cinema {
     this.renderer.setAnimationLoop(null);
     this.tema?.destruir();
     removeEventListener('resize', this._redimensionar);
+    this.camadaPlana.remove();
     this.renderer.dispose();
   }
 }
