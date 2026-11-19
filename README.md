@@ -34,7 +34,7 @@ Abra http://localhost:8080. Cada push na branch `main` republica o site automati
 - O e-mail do OWNER fica em `privado.config` (chave `owner_email`). Só o primeiro login **Google verificado** com esse e-mail vira OWNER — nenhum usuário consegue se promover pelo navegador.
 
 ## Anúncios nas paredes
-Execute `supabase/migrations/011_anuncios_parede.sql` no SQL Editor do Supabase. Depois abra **Painel do criador → Anúncios da sala** para configurar os três painéis de cada lado do telão. Use links públicos HTTPS. Para links diretos sem extensão, escolha **Foto** ou **Vídeo**. Páginas externas dependem da permissão de incorporação do serviço. Para limpar um painel, apague o link e salve.
+Execute `supabase/migrations/011_anuncios_parede.sql` no SQL Editor do Supabase. Depois abra **Painel do criador → Anúncios da sala** para configurar os três painéis de cada lado do telão. Envie o arquivo original (foto, MP4 ou WebM) ou use um link público HTTPS. Para links diretos sem extensão, escolha **Foto** ou **Vídeo**. O Google Drive precisa liberar acesso público ao arquivo. Players incorporados podem exibir a marca da plataforma. Para limpar um painel, apague o link e salve.
 
 ## Segurança (resumo)
 - RLS em todas as tabelas; papel e identidade Google não podem ser alterados pelo usuário.

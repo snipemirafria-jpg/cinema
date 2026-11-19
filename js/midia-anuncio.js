@@ -1,4 +1,4 @@
-import { carregarDash, carregarHls, detectarTipo, idArchive, idDrive, idYouTube, urlDriveDireto, urlDrivePreview } from './fontes.js';
+import { capaDrive, carregarDash, carregarHls, detectarTipo, idArchive, idDrive, idYouTube, urlDriveDireto } from './fontes.js';
 
 export const POSICOES_ANUNCIOS = [
   'Esquerda 1', 'Esquerda 2', 'Esquerda 3',
@@ -18,7 +18,6 @@ function embedAnuncio(url, fonte) {
     const id = idYouTube(url.href);
     return new URL(`https://www.youtube-nocookie.com/embed/${encodeURIComponent(id)}?autoplay=1&mute=1&loop=1&playlist=${encodeURIComponent(id)}&controls=0&playsinline=1`);
   }
-  if (fonte === 'drive') return new URL(urlDrivePreview(idDrive(url.href)));
   if (fonte === 'archive') return new URL(`https://archive.org/embed/${idArchive(url.href)}`);
   if (['vimeo.com', 'www.vimeo.com', 'player.vimeo.com'].includes(url.hostname)) {
     const id = url.pathname.match(/^\/(?:video\/)?(\d+)\/?$/)?.[1];
@@ -42,21 +41,34 @@ export function montarMidiaAnuncio(caixa, tipo, url) {
   };
   const fonte = detectarTipo(url.href);
   const vimeo = /(^|\.)vimeo\.com$/.test(url.hostname);
-  if (tipo === 'foto' || (tipo === 'auto' && /\.(avif|gif|jpe?g|png|svg|webp|bmp|ico)$/i.test(url.pathname))) {
+  const drive = fonte === 'drive' ? idDrive(url.href) : null;
+  const linkDrive = (link) => {
+    const destino = new URL(link);
+    const chave = url.searchParams.get('resourcekey');
+    if (chave) destino.searchParams.set('resourcekey', chave);
+    return destino.href;
+  };
+  function montarFoto() {
     const img = document.createElement('img');
     img.alt = '';
     img.referrerPolicy = 'no-referrer';
-    img.onerror = falha;
+    img.onerror = drive ? () => {
+      img.onerror = falha;
+      img.src = linkDrive(capaDrive(drive));
+    } : falha;
     caixa.replaceChildren(img);
-    img.src = fonte === 'drive' ? urlDriveDireto(idDrive(url.href)) : url.href;
     parar = () => { img.onerror = null; img.removeAttribute('src'); };
-  } else if (tipo !== 'pagina' && (['mp4', 'hls', 'dash', 'drive'].includes(fonte) || (tipo === 'video' && fonte === 'link' && !vimeo))) {
+    img.src = drive ? linkDrive(urlDriveDireto(drive)) : url.href;
+  }
+  if (tipo === 'foto' || (tipo === 'auto' && /\.(avif|gif|jpe?g|png|svg|webp|bmp|ico)$/i.test(url.pathname))) {
+    montarFoto();
+  } else if (drive || (tipo !== 'pagina' && (['mp4', 'hls', 'dash'].includes(fonte) || (tipo === 'video' && fonte === 'link' && !vimeo)))) {
     const video = document.createElement('video');
     video.defaultMuted = video.muted = video.loop = video.autoplay = video.playsInline = true;
     video.disableRemotePlayback = true;
-    video.onerror = fonte === 'drive' ? () => {
+    video.onerror = drive && tipo !== 'video' ? () => {
       parar();
-      parar = montarMidiaAnuncio(caixa, 'pagina', url);
+      montarFoto();
     } : falha;
     caixa.replaceChildren(video);
     let hls, dash;
@@ -85,7 +97,7 @@ export function montarMidiaAnuncio(caixa, tipo, url) {
         dash.initialize(video, url.href, true);
       }).catch(falha);
     } else {
-      video.src = fonte === 'drive' ? urlDriveDireto(idDrive(url.href)) : url.href;
+      video.src = drive ? linkDrive(urlDriveDireto(drive)) : url.href;
     }
   } else {
     const iframe = document.createElement('iframe');
@@ -94,7 +106,7 @@ export function montarMidiaAnuncio(caixa, tipo, url) {
     iframe.tabIndex = -1;
     iframe.referrerPolicy = 'strict-origin-when-cross-origin';
     iframe.sandbox.add('allow-scripts');
-    if (['https://www.youtube-nocookie.com', 'https://player.vimeo.com', 'https://drive.google.com', 'https://archive.org'].includes(embed.origin) && embed.href !== url.href) {
+    if (['https://www.youtube-nocookie.com', 'https://player.vimeo.com', 'https://archive.org'].includes(embed.origin) && embed.href !== url.href) {
       iframe.sandbox.add('allow-same-origin');
       if (embed.hostname === 'www.youtube-nocookie.com' || embed.hostname === 'player.vimeo.com') {
         iframe.allow = 'autoplay';

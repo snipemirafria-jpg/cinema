@@ -747,8 +747,12 @@ async function anuncios() {
     throw error;
   }
   const tipos = { auto: 'Automático', foto: 'Foto', video: 'Vídeo', pagina: 'Página incorporável' };
+  const formatos = {
+    'image/jpeg': 'jpg', 'image/png': 'png', 'image/webp': 'webp', 'image/gif': 'gif', 'image/avif': 'avif',
+    'video/mp4': 'mp4', 'video/webm': 'webm',
+  };
   const paineis = new Map(data.map(registro => [registro.posicao, registro]));
-  C.innerHTML = `<p class="dica">Os painéis são numerados do telão para o fundo, olhando da plateia. Use um link público HTTPS. Para limpar um painel, apague o link e salve.</p>
+  C.innerHTML = `<p class="dica">Os painéis são numerados do telão para o fundo, olhando da plateia. Para exibir só a foto ou o vídeo, envie o arquivo original ou use um link direto. Players incorporados, como o do YouTube, podem mostrar a marca da plataforma. Para limpar um painel, apague o link e salve.</p>
     ${POSICOES_ANUNCIOS.map((nome, i) => {
       const posicao = i + 1;
       const { tipo, url } = paineis.get(posicao) || {};
@@ -758,6 +762,7 @@ async function anuncios() {
           <label>Tipo<select name="tipo">${Object.entries(tipos).map(([id, rotulo]) =>
             `<option value="${id}" ${tipo === id ? 'selected' : ''}>${rotulo}</option>`).join('')}</select></label>
           <label>Link<input type="url" name="url" maxlength="2048" placeholder="https://…" value="${esc(url || '')}"></label>
+          <label>Ou envie um arquivo<input type="file" name="arquivo" accept="${Object.keys(formatos).join(',')}"></label>
         </div>
         <div class="linha-acoes"><button class="btn p" type="submit">Salvar</button><span role="status"></span></div>
       </form>`;
@@ -766,16 +771,35 @@ async function anuncios() {
     e.preventDefault();
     const campos = new FormData(form);
     const valor = campos.get('url').trim();
-    const url = valor ? urlAnuncio(valor) : null;
-    if (valor && !url) return toast('Use um link HTTP ou HTTPS válido, sem credenciais.', 'erro');
+    const arquivo = campos.get('arquivo');
+    const enviando = !!arquivo?.name;
+    const extensao = enviando ? formatos[arquivo.type] : null;
+    let url = valor ? urlAnuncio(valor) : null;
+    let tipo = campos.get('tipo');
+    if (enviando && !extensao) return toast('Escolha uma foto JPEG, PNG, WebP, GIF ou AVIF, ou um vídeo MP4 ou WebM.', 'erro');
+    if (!enviando && valor && !url) return toast('Use um link HTTP ou HTTPS válido, sem credenciais.', 'erro');
 
     const botao = $('button[type=submit]', form);
     const status = $('[role=status]', form);
     botao.disabled = true;
     status.textContent = 'Salvando…';
     try {
+      if (enviando) {
+        tipo = arquivo.type.startsWith('image/') ? 'foto' : 'video';
+        const bucket = tipo === 'foto' ? 'capas' : 'filmes';
+        const caminho = `anuncios/${crypto.randomUUID()}.${extensao}`;
+        status.textContent = 'Enviando arquivo…';
+        const { error: erroUpload } = await sb.storage.from(bucket).upload(caminho, arquivo, { contentType: arquivo.type });
+        if (erroUpload) throw erroUpload;
+        url = urlAnuncio(urlPublica(bucket, caminho));
+        if (!url) throw new Error('O armazenamento não retornou um link público válido.');
+        form.elements.url.value = url.href;
+        form.elements.tipo.value = tipo;
+        form.elements.arquivo.value = '';
+        status.textContent = 'Salvando…';
+      }
       const { error } = await sb.from('anuncios_parede')
-        .update({ tipo: campos.get('tipo'), url: url?.href ?? null })
+        .update({ tipo, url: url?.href ?? null })
         .eq('posicao', Number(form.dataset.posicao)).select('posicao').single();
       if (error) throw error;
       status.textContent = url ? 'Anúncio salvo.' : 'Painel limpo.';
