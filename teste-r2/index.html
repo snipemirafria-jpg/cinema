@@ -13,7 +13,7 @@
   <link rel="manifest" href="manifest.webmanifest">
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
-  <link rel="stylesheet" href="css/app.css">
+  <link rel="stylesheet" href="css/recepcao.css">
   <script type="importmap">
   { "imports": {
       "three": "./vendor/three/three.module.js",
@@ -22,182 +22,11 @@
   </script>
 </head>
 <body>
-<div style="position:fixed;top:0;left:0;right:0;z-index:999999;background:#f7cf47;color:#171717;text-align:center;font:bold 12px sans-serif;padding:4px;pointer-events:none">VERSÃO DE TESTE — PLAYER R2 (banco de dados compartilhado)</div>
-  <div id="carregando" class="carregando"><div class="logo-anim"></div><p>Abrindo as portas do cinema…</p></div>
-
-  <!-- LOGIN -->
-  <section id="tela-login" class="tela" hidden>
-    <div class="login-fundo"></div>
-    <header class="login-topo">
-      <div class="marca marca-3d"><img src="icons/logo-3d.webp" alt="Sessão Juntos"><small class="slogan">Assista. Converse. Faça parte!</small></div>
-      <button class="btn-google pequeno" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
-    </header>
-    <div class="login-hero">
-      <h1>Seu cinema virtual, sempre <em>com você!</em></h1>
-      <p>Assista aos filmes em tempo real, converse com outras pessoas e viva essa experiência.</p>
-      <button class="btn-google grande" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
-      <a href="saguao.html" style="display:inline-block;color:white;margin:8px">Visitar o saguão</a>
-      <form id="form-email" class="form-email">
-        <div class="ou"><span>ou entre com e-mail</span></div>
-        <input type="email" id="em-email" placeholder="seu@email.com" autocomplete="email" required>
-        <input type="password" id="em-senha" placeholder="Senha (mín. 6)" minlength="6" autocomplete="current-password" required>
-        <div class="em-botoes"><button type="submit" class="em-entrar">Entrar</button><button type="button" id="em-criar" class="em-criar">Criar conta</button></div>
-      </form>
-      <p class="aviso-config" id="aviso-config" hidden>⚠️ Configure o Supabase em <code>js/config.js</code> (veja o README).</p>
-    </div>
-  </section>
-
-  <!-- PERFIL -->
-  <section id="tela-perfil" class="tela" hidden>
-    <header class="perfil-topo">
-      <button class="voltar" id="perfil-voltar" aria-label="Voltar">←</button>
-      <h2 id="perfil-titulo">Complete seu perfil</h2>
-    </header>
-    <div class="perfil-grid">
-      <div class="perfil-preview"><canvas id="preview3d"></canvas><div class="pedestal"></div></div>
-      <form class="perfil-form" id="form-perfil" autocomplete="off">
-        <label>Apelido (único)
-          <div class="campo-apelido"><input id="apelido" maxlength="20" placeholder="Ex: Rone333" required pattern="[A-Za-z0-9_.]{3,20}"><span id="apelido-ok"></span></div>
-          <small>3 a 20 letras, números, _ ou .</small>
-        </label>
-        <div class="grupo"><span class="rotulo">Gênero</span>
-          <div class="seg" id="seg-genero">
-            <button type="button" data-v="masculino">♂ Masculino</button>
-            <button type="button" data-v="feminino">♀ Feminino</button>
-            <button type="button" data-v="outro">⚧ Outro</button>
-          </div>
-        </div>
-        <div class="grupo"><span class="rotulo">Personalize seu avatar</span>
-          <div class="opcoes" id="opcoes-avatar"></div>
-        </div>
-        <button class="btn-primario" type="submit" id="btn-salvar-perfil">✓ Finalizar cadastro</button>
-      </form>
-    </div>
-  </section>
-
-  <!-- CINEMA -->
-  <section id="tela-cinema" class="tela" hidden>
-    <canvas id="cena3d"></canvas>
-    <div id="rotulos"></div>
-    <video id="video" playsinline webkit-playsinline crossorigin="anonymous" muted preload="auto"></video>
-
-    <header class="hud-topo">
-      <div class="hud-esq">
-        <span class="ao-vivo"><i></i>Ao vivo</span>
-        <span class="titulo-filme" id="titulo-filme">Carregando…</span>
-      </div>
-      <div class="hud-dir">
-        <button class="chip" id="btn-pular-anuncio" hidden aria-controls="controles-anuncio" aria-expanded="false" title="Liberar o botão Pular do YouTube">⏭ Pular anúncio</button>
-        <button class="chip" id="btn-som" title="Som">🔇 Ativar som</button>
-        <button class="chip" id="btn-pessoas" title="Participantes">👥 <b id="qtd-online">0</b></button>
-        <button class="chip eu" id="btn-eu"><span id="eu-nome"></span></button>
-      </div>
-    </header>
-    <button type="button" id="aviso-anuncio" class="aviso-anuncio-tela" hidden>📢 Anúncio passando · Toque para <b>pular</b></button>
-
-    <div id="controles-anuncio" hidden><span>Toque em “Pular” quando aparecer no YouTube.</span><button type="button" class="chip">Voltar à sala</button></div>
-    <nav class="menu-lateral" id="menu-lateral">
-      <button data-ir="sala" class="ativo" title="Sala">🎬<span>Sala</span></button>
-      <button data-ir="perfil" title="Meu perfil">👤<span>Perfil</span></button>
-      <button data-ir="chat" title="Chat">💬<span>Chat</span></button>
-      <button data-ir="pessoas" title="Participantes">👥<span>Pessoas</span></button>
-      <button data-ir="programacao" title="Programação">🗓️<span>Próximos</span></button>
-      <button data-ir="vr" id="menu-vr" title="Entrar no VR">🥽<span>VR</span></button>
-      <button data-ir="painel" id="menu-painel" hidden title="Painel do criador">👑<span>Painel</span></button>
-      <button data-ir="moderar" id="menu-moderar" hidden title="Moderação">🛡️<span>Moderar</span></button>
-      <button data-ir="sair" title="Sair">🚪<span>Sair</span></button>
-    </nav>
-
-    <div class="chat" id="chat">
-      <div class="chat-lista" id="chat-lista"></div>
-      <form class="chat-form" id="chat-form">
-        <button type="button" class="emoji" id="btn-emoji" aria-label="Emoji">😊</button>
-        <input id="chat-input" maxlength="300" placeholder="Digite sua mensagem…" autocomplete="off" enterkeyhint="send">
-        <button class="enviar" aria-label="Enviar">➤</button>
-        <div class="emojis" id="emojis" hidden></div>
-      </form>
-    </div>
-
-    <aside class="gaveta" id="gaveta-pessoas" hidden>
-      <header><h3>Na sala agora</h3><button class="fechar" data-fechar>✕</button></header>
-      <button type="button" class="chip" id="convidar-sala">Compartilhar link da sala</button>
-      <fieldset><legend>Reações rápidas</legend><div id="reacoes-rapidas"></div><label><input type="checkbox" id="ocultar-reacoes"> Ocultar reações sobre os avatares</label></fieldset>
-      <ul id="lista-pessoas"></ul>
-    </aside>
-
-    <aside class="gaveta" id="gaveta-programacao" hidden>
-      <header><h3>Programação</h3><button class="fechar" data-fechar>✕</button></header>
-      <a href="saguao.html" class="chip" style="display:inline-block;color:inherit">Abrir saguão e mural de cartazes</a>
-      <details><summary>Qualidade da reprodução</summary><button class="chip" type="button" id="medir-video">Medir vídeo neste aparelho</button><p id="qualidade-video" role="status"></p></details>
-      <div id="lista-programacao" class="lista-prog"></div>
-    </aside>
-
-    <div class="toque-iniciar" id="toque-iniciar" hidden>
-      <button class="btn-primario">▶ Entrar na sessão</button>
-      <small>Toque para ligar o som do filme</small>
-    </div>
-    <div class="sem-filme" id="sem-filme" hidden>Nenhum filme na programação agora. Volte em breve! 🍿</div>
-  </section>
-
-  <!-- BANIDO -->
-  <section id="tela-banido" class="tela centro" hidden>
-    <div class="cartao">
-      <h2>Acesso bloqueado</h2>
-      <p id="banido-texto"></p>
-      <button class="btn-sec" data-acao="sair">Sair</button>
-    </div>
-  </section>
-
-  <!-- MODAL DENÚNCIA -->
-  <dialog id="modal-denuncia" class="modal">
-    <form method="dialog" id="form-denuncia">
-      <h3>Denunciar <span id="denuncia-nome"></span></h3>
-      <select id="denuncia-motivo" required>
-        <option value="">Escolha o motivo…</option>
-        <option>Ofensa ou discurso de ódio</option>
-        <option>Spam ou propaganda</option>
-        <option>Assédio</option>
-        <option>Conteúdo impróprio</option>
-        <option>Outro</option>
-      </select>
-      <textarea id="denuncia-detalhe" maxlength="400" placeholder="Detalhes (opcional)"></textarea>
-      <div class="acoes"><button value="cancelar" class="btn-sec" formnovalidate>Cancelar</button><button value="ok" class="btn-perigo">Enviar denúncia</button></div>
-    </form>
-  </dialog>
-
-  <!-- MODO VR -->
-  <dialog id="modal-vr" class="modal modal-vr">
-    <form method="dialog">
-      <h3>🥽 Entrar no VR</h3>
-      <p class="dica">No VR Box, escolha o que assistir na sua poltrona. Ao sair, você volta ao filme que estiver passando na sala.</p>
-      <div id="vr-opcoes" class="vr-opcoes"><p class="dica">Verificando o que este aparelho suporta…</p></div>
-      <label class="vr-qual">Qualidade
-        <select id="vr-qualidade"><option value="baixa">Baixa (aparelhos mais simples)</option><option value="media">Média</option><option value="alta">Alta</option></select>
-      </label>
-      <div class="acoes"><button value="cancelar" class="btn-sec">Fechar</button></div>
-    </form>
-  </dialog>
-  <div id="vr-ui" class="vr-ui" hidden>
-   <div class="vr-lado">
-    <div class="vr-barra">
-      <button data-vr="reproducao" class="so-cardboard" title="Reproduzir filme">▶</button>
-      <button data-vr="centro" title="Centralizar visão">↻</button>
-      <button data-vr="perto" title="Telão mais perto">⇡</button>
-      <button data-vr="longe" title="Telão mais longe">⇣</button>
-      <button data-vr="menor" title="Telão menor">−</button>
-      <button data-vr="maior" title="Telão maior">+</button>
-      <button data-vr="ipd-" title="Olhos mais juntos" class="so-cardboard">◂▸</button>
-      <button data-vr="ipd+" title="Olhos mais separados" class="so-cardboard">◃ ▹</button>
-      <button data-vr="lente" title="Lente do óculos liga/desliga" class="so-cardboard">◐</button>
-      <button data-vr="sair" class="sair" title="Sair do VR">✕ Sair</button>
-    </div>
-    <small class="vr-valores"></small>
-   </div>
-  </div>
-  <div id="vr-divisor" class="vr-divisor" hidden></div>
-
-  <div id="toasts"></div>
-  <script type="module" src="js/main.js"></script>
-  <script type="module" src="integrations/netmovies/index.js"></script>  <!-- NetMovies: módulo opcional, ver integrations/netmovies/config.js -->
-</body>
-</html>
+  <main aria-label="Sala de entrada do Sessão Juntos">
+    <div class="sala-estatica" aria-hidden="true"><div class="painel"></div><div class="plateia"></div></div>
+    <canvas id="recepcao" aria-label="Sala de cinema com telão vazio"></canvas>
+    <header><img src="icons/logo-2d.webp" alt="Sessão Juntos"></header>
+    <nav aria-label="Acesso às sessões"><h1>Sala de entrada</h1><a href="sessao.html">Entrar na sessão</a></nav>
+  </main>
+  <script type="module" src="js/entrada.js"></script>
+</body></html>

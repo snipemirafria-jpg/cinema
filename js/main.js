@@ -75,7 +75,7 @@ function telaBanido(st) {
 // ------------------------------------------------------------------ login
 $$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
-  const volta = location.origin + location.pathname + location.search;   // mantém o filme do NetMovies, se houver
+  const volta = new URL('./', location.href).href + location.search;   // mantém o filme do NetMovies, se houver
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, queryParams: { prompt: 'select_account' } } });
   if (error) toast(error.message, 'erro');
 }));
@@ -83,7 +83,7 @@ async function loginEmail(criar) {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
   const email = $('#em-email').value.trim(), password = $('#em-senha').value;
   if (!email || password.length < 6) return toast('Digite e-mail e senha (mín. 6)', 'erro');
-  const r = criar ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: location.origin + location.pathname } })
+  const r = criar ? await sb.auth.signUp({ email, password, options: { emailRedirectTo: new URL('./', location.href).href + location.search } })
                   : await sb.auth.signInWithPassword({ email, password });
   if (r.error) {
     const m = r.error.message;

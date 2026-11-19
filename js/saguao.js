@@ -17,7 +17,7 @@ async function mural() {
     for (const filme of items) {
       if (!/^[a-z0-9-]{1,80}$/i.test(filme.id)) continue;
       const cartaz = criar('a'); cartaz.className = 'cartaz';
-      cartaz.href = './?netmovies=' + encodeURIComponent(filme.id);
+      cartaz.href = 'sessao.html?netmovies=' + encodeURIComponent(filme.id);
       const capa = criar('img'); capa.alt = ''; capa.loading = 'lazy'; capa.decoding = 'async'; capa.src = filme.poster || 'icons/icon.svg';
       cartaz.append(capa, criar('strong',filme.title), criar('small', [filme.genres?.join(', '), filme.durationMinutes && filme.durationMinutes+' min'].filter(Boolean).join(' · ')));
       painel.append(cartaz);
@@ -65,7 +65,7 @@ async function programacao() {
     if (!data.session) {
       pararPlateia();
       situacao.textContent = 'Entre na sua conta para ver a programação ao vivo.';
-      fila.append(acao('Entrar na sala principal','./')); return;
+      fila.append(acao('Entrar na sala principal','sessao.html')); return;
     }
     observarPlateia(sb);
     const [estado, grade] = await Promise.all([sb.rpc('agora_passando'),sb.from('programacao').select('id,posicao,filmes(titulo,status,genero,duracao_seg)').order('posicao')]);
@@ -84,7 +84,7 @@ async function programacao() {
       const status = !pronta ? 'Indisponível' : atual ? (st.pausado ? 'Pausada' : 'Em exibição') : item.id === st?.proximo_item ? 'A seguir' : 'Na fila';
       card.append(criar('small',status), criar('strong', f?.titulo || 'Filme indisponível'), criar('small',[f?.genero, f?.duracao_seg && Math.round(f.duracao_seg/60)+' min'].filter(Boolean).join(' · ')));
       if (horarios.has(item.id)) card.append(criar('small',(atual ? 'Início' : 'Previsão') + ' · ' + formatarHora.format(horarios.get(item.id))));
-      if (atual && pronta) card.append(acao('Agora · entrar na sala','./'));
+      if (atual && pronta) card.append(acao('Agora · entrar na sala','sessao.html'));
       fila.append(card);
     }
   } catch { fila.replaceChildren(); situacao.textContent = 'A programação não carregou. Toque em atualizar para tentar novamente.'; }

@@ -12,7 +12,7 @@ const MUTES = ['silenciar_voz', 'silenciar_texto', 'silenciar_ajuda', 'revogar']
 
 export const nomeSala = (sala, titulo) => sala === 'sala-principal' ? 'Sala principal' : (titulo || String(sala).replace(/^netmovies-/, 'Sala do filme ').replace(/-/g, ' '));
 export const urlSala = (sala) => {
-  const base = location.pathname.replace(/admin\.html$/, '');
+  const base = new URL('sessao.html', location.href).pathname;
   return sala === 'sala-principal' ? base : base + '?netmovies=' + encodeURIComponent(String(sala).replace(/^netmovies-/, ''));
 };
 
