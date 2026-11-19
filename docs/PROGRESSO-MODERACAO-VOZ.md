@@ -21,6 +21,14 @@ Branch: `moderacao-voz` (NADA vai para `main`, NADA de deploy, NADA aplicado no 
   silenciamento do criador via `silenciados_ativos()`, indicador de fala por AnalyserNode a cada 200 ms, `diagnostico()`).
   Ainda NÃO ligado à interface.
 
+- Passo 2b/3 (FEITO): interface ligada.
+  - `js/voz-ui.js`: botão 🎙️ no topo + gaveta (Entrar, Meu microfone, Ouvir vozes, Mensagens, Sair, volumes conversa/filme, lista com fala/mic/rede).
+  - `js/moderacao.js`: canal global `cine-global` (presença leve p/ aba Câmeras + aviso `moderacao`), botão 🆘 Ajuda no menu lateral,
+    menu do criador no nome/avatar (expulsar, ban 10min/1h/24h/7d, permanente com confirmação vermelha, silenciar voz/texto/ajuda, desfazer),
+    notificações de pedidos de ajuda com "Ir para a sala"/"Ignorar"/"Pausar 1 h".
+  - `js/main.js` (integração mínima), `js/cinema3d.js` (clique no nome passa o evento), `js/player.js` + `js/fontes.js` (volume do filme),
+    `css/app.css` (estilos novos + esconder no VR), `sw.js` cine-v19.
+
 ## Falta (ordem)
 2. `js/voz.js` (VoiceManager + transporte P2P Supabase) e UI de voz em `index.html`/`css/app.css`/`js/main.js`.
 3. `js/moderacao.js`: menu do criador no avatar/nome, mutes, Pedir ajuda, notificações ao criador.

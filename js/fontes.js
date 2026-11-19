@@ -116,8 +116,8 @@ export class MidiaYouTube {
   get playbackRate() { return 1; }
   set playbackRate(_) { }
   get muted() { return this._mudo; }
-  set muted(m) { this._mudo = m; if (this.pronto) m ? this.p.mute() : (this.p.unMute(), this.p.setVolume(100), this.semLegenda()); }
-  set volume(_) { }
+  set muted(m) { this._mudo = m; if (this.pronto) m ? this.p.mute() : (this.p.unMute(), this.p.setVolume(this._vol ?? 100), this.semLegenda()); }
+  set volume(v) { this._vol = Math.round(Math.min(1, Math.max(0, +v || 0)) * 100); if (this.pronto && !this._mudo) this.p.setVolume(this._vol); }
   play() { if (this.pronto) this.p.playVideo(); return Promise.resolve(); }
   pause() { if (this.pronto) this.p.pauseVideo(); }
   get carregando() { return this._estado === 3; }

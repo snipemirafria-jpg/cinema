@@ -6,7 +6,7 @@ import { OPCOES, normalizarAvatar, criarAvatar, poseEmPe, preCarregar } from './
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];
-const estado = { sessao: null, perfil: null, owner: false, cinema: null, player: null, canal: null, pessoas: new Map() };
+const estado = { sessao: null, perfil: null, owner: false, cinema: null, player: null, canal: null, pessoas: new Map(), voz: null, mod: null };
 
 function mostrar(id) {
   $$('.tela').forEach(t => t.hidden = t.id !== id);
@@ -70,7 +70,7 @@ async function loginEmail(criar) {
 $('#form-email')?.addEventListener('submit', e => { e.preventDefault(); loginEmail(false); });
 $('#em-criar')?.addEventListener('click', () => loginEmail(true));
 $$('[data-acao="sair"]').forEach(b => b.addEventListener('click', sair));
-async function sair() { await sb.auth.signOut(); location.reload(); }
+async function sair() { try { estado.voz?.destruir(); estado.mod?.destruir(); } catch { } await sb.auth.signOut(); location.reload(); }
 
 // ------------------------------------------------------------------ perfil
 let preview = null;
@@ -179,7 +179,7 @@ async function abrirCinema() {
   const video = $('#video');
   const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
   cinema.meuId = estado.sessao.user.id;
-  cinema.aoClicarPessoa = (id) => id !== cinema.meuId && abrirDenuncia(id);
+  cinema.aoClicarPessoa = (id, ev) => id !== cinema.meuId && (estado.owner && estado.mod ? estado.mod.abrirMenu(id, ev) : abrirDenuncia(id));
   cinema.controles.addEventListener('start', () => cinema.interromperCamera());
 
   const eventosPlayer = {
@@ -187,6 +187,7 @@ async function abrirCinema() {
       $('#sem-filme').hidden = !!f;
       $('#titulo-filme').textContent = f ? f.titulo : 'Sem filme agora';
       cinema.aplicarTema(f);   // sala temática pelo gênero do filme (sem gênero = sala original)
+      estado.mod?.atualizarSala(infoSalaAtual());   // aba Câmeras do criador: título/capa/fonte do telão
       if (f) { cinema.mostrarCapa(f.capa_url); } else cinema.mostrarVideo(false);
       cinema.legenda('');
       if ($('#gaveta-programacao').hidden === false) carregarProgramacao();
@@ -231,6 +232,27 @@ async function abrirCinema() {
   conectarSala();
   iniciarChat();
   configurarMenu();
+  iniciarVozEModeracao();
+}
+
+const salaAtual = () => estado.sala ? estado.sala.canal : 'sala-principal';
+function infoSalaAtual() {
+  const f = estado.player?.estado?.filme || estado.sala?.filme;
+  return { titulo: f?.titulo || '', capa: f?.capa_url || '', fonte: f?.origem || '' };
+}
+
+// Conversa por voz + moderação do criador + Pedir ajuda. Carregados à parte:
+// se algo aqui falhar, o cinema, o player e o chat continuam funcionando.
+async function iniciarVozEModeracao() {
+  const eu = { id: estado.sessao.user.id, apelido: estado.perfil.apelido, cor: estado.perfil.avatar?.roupa || '#7c3aed', desde: estado._desde };
+  try {
+    const { iniciarVozUI } = await import('./voz-ui.js');
+    estado.voz = iniciarVozUI({ sb, sala: salaAtual(), eu, player: estado.player, toast, esc });
+  } catch (e) { console.warn('voz indisponível', e); }
+  try {
+    const { iniciarModeracao } = await import('./moderacao.js');
+    estado.mod = iniciarModeracao({ sb, sala: salaAtual(), eu, owner: estado.owner, canalSala: estado.canal, nomeDe, toast, esc, gv: estado.voz, infoSala: infoSalaAtual });
+  } catch (e) { console.warn('moderação indisponível', e); }
 }
 
 function meuEstadoPresenca() {
@@ -264,7 +286,9 @@ function conectarSala() {
     estado.sala.esperar(() => canal.track(meuEstadoPresenca()));
   }
   canal.on('broadcast', { event: 'moderacao' }, ({ payload }) => {
-    if (payload?.alvo === estado.sessao.user.id) location.reload();
+    if (payload?.alvo !== estado.sessao.user.id) return;
+    if (['silenciar_voz', 'silenciar_texto', 'silenciar_ajuda', 'revogar'].includes(payload.acao)) estado.voz?.atualizarSilenciados();   // mutes: confere no banco
+    else location.reload();                                                                                                          // ban/expulsão
   });
   canal.subscribe(async (s) => { if (s === 'SUBSCRIBED') await canal.track(meuEstadoPresenca()); });
 }
@@ -300,6 +324,7 @@ function iniciarChatSala() {
     e.preventDefault();
     const texto = $('#chat-input').value.trim().slice(0, 300);
     if (!texto) return;
+    if (estado.mod?.textoSilenciado(estado.sessao.user.id)) return toast('Você foi silenciado no chat pelo criador.', 'erro');
     $('#chat-input').value = '';
     const m = { id: 'sala-' + Date.now() + '-' + Math.random().toString(36).slice(2, 7), usuario: estado.sessao.user.id, texto, sala: true };
     estado.canal?.send({ type: 'broadcast', event: 'chat', payload: m });
@@ -321,6 +346,7 @@ async function nomeDe(id) {
 
 async function adicionarMsg(m, aoVivo) {
   if (document.querySelector(`[data-msg="${m.id}"]`)) return;
+  if (m.usuario !== estado.sessao.user.id && estado.mod?.textoSilenciado(m.usuario)) return;   // silenciado pelo criador: não aparece
   const p = await nomeDe(m.usuario);
   const el = document.createElement('div');
   el.className = 'msg'; el.dataset.msg = m.id;
@@ -451,8 +477,9 @@ function desenharPessoas() {
   $('#lista-pessoas').innerHTML = lista.map(p => `
     <li><span class="n"><span class="bolinha" style="background:${esc(p.avatar?.roupa || '#7c3aed')}">${esc((p.apelido || '?')[0].toUpperCase())}</span>
       ${p.papel === 'owner' ? '👑 ' : ''}${esc(p.apelido)}${p.id === estado.sessao.user.id ? ' (você)' : ''}</span>
-      ${p.id !== estado.sessao.user.id ? `<button data-den="${p.id}">Denunciar</button>` : ''}</li>`).join('');
+      ${p.id !== estado.sessao.user.id ? (estado.owner && estado.mod && p.papel !== 'owner' ? `<button data-mod="${p.id}" aria-label="Moderar ${esc(p.apelido)}">Moderar</button>` : `<button data-den="${p.id}">Denunciar</button>`) : ''}</li>`).join('');
   $$('[data-den]').forEach(b => b.onclick = () => abrirDenuncia(b.dataset.den));
+  $$('[data-mod]').forEach(b => b.onclick = (e) => estado.mod.abrirMenu(b.dataset.mod, e));
 }
 
 async function carregarProgramacao() {

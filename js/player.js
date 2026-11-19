@@ -85,6 +85,7 @@ export class PlayerSincronizado {
     const mudo = this.m?.muted ?? true;
     this.m = midia; this.modo = modo;
     try { midia.muted = mudo; } catch { }
+    try { if (this.volumeFilme != null) midia.volume = this.volumeFilme; } catch { }
     this.aoModo?.(modo, modo === 'textura' ? null : midia.el || midia);
   }
 
@@ -172,7 +173,9 @@ export class PlayerSincronizado {
 
   tocar() { return Promise.resolve(this.m.play()).catch(() => this.aoEstado?.('bloqueado')); }
 
-  ativarSom() { this.m.muted = false; try { this.m.volume = 1; } catch { } return this.tocar(); }
+  ativarSom() { this.m.muted = false; try { this.m.volume = this.volumeFilme ?? 1; } catch { } return this.tocar(); }
+  // volume do filme (separado do volume da conversa por voz); no iPhone o volume de <video> é do sistema
+  definirVolume(v) { this.volumeFilme = Math.min(1, Math.max(0, +v || 0)); try { this.m.volume = this.volumeFilme; } catch { } }
 
   _corrigir(forcar = false) {
     const v = this.m;

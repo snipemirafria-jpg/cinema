@@ -406,7 +406,7 @@ export class Cinema {
     obj.position.set(0, 1.5, 0);
     obj.center.set(0.5, 1);
     this._atualizarRotulo(obj, p);
-    div.addEventListener('click', () => this.aoClicarPessoa?.(p.id));
+    div.addEventListener('click', (e) => this.aoClicarPessoa?.(p.id, e));
     return obj;
   }
   _atualizarRotulo(obj, p) {

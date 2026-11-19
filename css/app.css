@@ -257,3 +257,54 @@ body.em-cardboard .vr-ui{left:0;right:0;transform:none;flex-direction:row;justif
 body.em-cardboard .vr-lado{width:50%}
 body.em-cardboard .vr-barra button{min-width:28px;height:28px;font-size:12px;padding:0 6px}
 .vr-barra button.foco{outline:2px solid #fff;outline-offset:1px;background:var(--roxo)}
+
+/* ---------------- conversa por voz (js/voz-ui.js) ---------------- */
+#btn-voz{position:relative}
+#btn-voz .voz-ponto{position:absolute;right:4px;top:4px;width:7px;height:7px;border-radius:50%;background:transparent}
+#btn-voz[data-estado="conectado"] .voz-ponto{background:var(--verde)}
+#btn-voz[data-estado="conectando"] .voz-ponto,#btn-voz[data-estado="reconectando"] .voz-ponto{background:var(--ouro)}
+#btn-voz[data-estado="erro"] .voz-ponto,#btn-voz[data-estado="cheia"] .voz-ponto{background:var(--vermelho)}
+#btn-voz[data-estado="conectado"][data-mic="ligado"]{border-color:#22c55e88}
+.gaveta-voz .voz-corpo{overflow:auto;padding:10px 12px;display:flex;flex-direction:column;gap:10px}
+.voz-status{margin:0;font-size:13px;color:var(--sub)}
+.voz-entrar{width:100%;padding:12px}
+.voz-botoes{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.voz-botoes button{background:rgba(255,255,255,.06);border:1px solid var(--linha);border-radius:12px;padding:10px 8px;font-size:13px;min-height:44px;text-align:left}
+.voz-botoes button[aria-pressed="true"]{border-color:#a78bfa88}
+.voz-botoes button.ligado{background:linear-gradient(135deg,#166534,#15803d);border-color:transparent}
+.voz-botoes button:disabled{opacity:.6}
+.voz-botoes .voz-sair{grid-column:1/-1;text-align:center;border-color:#ff2d5566}
+.voz-vol{display:flex;flex-direction:column;gap:4px;font-size:12px;color:var(--sub)}
+.voz-vol input{width:100%;accent-color:var(--roxo2)}
+.gaveta .voz-lista{padding:0}
+.voz-lista li small{display:block;color:var(--sub);font-size:11px}
+.voz-lista li.falando .bolinha{box-shadow:0 0 0 2px var(--verde),0 0 10px #22c55e88}
+.dica-voz{color:var(--sub);font-size:11px}
+body.chat-oculto-local .chat,body.chat-oculto-local .balao{display:none!important}
+
+/* ---------------- moderação do criador (js/moderacao.js) ---------------- */
+.mod-menu{position:fixed;z-index:60;width:min(320px,calc(100vw - 16px));max-height:calc(100vh - 16px);overflow:auto;background:var(--bg2);border:1px solid var(--linha);border-radius:16px;padding:10px 12px;box-shadow:0 16px 40px #000a;display:flex;flex-direction:column;gap:8px;font-size:13px}
+.mod-menu.folha{left:8px;right:8px;bottom:calc(8px + var(--seg-bot));width:auto;max-height:70vh}
+.mod-menu header{display:flex;justify-content:space-between;align-items:center}
+.mod-menu hr{border:0;border-top:1px solid var(--linha);margin:2px 0;width:100%}
+.mod-estado{color:var(--sub);font-size:12px}
+.mod-estado button{margin-left:6px;font-size:11px;border:1px solid var(--linha);border-radius:8px;padding:2px 6px}
+.mod-motivo{display:flex;flex-direction:column;gap:4px;color:var(--sub);font-size:12px}
+.mod-motivo input{background:#0f0a17;border:1px solid var(--linha);border-radius:10px;padding:8px}
+.mod-grupo{display:flex;flex-wrap:wrap;align-items:center;gap:6px}
+.mod-grupo span{width:100%;color:var(--sub);font-size:12px}
+.mod-grupo button,.mod-grave,.mod-perigo{background:rgba(255,255,255,.07);border:1px solid var(--linha);border-radius:10px;padding:7px 10px;min-height:36px}
+.mod-grupo.grave button,.mod-grave{border-color:#fbbf2466}
+.mod-perigo{background:var(--vermelho2);border-color:transparent;font-weight:700}
+.ajuda-notifs{position:fixed;right:calc(12px + var(--seg-dir));bottom:calc(12px + var(--seg-bot));z-index:40;display:flex;flex-direction:column;gap:8px;width:min(320px,calc(100vw - 24px))}
+.ajuda-card{display:flex;gap:10px;align-items:flex-start;background:var(--card);border:1px solid #fbbf2455;border-radius:14px;padding:10px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:13px;animation:sobe .25s ease}
+.ajuda-card>div{flex:1}
+.ajuda-card small{display:block;color:var(--sub)}
+.ajuda-card .bolinha{width:30px;height:30px;border-radius:50%;display:grid;place-items:center;font-weight:700;flex:none}
+.ajuda-acoes{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+.ajuda-acoes button{border:1px solid var(--linha);border-radius:10px;padding:6px 9px;font-size:12px}
+.ajuda-acoes [data-ir]{background:linear-gradient(135deg,var(--roxo),var(--roxo2));border-color:transparent}
+#menu-ajuda:disabled{opacity:.5}
+@media (max-width:760px){.ajuda-notifs{bottom:auto;top:calc(56px + var(--seg-top))}}
+/* VR: painéis de voz/moderação somem (o áudio da conversa continua) */
+body.em-vr .mod-menu,body.em-vr .ajuda-notifs,body.em-vr .gaveta-voz,body.em-vr .mod-confirmar{display:none!important}
