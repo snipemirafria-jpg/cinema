@@ -27,7 +27,7 @@ export class PlayerSincronizado {
     vl.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
     vl.addEventListener('error', () => this._falhaLivre?.());
     this.estado = null; this.offset = 0; this.itemAtual = null; this.hls = null; this.dash = null;
-    this._ultimoSeek = 0; this._aguardandoDados = false;
+    this._ultimoSeek = 0; this._aguardandoDados = false; this._ultimoDiagnostico = 0;
     this._tick = setInterval(() => this._corrigir(), 1500);
     this._poll = setInterval(() => this.atualizar(), 30000);
     video.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
@@ -198,6 +198,12 @@ export class PlayerSincronizado {
     const dur = this.estado.filme.duracao_seg;
     if (alvo >= dur + 1) { this.atualizar(); return; }
     const dif = alvo - v.currentTime;
+    // Diagnóstico não invasivo: revela perda de quadros na decodificação sem alterar a sessão.
+    if (v instanceof HTMLVideoElement && performance.now() - this._ultimoDiagnostico > 30000) {
+      this._ultimoDiagnostico = performance.now();
+      const q = v.getVideoPlaybackQuality?.();
+      if (q) console.info('[CineOnline vídeo]', { perdidos: q.droppedVideoFrames, total: q.totalVideoFrames, atrasoSeg: Math.round(dif * 10) / 10, resolucao: `${v.videoWidth}x${v.videoHeight}`, taxa: v.playbackRate });
+    }
     const htmlVideo = v instanceof HTMLVideoElement;
     if (htmlVideo) {
       // Não dispara novos seeks enquanto o navegador busca dados ou termina um seek.
@@ -207,14 +213,15 @@ export class PlayerSincronizado {
       }
       // MP4 remoto: um seek frequente pode descartar o buffer e criar travamentos em cascata.
       const agora = performance.now();
-      const limiteSeek = LEVE ? 9 : 6;
-      const atrasoSeek = 12000;
+      const limiteSeek = LEVE ? 12 : 8;
+      const atrasoSeek = 20000;
       if (Math.abs(dif) > limiteSeek && agora - this._ultimoSeek > atrasoSeek) {
         try { v.currentTime = Math.min(alvo, Number.isFinite(v.duration) ? Math.max(0, v.duration - 0.25) : alvo); this._ultimoSeek = agora; } catch {}
         v.playbackRate = 1;
-      } else if (Math.abs(dif) > (LEVE ? 1.5 : 0.8)) {
-        v.playbackRate = dif > 0 ? 1.03 : 0.97;
-      } else v.playbackRate = 1;
+      } else {
+        // Evita câmera lenta ou movimentos acelerados: áudio e imagem em velocidade original.
+        v.playbackRate = 1;
+      }
     } else {
       // Mantém o comportamento já existente para YouTube e players externos.
       if (Math.abs(dif) > (LEVE ? 6 : 3) || forcar && Math.abs(dif) > 1) { try { v.currentTime = alvo; } catch {} v.playbackRate = 1; }
