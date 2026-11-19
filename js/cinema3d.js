@@ -167,13 +167,13 @@ export class Cinema {
     sanca.scale.set(L * 0.36, P * 0.36, 1); sanca.rotation.set(Math.PI / 2, 0, Math.PI / 4); sanca.position.y = A - 0.6; c.add(sanca);
 
     // logo na parede do fundo (como na referência)
-    const logo = new THREE.Mesh(new THREE.PlaneGeometry(6, 2.4), new THREE.MeshBasicMaterial({ map: this._texturaLogo(), transparent: true }));
+    const logo = new THREE.Mesh(new THREE.PlaneGeometry(4, 3.1), new THREE.MeshBasicMaterial({ map: this._texturaLogo(), transparent: true, toneMapped: false }));
     logo.position.set(0, 9.5, zFundo + 0.05); c.add(logo);
 
     // logo nas paredes laterais (esquerda e direita), viradas para a plateia
     const texLogo = logo.material.map;
     for (const lado of [-1, 1]) {
-      const l = new THREE.Mesh(new THREE.PlaneGeometry(7, 2.8), new THREE.MeshBasicMaterial({ map: texLogo, transparent: true, toneMapped: false }));
+      const l = new THREE.Mesh(new THREE.PlaneGeometry(4.6, 3.57), new THREE.MeshBasicMaterial({ map: texLogo, transparent: true, toneMapped: false }));
       l.position.set(lado * (L / 2 - 0.25), 10.1, 1); l.rotation.y = -lado * Math.PI / 2; c.add(l);
     }
 
@@ -254,17 +254,28 @@ export class Cinema {
   }
 
   _texturaLogo() {
-    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 410;
+    // logo 3D da Sessão Juntos (icons/logo-3d.webp). Enquanto a imagem carrega
+    // (ou se ela falhar), mostra o rolo de filme + nome desenhados no canvas.
+    const cv = document.createElement('canvas'); cv.width = 1024; cv.height = 796;
     const g = cv.getContext('2d');
     g.shadowColor = '#ff2a48'; g.shadowBlur = 28;
     g.fillStyle = '#ff3355';
-    // rolo de filme
-    g.beginPath(); g.arc(205, 205, 150, 0, Math.PI * 2); g.lineWidth = 26; g.strokeStyle = '#ff3355'; g.stroke();
-    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.beginPath(); g.arc(205 + Math.cos(a) * 82, 205 + Math.sin(a) * 82, 36, 0, Math.PI * 2); g.fill(); }
-    g.font = 'bold 150px system-ui, sans-serif'; g.textBaseline = 'middle';
-    g.fillStyle = '#ffffff'; g.fillText('Sessão', 380, 150);
-    g.fillStyle = '#ff3355'; g.fillText('Juntos', 380, 300);
-    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace; return t;
+    g.beginPath(); g.arc(512, 250, 150, 0, Math.PI * 2); g.lineWidth = 26; g.strokeStyle = '#ff3355'; g.stroke();
+    for (let i = 0; i < 6; i++) { const a = i * Math.PI / 3; g.beginPath(); g.arc(512 + Math.cos(a) * 82, 250 + Math.sin(a) * 82, 36, 0, Math.PI * 2); g.fill(); }
+    g.font = 'bold 130px system-ui, sans-serif'; g.textBaseline = 'middle'; g.textAlign = 'center';
+    g.fillStyle = '#ffffff'; g.fillText('Sessão', 512, 520);
+    g.fillStyle = '#ff3355'; g.fillText('Juntos', 512, 660);
+    const t = new THREE.CanvasTexture(cv); t.colorSpace = THREE.SRGBColorSpace;
+    const img = new Image();
+    img.onload = () => {
+      g.shadowBlur = 0; g.clearRect(0, 0, cv.width, cv.height);
+      const k = Math.min(cv.width / img.width, cv.height / img.height);
+      const w = img.width * k, h = img.height * k;
+      g.drawImage(img, (cv.width - w) / 2, (cv.height - h) / 2, w, h);
+      t.needsUpdate = true;
+    };
+    img.src = 'icons/logo-3d.webp';
+    return t;
   }
 
   // ------------------------------------------------------------------ telão
