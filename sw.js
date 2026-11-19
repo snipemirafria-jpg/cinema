@@ -1,5 +1,5 @@
 // Service worker: guarda o app e os modelos 3D para abrir rápido (e instalar como app).
-const VERSAO = 'cine-v20261119';
+const VERSAO = 'cine-v20261119-android2d';
 const ESSENCIAIS = ['./', 'index.html', 'css/app.css', 'manifest.webmanifest', 'icons/icon.svg'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSAO).then(c => c.addAll(ESSENCIAIS))); self.skipWaiting(); });
 self.addEventListener('activate', (e) => {
