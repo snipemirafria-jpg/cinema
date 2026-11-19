@@ -3,6 +3,7 @@ import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { sb, configurado, COLS_PERFIL, idDispositivo, plataforma, esc, toast } from './supa.js';
 import { OPCOES, normalizarAvatar, criarAvatar, poseEmPe, preCarregar } from './avatar.js';
+import './tela-limpa.js';   // botão que esconde/mostra todos os botões da tela (remova esta linha para desligar)
 
 const $ = (s) => document.querySelector(s);
 const $$ = (s) => [...document.querySelectorAll(s)];

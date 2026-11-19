@@ -324,3 +324,10 @@ body.obs-mini .hud-topo,body.obs-mini .menu-lateral,body.obs-mini .chat,body.obs
 body.obs-mini #rotulos{font-size:9px}
 .voz-lista li.ouvinte{opacity:.9;font-style:italic}
 #btn-voz[data-ouvinte="1"]::after{content:'🎧';font-size:10px;margin-left:2px}
+/* ---- tela limpa (js/tela-limpa.js) ---- */
+#btn-tela-limpa{position:absolute;right:calc(12px + var(--seg-dir));bottom:calc(16px + var(--seg-bot));z-index:9;width:44px;height:44px;border-radius:50%;background:rgba(12,8,18,.72);border:1px solid var(--linha);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);font-size:20px;display:grid;place-items:center;opacity:.85}
+#btn-tela-limpa:hover{opacity:1}
+body.tela-limpa #btn-tela-limpa{opacity:.45}
+body.tela-limpa .hud-topo,body.tela-limpa .menu-lateral,body.tela-limpa .chat,body.tela-limpa .gaveta,body.tela-limpa #aviso-anuncio,body.tela-limpa .obs-barra,body.tela-limpa .ajuda-notifs,body.tela-limpa .mod-menu{display:none!important}
+body.obs-mini #btn-tela-limpa,body.em-vr #btn-tela-limpa{display:none!important}
+@media (max-width:760px){#btn-tela-limpa{bottom:calc(76px + var(--seg-bot));width:40px;height:40px;font-size:18px}}
