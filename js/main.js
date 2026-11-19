@@ -55,6 +55,7 @@ async function entrar() {
   if (error) { toast('Erro ao entrar: ' + error.message, 'erro'); mostrar('tela-login'); estado._entrando = false; return; }
   if (st.banido) return telaBanido(st);
   estado.owner = !!st.owner;
+  estado.moderador = !estado.owner && !!st.moderador;
   const { data: perfil } = await sb.rpc('meu_perfil');
   estado.perfil = perfil;
   if (!perfil?.cadastro_completo) return abrirPerfil(true);
@@ -186,8 +187,9 @@ function criarPreview(canvas) {
 // ------------------------------------------------------------------ cinema
 async function abrirCinema() {
   mostrar('tela-cinema');
-  $('#menu-painel').hidden = !estado.owner;
-  $('#eu-nome').textContent = (estado.owner ? '👑 ' : '') + (estado.perfil.apelido || '');
+  $('#menu-painel').hidden = !estado.owner;                 // painel: só o criador
+  if ($('#menu-moderar')) $('#menu-moderar').hidden = !estado.moderador;   // moderador: ícone 🛡️
+  $('#eu-nome').textContent = selo(estado.owner ? 'owner' : estado.moderador ? 'moderador' : '') + (estado.perfil.apelido || '');
   if (estado.cinema) { estado.cinema.focarEm(estado.sessao.user.id); return; }
 
   const [{ Cinema }, { PlayerSincronizado }] = await Promise.all([import('./cinema3d.js'), import('./player.js')]);
@@ -206,7 +208,7 @@ async function abrirCinema() {
     cinema.modoCamera();
     if (obs.mini) { cinema.fpsMax = 12; cinema.renderer.setPixelRatio(0.6); cinema.renderer.shadowMap.enabled = false; cinema._redimensionar(); }
   }
-  cinema.aoClicarPessoa = (id, ev) => id !== cinema.meuId && (estado.owner && estado.mod ? estado.mod.abrirMenu(id, ev) : abrirDenuncia(id));
+  cinema.aoClicarPessoa = (id, ev) => id !== cinema.meuId && ((estado.owner || estado.moderador) && estado.mod ? estado.mod.abrirMenu(id, ev) : abrirDenuncia(id));
   cinema.controles.addEventListener('start', () => cinema.interromperCamera());
 
   const eventosPlayer = {
@@ -287,12 +289,12 @@ async function iniciarVozEModeracao() {
   } catch (e) { console.warn('voz indisponível', e); }
   try {
     const { iniciarModeracao } = await import('./moderacao.js');
-    estado.mod = iniciarModeracao({ sb, sala: salaAtual(), eu, owner: estado.owner, canalSala: estado.canal, nomeDe, toast, esc, gv: estado.voz, infoSala: infoSalaAtual });
+    estado.mod = iniciarModeracao({ sb, sala: salaAtual(), eu, owner: estado.owner, moderador: !!estado.moderador, canalSala: estado.canal, nomeDe, toast, esc, gv: estado.voz, infoSala: infoSalaAtual });
   } catch (e) { console.warn('moderação indisponível', e); }
 }
 
 function meuEstadoPresenca() {
-  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : 'espectador', desde: estado._desde || (estado._desde = Date.now()), ...(estado.sala?.presenca() || {}) };
+  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : estado.moderador ? 'moderador' : 'espectador', desde: estado._desde || (estado._desde = Date.now()), ...(estado.sala?.presenca() || {}) };
 }
 
 // sala de um filme do NetMovies: título, botão de voltar para a sala principal
@@ -386,7 +388,7 @@ async function adicionarMsg(m, aoVivo) {
   const p = await nomeDe(m.usuario);
   const el = document.createElement('div');
   el.className = 'msg'; el.dataset.msg = m.id;
-  el.innerHTML = `<b class="${p.papel === 'owner' ? 'owner' : ''}">${p.papel === 'owner' ? '👑 ' : ''}${esc(p.apelido)}:</b> ${esc(m.texto)}` +
+  el.innerHTML = `<b class="${p.papel === 'owner' ? 'owner' : p.papel === 'moderador' ? 'moderador' : ''}">${selo(p.papel)}${esc(p.apelido)}:</b> ${esc(m.texto)}` +
     (m.usuario !== estado.sessao.user.id ? ` <button class="denunciar" title="Denunciar">⚑</button>` : '');
   el.querySelector('.denunciar')?.addEventListener('click', () => abrirDenuncia(m.usuario, m.sala ? null : m.id));
   const lista = $('#chat-lista');
@@ -430,6 +432,7 @@ function configurarMenu() {
     if (ir === 'programacao') { fecharGavetas(); $('#gaveta-programacao').hidden = false; carregarProgramacao(); }
     if (ir === 'vr') { fecharGavetas(); abrirVR(); b.classList.remove('ativo'); $('[data-ir="sala"]').classList.add('ativo'); }
     if (ir === 'painel') location.href = 'admin.html';
+    if (ir === 'moderar') { fecharGavetas(); $('#gaveta-pessoas').hidden = false; desenharPessoas(); toast('🛡️ Toque em “Moderar” ao lado de uma pessoa, ou no avatar dela na sala.'); }
     if (ir === 'sair') sair();
   });
 }
@@ -508,12 +511,15 @@ function mostrarControlesVR(vr) {
   revelar();
 }
 
+function selo(papel) { return papel === 'owner' ? '👑 ' : papel === 'moderador' ? '🛡️ ' : ''; }
+function ordemPapel(papel) { return papel === 'owner' ? 2 : papel === 'moderador' ? 1 : 0; }
+
 function desenharPessoas() {
-  const lista = [...estado.pessoas.values()].sort((a, b) => (b.papel === 'owner') - (a.papel === 'owner') || String(a.apelido).localeCompare(b.apelido));
+  const lista = [...estado.pessoas.values()].sort((a, b) => ordemPapel(b.papel) - ordemPapel(a.papel) || String(a.apelido).localeCompare(b.apelido));
   $('#lista-pessoas').innerHTML = lista.map(p => `
     <li><span class="n"><span class="bolinha" style="background:${esc(p.avatar?.roupa || '#7c3aed')}">${esc((p.apelido || '?')[0].toUpperCase())}</span>
-      ${p.papel === 'owner' ? '👑 ' : ''}${esc(p.apelido)}${p.id === estado.sessao.user.id ? ' (você)' : ''}</span>
-      ${p.id !== estado.sessao.user.id ? (estado.owner && estado.mod && p.papel !== 'owner' ? `<button data-mod="${p.id}" aria-label="Moderar ${esc(p.apelido)}">Moderar</button>` : `<button data-den="${p.id}">Denunciar</button>`) : ''}</li>`).join('');
+      ${selo(p.papel)}${esc(p.apelido)}${p.id === estado.sessao.user.id ? ' (você)' : ''}</span>
+      ${p.id !== estado.sessao.user.id ? ((estado.owner || (estado.moderador && p.papel !== 'moderador')) && estado.mod && p.papel !== 'owner' ? `<button data-mod="${p.id}" aria-label="Moderar ${esc(p.apelido)}">Moderar</button>` : `<button data-den="${p.id}">Denunciar</button>`) : ''}</li>`).join('');
   $$('[data-den]').forEach(b => b.onclick = () => abrirDenuncia(b.dataset.den));
   $$('[data-mod]').forEach(b => b.onclick = (e) => estado.mod.abrirMenu(b.dataset.mod, e));
 }

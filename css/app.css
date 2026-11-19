@@ -87,6 +87,7 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .rotulo3d .nome{background:rgba(10,6,16,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);padding:4px 10px;border-radius:999px;font-size:13px;font-weight:700;display:flex;gap:6px;align-items:center;border:1px solid rgba(255,255,255,.12)}
 .rotulo3d .nome i{width:8px;height:8px;border-radius:50%;background:var(--verde);box-shadow:0 0 8px var(--verde)}
 .rotulo3d.owner .nome{color:var(--ouro);border-color:#fbbf2455}
+.rotulo3d.moderador .nome{color:#38bdf8;border-color:#38bdf855}
 .rotulo3d.eu .nome{border-color:#a78bfa}
 .balao{background:rgba(20,12,30,.92);border:1px solid rgba(255,255,255,.15);padding:7px 12px;border-radius:14px;font-size:14px;max-width:220px;white-space:normal;animation:sobe .25s ease}
 @keyframes sobe{from{opacity:0;transform:translateY(6px)}}
@@ -112,6 +113,7 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .msg{background:rgba(10,6,16,.6);padding:6px 10px;border-radius:12px;font-size:14px;width:fit-content;max-width:100%;word-wrap:break-word;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
 .msg b{cursor:pointer}
 .msg b.owner{color:var(--ouro)}
+.msg b.moderador{color:#38bdf8}
 .msg .denunciar{opacity:.0;margin-left:6px;font-size:11px;color:var(--sub)}
 .msg:hover .denunciar,.msg:focus-within .denunciar{opacity:1}
 .chat-form{position:relative;display:flex;align-items:center;gap:6px;background:rgba(15,10,22,.85);border:1px solid rgba(139,92,246,.5);border-radius:999px;padding:5px;backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px)}

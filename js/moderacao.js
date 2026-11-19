@@ -16,21 +16,23 @@ export const urlSala = (sala) => {
   return sala === 'sala-principal' ? base : base + '?netmovies=' + encodeURIComponent(String(sala).replace(/^netmovies-/, ''));
 };
 
-export function iniciarModeracao({ sb, sala, eu, owner, canalSala, nomeDe, toast, esc, gv, infoSala }) {
+export function iniciarModeracao({ sb, sala, eu, owner, moderador = false, canalSala, nomeDe, toast, esc, gv, infoSala }) {
   const $ = (s, el = document) => el.querySelector(s);
   const hora = (d) => new Date(d).toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
   const api = { textoSilenciado: (uid) => !!gv?.usuarioSilenciado(uid, 'texto'), abrirMenu, atualizarSala, destruir };
   const timers = [];
+  const pode = owner || moderador;                  // criador ou moderador: menu de moderação e pedidos de ajuda
+  const meuPapel = owner ? 'owner' : moderador ? 'moderador' : 'espectador';
 
   // ------------------------------------------------ canal global: presença leve (para a aba Câmeras) + avisos
   const pkey = crypto.randomUUID();
   const global = sb.channel(CANAL_GLOBAL, { config: { presence: { key: pkey }, broadcast: { self: false } } });
   let info = { ...(infoSala?.() || {}) };
-  const presenca = () => ({ id: eu.id, apelido: eu.apelido, cor: eu.cor, papel: owner ? 'owner' : 'espectador', sala, ...info, desde: eu.desde });
+  const presenca = () => ({ id: eu.id, apelido: eu.apelido, cor: eu.cor, papel: meuPapel, sala, ...info, desde: eu.desde });
   function atualizarSala(dados) { info = { ...info, ...dados }; global.track(presenca()); }
   const aoAviso = ({ payload }) => {
     if (payload?.alvo !== eu.id) return;
-    if (MUTES.includes(payload.acao)) { gv?.atualizarSilenciados(); toast(payload.acao === 'revogar' ? 'O criador desfez uma restrição sua.' : 'O criador aplicou uma restrição na sua conta.'); }
+    if (MUTES.includes(payload.acao)) { gv?.atualizarSilenciados(); toast(payload.acao === 'revogar' ? 'A moderação desfez uma restrição sua.' : 'A moderação aplicou uma restrição na sua conta.'); }
     else location.reload();                         // ban/expulsão: o servidor decide na volta
   };
   global.on('broadcast', { event: 'moderacao' }, aoAviso);
@@ -46,7 +48,7 @@ export function iniciarModeracao({ sb, sala, eu, owner, canalSala, nomeDe, toast
   }
 
   // ------------------------------------------------ Pedir ajuda (todos, menos o criador)
-  if (!owner) {
+  if (!pode) {
     const b = document.createElement('button');
     b.dataset.ir = 'ajuda'; b.id = 'menu-ajuda'; b.title = 'Pedir ajuda ao criador'; b.setAttribute('aria-label', 'Pedir ajuda ao criador');
     b.innerHTML = '🆘<span>Ajuda</span>';
@@ -71,10 +73,11 @@ export function iniciarModeracao({ sb, sala, eu, owner, canalSala, nomeDe, toast
   const foraMenu = (e) => { if (menu && !menu.contains(e.target)) fecharMenu(); };
 
   async function abrirMenu(alvo, ev) {
-    if (!owner || !alvo || alvo === eu.id) return;
+    if (!pode || !alvo || alvo === eu.id) return;
     fecharMenu();
     const p = await nomeDe(alvo);
     if (p?.papel === 'owner') return toast('O criador não pode ser moderado.');
+    if (!owner && p?.papel === 'moderador') return toast('Moderadores não moderam outro moderador.');
     menu = document.createElement('div');
     menu.className = 'mod-menu'; menu.setAttribute('role', 'menu'); menu.setAttribute('aria-label', 'Moderar ' + (p?.apelido || ''));
     menu.innerHTML = `<header><b>${esc(p?.apelido || '?')}</b><button class="fechar" aria-label="Fechar">✕</button></header>
@@ -86,7 +89,7 @@ export function iniciarModeracao({ sb, sala, eu, owner, canalSala, nomeDe, toast
       <hr>
       <button class="mod-grave" data-a="expulsar">🚪 Expulsar agora (volta em 10 min)</button>
       <div class="mod-grupo grave"><span>Banir do site</span><button data-a="banir_temp" data-m="10">10 min</button><button data-a="banir_temp" data-m="60">1 h</button><button data-a="banir_temp" data-m="1440">24 h</button><button data-a="banir_temp" data-m="10080">7 dias</button></div>
-      <button class="mod-perigo" data-a="banir_perm">⛔ Banir permanentemente</button>`;
+      ${owner ? '<button class="mod-perigo" data-a="banir_perm">⛔ Banir permanentemente</button>' : ''}`;
     document.body.appendChild(menu);
     // posição: perto do toque, sem sair da tela (no celular vira folha embaixo)
     const x = ev?.clientX ?? innerWidth / 2, y = ev?.clientY ?? innerHeight / 2, r = menu.getBoundingClientRect();
@@ -142,7 +145,7 @@ export function iniciarModeracao({ sb, sala, eu, owner, canalSala, nomeDe, toast
 
   // ------------------------------------------------ pedidos de ajuda chegando (só criador)
   let canalAjuda = null;
-  if (owner) {
+  if (pode) {
     const caixa = document.createElement('div');
     caixa.className = 'ajuda-notifs'; caixa.id = 'ajuda-notifs'; caixa.setAttribute('aria-live', 'polite');
     document.body.appendChild(caixa);

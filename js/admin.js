@@ -468,13 +468,21 @@ async function usuarios() {
     <div class="card"><table><thead><tr><th>Apelido</th><th>E-mail</th><th>Papel</th><th>Cadastro</th><th>Último acesso</th><th>Situação</th><th></th></tr></thead><tbody id="tb">
     ${data.map(u => { const b = ativo(u.id); return `<tr data-q="${esc((u.apelido || '') + ' ' + (u.email || '')).toLowerCase()}">
       <td><b>${esc(u.apelido || '—')}</b> ${onl.has(u.id) ? '<span class="tag verde">online</span>' : ''}</td><td>${esc(u.email)}</td>
-      <td>${u.papel === 'owner' ? '<span class="tag roxo">👑 owner</span>' : 'espectador'}</td><td>${dataBR(u.criado_em)}</td><td>${dataBR(u.ultimo_acesso)}</td>
+      <td>${u.papel === 'owner' ? '<span class="tag roxo">👑 owner</span>' : u.papel === 'moderador' ? '<span class="tag verde">🛡️ moderador</span>' : 'espectador'}</td><td>${dataBR(u.criado_em)}</td><td>${dataBR(u.ultimo_acesso)}</td>
       <td>${b ? `<span class="tag verm">${b.tipo}</span>` : '<span class="tag verde">ativo</span>'}</td>
-      <td class="linha-acoes">${u.papel !== 'owner' ? `<button class="btn" data-exp="${u.id}" data-nome="${esc(u.apelido || u.email)}">Expulsar</button><button class="btn v" data-ban="${u.id}" data-nome="${esc(u.apelido || u.email)}">Banir</button>` : ''}</td></tr>`; }).join('')}
+      <td class="linha-acoes">${u.papel !== 'owner' ? `<button class="btn" data-modr="${u.id}" data-ativo="${u.papel === 'moderador' ? '0' : '1'}" data-nome="${esc(u.apelido || u.email)}">${u.papel === 'moderador' ? 'Remover moderador' : '🛡️ Tornar moderador'}</button><button class="btn" data-exp="${u.id}" data-nome="${esc(u.apelido || u.email)}">Expulsar</button><button class="btn v" data-ban="${u.id}" data-nome="${esc(u.apelido || u.email)}">Banir</button>` : ''}</td></tr>`; }).join('')}
     </tbody></table></div>`;
   $('#busca').oninput = (e) => $$('#tb tr').forEach(tr => tr.hidden = !tr.dataset.q.includes(e.target.value.toLowerCase()));
   $$('[data-ban]').forEach(b => b.onclick = () => formBan(b.dataset.ban, b.dataset.nome));
   $$('[data-exp]').forEach(b => b.onclick = () => expulsar(b.dataset.exp, b.dataset.nome));
+  $$('[data-modr]').forEach(b => b.onclick = async () => {
+    const ativo = b.dataset.ativo === '1';
+    if (!confirm(ativo ? `Tornar ${b.dataset.nome} moderador? Ele poderá silenciar, expulsar e banir temporariamente nas salas.` : `Tirar ${b.dataset.nome} da moderação?`)) return;
+    const { error } = await sb.rpc('definir_moderador', { p_alvo: b.dataset.modr, p_ativo: ativo });
+    if (erro(error)) return;
+    avisar(b.dataset.modr, 'papel');
+    toast(ativo ? b.dataset.nome + ' agora é moderador 🛡️' : b.dataset.nome + ' deixou de ser moderador', 'ok'); ir(st.secao);
+  });
 }
 
 // Expulsar: tira a pessoa da sala agora; ela só pode voltar depois de 10 minutos.
@@ -533,6 +541,14 @@ async function denuncias() {
   });
   $$('[data-ban]').forEach(b => b.onclick = () => formBan(b.dataset.ban, b.dataset.nome));
   $$('[data-exp]').forEach(b => b.onclick = () => expulsar(b.dataset.exp, b.dataset.nome));
+  $$('[data-modr]').forEach(b => b.onclick = async () => {
+    const ativo = b.dataset.ativo === '1';
+    if (!confirm(ativo ? `Tornar ${b.dataset.nome} moderador? Ele poderá silenciar, expulsar e banir temporariamente nas salas.` : `Tirar ${b.dataset.nome} da moderação?`)) return;
+    const { error } = await sb.rpc('definir_moderador', { p_alvo: b.dataset.modr, p_ativo: ativo });
+    if (erro(error)) return;
+    avisar(b.dataset.modr, 'papel');
+    toast(ativo ? b.dataset.nome + ' agora é moderador 🛡️' : b.dataset.nome + ' deixou de ser moderador', 'ok'); ir(st.secao);
+  });
 }
 
 // ------------------------------------------------------------------ banimentos
