@@ -1,7 +1,7 @@
 import { observarQualidade } from './qualidade-video.js';
 import { controlesAnuncio } from './anuncio-youtube.js';
 import { carregarFilmesR2 } from './catalogo-r2.js';
-// Fluxo do app dos espectadores: login Google → perfil → sala 3D.
+// Login → perfil, se necessário → recepção 3D.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { sb, configurado, COLS_PERFIL, idDispositivo, plataforma, esc, toast } from './supa.js';
@@ -26,6 +26,28 @@ function mostrar(id) {
   $('#carregando').classList.add('some');
 }
 
+function urlRecepcao() {
+  const url = new URL(location.href);
+  url.searchParams.delete('netmovies');
+  url.searchParams.delete('programacao');
+  return url;
+}
+
+function abrirDestino() {
+  const q = new URLSearchParams(location.search);
+  if (q.get('netmovies') || q.get('programacao') === '1') return abrirCinema();
+  mostrar('tela-recepcao');
+  import('./recepcao.js').then(m => m.abrirRecepcao()).catch(e => console.warn('Recepção estática', e));
+}
+
+const botaoSalas = $('#abrir-salas');
+botaoSalas.onclick = () => {
+  const gaveta = $('#gaveta-salas');
+  gaveta.hidden = !gaveta.hidden;
+  botaoSalas.setAttribute('aria-expanded', String(!gaveta.hidden));
+};
+$('#fechar-salas').onclick = () => { botaoSalas.click(); botaoSalas.focus(); };
+
 // ------------------------------------------------------------------ início
 async function iniciar() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
@@ -36,7 +58,11 @@ async function iniciar() {
     if (ev === 'SIGNED_OUT') location.reload();
     if (ev === 'SIGNED_IN' && !estado.sessao && s) { estado.sessao = s; entrar(); }
   });
-  if (!session) { mostrar('tela-login'); return; }
+  if (!session) {
+    history.replaceState(history.state, '', urlRecepcao());
+    mostrar('tela-login');
+    return;
+  }
   estado.sessao = session;
   entrar();
 }
@@ -61,8 +87,11 @@ async function entrar() {
   estado.moderador = !estado.owner && !!st.moderador;
   const { data: perfil } = await sb.rpc('meu_perfil');
   estado.perfil = perfil;
-  if (!perfil?.cadastro_completo) return abrirPerfil(true);
-  abrirCinema();
+  if (!perfil?.cadastro_completo) {
+    history.replaceState(history.state, '', urlRecepcao());
+    return abrirPerfil(true);
+  }
+  abrirDestino();
 }
 
 function telaBanido(st) {
@@ -75,8 +104,10 @@ function telaBanido(st) {
 // ------------------------------------------------------------------ login
 $$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
-  const volta = new URL('./', location.href).href + location.search;   // mantém o filme do NetMovies, se houver
-  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta, queryParams: { prompt: 'select_account' } } });
+  const destino = urlRecepcao();
+  const volta = new URL('./', destino);
+  volta.search = destino.search;
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta.href, queryParams: { prompt: 'select_account' } } });
   if (error) toast(error.message, 'erro');
 }));
 async function loginEmail(criar) {
@@ -162,7 +193,7 @@ async function abrirPerfil(primeiraVez) {
     estado.perfil = { ...estado.perfil, apelido, genero, avatar: cfg, cadastro_completo: true };
     toast('Perfil salvo!', 'ok');
     estado.canal?.track(meuEstadoPresenca());
-    abrirCinema();
+    abrirDestino();
   };
 }
 
@@ -202,7 +233,11 @@ async function abrirCinema() {
   const idFilme = obs ? (obs.sala.startsWith('netmovies-') ? obs.sala.slice(10) : null) : new URLSearchParams(location.search).get('netmovies');
   if (idFilme) {
     try { estado.sala = await (await import('./sala-filme.js')).prepararSalaFilme(idFilme); } catch (e) { console.warn(e); }
-    if (!estado.sala) { toast('Esse filme não está disponível. Voltando para a sala principal.', 'erro'); history.replaceState(null, '', location.pathname); }
+    if (!estado.sala && !obs) {
+      toast('Esse filme não está disponível. Voltando para a Sala Principal.', 'erro');
+      history.replaceState(history.state, '', urlRecepcao());
+      return abrirDestino();
+    }
   }
   const video = $('#video');
   const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
@@ -242,6 +277,15 @@ async function abrirCinema() {
     };
   }
   if (estado.sala) marcarSalaFilme();
+  if (!obs) {
+    const voltar = document.createElement('button');
+    voltar.type = 'button';
+    voltar.className = 'chip';
+    voltar.id = 'btn-sala-principal';
+    voltar.textContent = '⬅ Sala Principal';
+    voltar.onclick = () => { location.href = urlRecepcao().href; };
+    $('.hud-dir').prepend(voltar);
+  }
   $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
   $('#btn-som').onclick = () => {
     if (player.mutado) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
@@ -294,14 +338,10 @@ function meuEstadoPresenca() {
   return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : estado.moderador ? 'moderador' : 'espectador', desde: estado._desde || (estado._desde = Date.now()), ...(estado.sala?.presenca() || {}) };
 }
 
-// sala de um filme do NetMovies: título, botão de voltar para a sala principal
+// Sala de um filme do catálogo: título da sessão.
 function marcarSalaFilme() {
   $('#titulo-filme').textContent = estado.sala.filme.titulo;
   document.title = estado.sala.filme.titulo + ' · Sessão Juntos';
-  const b = document.createElement('button');
-  b.className = 'chip'; b.id = 'btn-sala-principal'; b.title = 'Voltar para a sala principal'; b.textContent = '⬅ Sala principal';
-  b.onclick = () => { location.href = location.pathname; };
-  $('.hud-dir').prepend(b);
 }
 
 function conectarSala() {
@@ -341,6 +381,7 @@ function conectarSala() {
   $('#convidar-sala').onclick = async () => {
     const url = new URL(location.pathname, location.origin);
     if (estado.sala) url.searchParams.set('netmovies',estado.sala.id);
+    else url.searchParams.set('programacao', '1');
     try {
       if (navigator.share) await navigator.share({title:'Sessão Juntos',url:url.href});
       else { await navigator.clipboard.writeText(url.href); toast('Link da sala copiado.'); }

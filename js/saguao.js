@@ -84,7 +84,7 @@ async function programacao() {
       const status = !pronta ? 'Indisponível' : atual ? (st.pausado ? 'Pausada' : 'Em exibição') : item.id === st?.proximo_item ? 'A seguir' : 'Na fila';
       card.append(criar('small',status), criar('strong', f?.titulo || 'Filme indisponível'), criar('small',[f?.genero, f?.duracao_seg && Math.round(f.duracao_seg/60)+' min'].filter(Boolean).join(' · ')));
       if (horarios.has(item.id)) card.append(criar('small',(atual ? 'Início' : 'Previsão') + ' · ' + formatarHora.format(horarios.get(item.id))));
-      if (atual && pronta) card.append(acao('Agora · entrar na sala','sessao.html'));
+      if (atual && pronta) card.append(acao('Agora · entrar na sala','sessao.html?programacao=1'));
       fila.append(card);
     }
   } catch { fila.replaceChildren(); situacao.textContent = 'A programação não carregou. Toque em atualizar para tentar novamente.'; }

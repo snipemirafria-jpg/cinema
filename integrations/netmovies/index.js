@@ -1,5 +1,5 @@
 // Módulo de fornecedores de filmes gratuitos (NetMovies, Capivara Filmes...) — independente do resto da Sessão Juntos.
-// Acrescenta um botão por fornecedor no menu lateral e um painel por cima da sala. "Assistir" abre a sala
+// Acrescenta um botão por fornecedor em Outras salas. "Assistir" abre a sala
 // própria do filme (js/sala-filme.js); a sala principal e o Supabase continuam iguais.
 // Para remover de vez: apague a linha <script ... integrations/netmovies/index.js> do index.html.
 // Fornecedores: lista FORNECEDORES em ./config.js.
@@ -8,10 +8,9 @@ import { NETMOVIES_ENABLED, FORNECEDORES } from './config.js';
 const BASE = new URL('./', import.meta.url);
 
 async function iniciar() {
-  if (!NETMOVIES_ENABLED) return;
-  const menu = document.getElementById('menu-lateral');
-  if (!menu || document.getElementById('netmovies-botao')) return;
-
+  const lista = document.getElementById('catalogos-salas');
+  const status = document.getElementById('status-salas');
+  if (!lista) return;
 
   const estilo = document.createElement('style');
   estilo.textContent = `
@@ -23,8 +22,7 @@ async function iniciar() {
   `;
   document.head.appendChild(estilo);
 
-  const antes = menu.querySelector('[data-ir="painel"]') || menu.querySelector('[data-ir="sair"]');
-  for (const f of FORNECEDORES) {
+  for (const f of NETMOVIES_ENABLED ? FORNECEDORES : []) {
     // fornecedor sem nenhum filme ainda: não mostra o botão
     try { const d = await (await fetch(new URL(f.catalogo, BASE))).json(); if (!(d.items || d).length) continue; } catch { continue; }
     const painel = document.createElement('div');
@@ -52,6 +50,7 @@ async function iniciar() {
     const botao = document.createElement('button');
     botao.id = f.id === 'netmovies' ? 'netmovies-botao' : `fornecedor-${f.id}-botao`;
     botao.type = 'button'; botao.title = `${f.nome} — Filmes gratuitos (com anúncios)`;
+    botao.className = 'chip';
     botao.innerHTML = `${f.icone}<span>${f.nome}</span>`;
     botao.addEventListener('click', async e => {
       e.stopPropagation(); painel.hidden = false;
@@ -60,8 +59,10 @@ async function iniciar() {
         if (!catalogo.isConnected && !painel.hidden) painel.appendChild(catalogo);
       } catch { painel.hidden = true; botao.title = 'Falha ao abrir. Toque para tentar novamente.'; }
     });
-    menu.insertBefore(botao, antes);
+    lista.appendChild(botao);
   }
+  status.hidden = lista.childElementCount > 0;
+  status.textContent = 'Nenhum catálogo de salas disponível no momento.';
 }
 
 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', iniciar);
