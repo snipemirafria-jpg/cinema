@@ -217,7 +217,6 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .camada-tela-plana .tela-html{position:absolute!important;transform:none!important;transform-style:flat!important;perspective:none!important;pointer-events:none;background:#000}
 .camada-tela-plana .midia-yt{width:100%;height:100%;overflow:hidden}
 .camada-tela-plana .midia-yt iframe{position:absolute;left:0;top:50%;width:100%!important;height:auto!important;aspect-ratio:16/9;transform:translateY(-50%);pointer-events:none}
-.yt-anuncio-overlay .tela-html{clip-path:none!important;visibility:visible!important}
 
 .tela-html{background:#000;overflow:hidden}
 .tela-html>*{width:100%;height:100%;border:0;display:block}
@@ -228,16 +227,12 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .midia-yt iframe{position:absolute;left:0;top:50%;width:100%!important;height:auto!important;aspect-ratio:16/9;transform:translateY(-50%);border:0;pointer-events:none}
 .midia-iframe{pointer-events:auto}
 
-/* Botão "Pular anúncio": por alguns segundos o player do YouTube sai do 3D e fica plano, em tela cheia,
-   para o toque cair certo no botão "Pular" do próprio YouTube (no iPhone o toque num iframe em 3D erra o alvo).
-   Só muda o CSS: o iframe não é movido, então o vídeo não recarrega. */
-/* Player oficial do YouTube temporariamente fora do CSS3D, em camada 2D real. */
-.yt-anuncio-overlay{position:fixed;inset:0;z-index:1000;background:#000;pointer-events:auto;overflow:hidden}
-.yt-anuncio-overlay .tela-html{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;transform:none!important}
-.yt-anuncio-overlay .midia-yt{width:100%!important;height:100%!important}
-.yt-anuncio-overlay .midia-yt iframe{position:absolute!important;inset:0!important;top:0!important;left:0!important;width:100%!important;height:100%!important;transform:none!important;aspect-ratio:auto;pointer-events:auto!important}
-body.yt-tocavel #btn-pular-anuncio{position:fixed;z-index:1002;top:calc(12px + var(--seg-top));right:calc(12px + var(--seg-dir))}
-#btn-pular-anuncio.ativo{background:#ffd34d;color:#1a1020}
+/* O iframe fica montado inclusive ao abrir e fechar os controles oficiais. */
+body.yt-tocavel{--altura-controles-yt:calc(48px + var(--seg-top))}
+#controles-anuncio{position:fixed;inset:0 0 auto;box-sizing:border-box;height:var(--altura-controles-yt);z-index:1002;background:#15101c;display:flex;align-items:center;justify-content:space-between;gap:8px;padding:var(--seg-top) max(10px,var(--seg-dir)) 0 max(10px,var(--seg-esq));font-size:13px}
+#controles-anuncio button{flex:none}
+body.yt-tocavel .youtube-ampliado{position:fixed!important;inset:var(--altura-controles-yt) 0 0!important;width:100%!important;height:auto!important;z-index:1001;overflow:hidden;background:#000;pointer-events:auto!important}
+.youtube-ampliado div,.youtube-ampliado iframe{position:absolute!important;inset:0!important;width:100%!important;height:100%!important;transform:none!important;transform-style:flat!important;perspective:none!important;clip-path:none!important;visibility:visible!important;pointer-events:auto!important;aspect-ratio:auto!important}
 .aviso-anuncio-tela{position:absolute;left:50%;bottom:calc(120px + var(--seg-bot));transform:translateX(-50%);z-index:5;background:#ffd34d;color:#1a1020;border:0;border-radius:999px;padding:14px 22px;font:inherit;font-size:16px;font-weight:700;box-shadow:0 6px 24px #0008;cursor:pointer;animation:pulsa-anuncio 1.4s ease-in-out infinite}
 .aviso-anuncio-tela[hidden]{display:none}
 @keyframes pulsa-anuncio{50%{transform:translateX(-50%) scale(1.06)}}
@@ -261,12 +256,8 @@ body:not(.em-cardboard) .vr-barra .so-cardboard{display:none}
 .vr-divisor{position:fixed;top:0;bottom:0;left:50%;width:2px;margin-left:-1px;background:#ffffff40;z-index:15;pointer-events:none}
 .modal-vr{max-height:92vh;max-height:92dvh;overflow-y:auto}
 
-/* VR: YouTube um player por olho (Cardboard) e controle Bluetooth */
-body.em-vr.vr-yt .camada-tela{display:block!important;position:fixed!important;left:0!important;top:0!important;right:auto!important;bottom:auto!important;width:50%!important;height:100%!important;overflow:hidden!important;z-index:5!important;pointer-events:none!important;background:transparent!important}
-body.em-vr.vr-yt .camada-tela>div,body.em-vr.vr-yt .camada-tela>div>div{transform:none!important;perspective:none!important;transform-style:preserve-3d!important;width:100%!important;height:100%!important;position:absolute!important;left:0!important;top:0!important}
-.vr-olho-dir{position:fixed;left:50%;top:0;width:50%;height:100%;overflow:hidden;z-index:5;pointer-events:none}
-.vr-tela-dir>.midia-yt{position:relative;overflow:hidden;width:100%;height:100%;background:#000}
-body.em-vr .midia-yt iframe{pointer-events:none!important}
+body.em-vr .camada-tela-plana{display:none!important}
+body.em-cardboard .vr-barra{flex-wrap:wrap;justify-content:center;max-width:96%;border-radius:16px}
 .vr-lado{display:flex;flex-direction:column;align-items:center;gap:4px}
 body.em-cardboard .vr-ui{left:0;right:0;transform:none;flex-direction:row;justify-content:space-around;gap:0}
 body.em-cardboard .vr-lado{width:50%}
@@ -346,3 +337,5 @@ body.tela-limpa #btn-tela-limpa{opacity:.45}
 body.tela-limpa .hud-topo,body.tela-limpa .menu-lateral,body.tela-limpa .chat,body.tela-limpa .gaveta,body.tela-limpa #aviso-anuncio,body.tela-limpa .obs-barra,body.tela-limpa .ajuda-notifs,body.tela-limpa .mod-menu{display:none!important}
 body.obs-mini #btn-tela-limpa,body.em-vr #btn-tela-limpa{display:none!important}
 @media (max-width:760px){#btn-tela-limpa{bottom:calc(76px + var(--seg-bot));width:40px;height:40px;font-size:18px}}
+
+.rotulo3d .fala{background:#093a2b;color:#adffdb;border-radius:1em;padding:2px 7px;font-size:11px;font-weight:700}

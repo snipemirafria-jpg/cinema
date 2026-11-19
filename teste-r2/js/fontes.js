@@ -77,12 +77,14 @@ export class MidiaYouTube {
     const alvo = document.createElement('div'); this.el.appendChild(alvo);
     this.pronto = false; this._mudo = true; this._estado = -1; this.eventos = eventos;
     carregarApiYouTube().then(YT => {
+      if (this.encerrado) return;
       this.p = new YT.Player(alvo, {
         videoId: id, width: '100%', height: '100%',
-        playerVars: { autoplay: 1, mute: 1, controls: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'none', hl: 'pt', start: Math.floor(inicio || 0) },
+        playerVars: { autoplay: 1, mute: 1, controls: 1, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 0, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'none', hl: 'pt', start: Math.floor(inicio || 0) },
         events: {
-          onReady: () => { this.pronto = true; this.semLegenda(); this.p.mute(); this.p.playVideo(); this._vigiarAnuncio(); eventos.pronto?.(); },
+          onReady: () => { if (this.encerrado) return; this.pronto = true; this.muted = this._mudo; this.semLegenda(); this.p.playVideo(); this._vigiarAnuncio(); eventos.pronto?.(); },
           onStateChange: (e) => {
+            if (this.encerrado) return;
             this._estado = e.data;
             if (e.data === 1) { this.semLegenda(); eventos.tocando?.(); }
             if (e.data === 3) eventos.carregando?.();
@@ -121,7 +123,7 @@ export class MidiaYouTube {
   play() { if (this.pronto) this.p.playVideo(); return Promise.resolve(); }
   pause() { if (this.pronto) this.p.pauseVideo(); }
   get carregando() { return this._estado === 3; }
-  destruir() { clearInterval(this._vigia); if (this.anuncio) this.eventos.anuncio?.(false); try { this.p?.destroy(); } catch { } this.el.remove(); }
+  destruir() { this.encerrado = true; clearInterval(this._vigia); if (this.anuncio) this.eventos.anuncio?.(false); try { this.p?.destroy(); } catch { } this.el.remove(); }
 }
 
 // Página qualquer (sem controle de tempo): mostrada como está no telão.

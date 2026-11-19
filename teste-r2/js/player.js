@@ -1,4 +1,5 @@
 // Player sincronizado: todos veem o mesmo ponto do filme (o servidor manda).
+import { fonteR2 } from './catalogo-r2.js';
 import { sb, urlPublica } from './supa.js';
 import { detectarTipo, idYouTube, idDrive, idArchive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe } from './fontes.js';
 
@@ -18,6 +19,7 @@ export class PlayerSincronizado {
     this.v = video;            // <video crossorigin> cujo quadro vira textura do telão 3D
     this.m = video;            // mídia ativa (video, video livre, YouTube ou iframe)
     this.modo = 'textura';
+    this.filmeVR = null; this._geracao = 0; this._consulta = 0;
     this.aoMudarFilme = aoMudarFilme; this.aoLegenda = aoLegenda; this.aoEstado = aoEstado; this.aoModo = aoModo; this.aoAnuncio = aoAnuncio;
     // <video> sem crossorigin: toca links sem CORS (Drive, sites comuns), mostrado como elemento no telão
     const vl = this.vLivre = document.createElement('video');
@@ -30,8 +32,13 @@ export class PlayerSincronizado {
     this._ultimoSeek = 0; this._aguardandoDados = false; this._ultimoDiagnostico = 0;
     this._tick = setInterval(() => this._corrigir(), 1500);
     this._poll = setInterval(() => this.atualizar(), 30000);
-    video.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
-    video.addEventListener('error', () => { if (this.m === this.v && this._semCors) return this._semCors(); this.aoEstado?.('erro'); });
+    video.addEventListener('ended', () => { if (!this.filmeVR) setTimeout(() => this.atualizar(), 800); });
+    video.addEventListener('error', () => {
+      if (this.m !== video || !video.error) return;
+      if (this.filmeVR) { this.aoEstado?.('erro', 'Não foi possível reproduzir este filme do R2. Confira a conexão ou escolha outro filme.'); return; }
+      if (this._semCors) return this._semCors();
+      this.aoEstado?.('erro');
+    });
     video.addEventListener('playing', () => this.aoEstado?.('tocando'));
     video.addEventListener('waiting', () => { this._aguardandoDados = true; this.aoEstado?.('carregando'); });
     video.addEventListener('playing', () => { this._aguardandoDados = false; });
@@ -44,9 +51,12 @@ export class PlayerSincronizado {
   }
 
   async atualizar() {
+    if (this.filmeVR) return;
+    const consulta = ++this._consulta;
     const t0 = Date.now();
     const { data, error } = await sb.rpc('agora_passando');
-    if (error) { console.warn(error); return; }
+    if (consulta !== this._consulta || this.filmeVR) return;
+    if (error || !data) { if (error) console.warn(error); return; }
     const t1 = Date.now();
     this.offset = new Date(data.agora).getTime() - (t0 + t1) / 2;   // relógio do servidor
     this.estado = data;
@@ -54,13 +64,13 @@ export class PlayerSincronizado {
     if (data.item !== this.itemAtual || data.iniciado_em !== this._iniciado) {
       const trocou = data.item !== this.itemAtual;
       this.itemAtual = data.item; this._iniciado = data.iniciado_em;
-      if (trocou) { await this._carregar(data.filme); this.aoMudarFilme?.(data.filme, data); }
+      if (trocou) { const carga = this._carregar(data.filme), geracao = this._geracao; await carga; if (geracao !== this._geracao) return; this.aoMudarFilme?.(data.filme, data); }
     }
     this._corrigir(true);
   }
 
   posicaoAlvo() {
-    if (!this.estado?.filme) return 0;
+    if (this.filmeVR || !this.estado?.filme) return 0;
     if (this.estado.pausado) return 0;
     const agora = Date.now() + this.offset;
     return Math.max(0, (agora - new Date(this.estado.iniciado_em).getTime()) / 1000);
@@ -74,7 +84,37 @@ export class PlayerSincronizado {
     return { tipo: f.origem, url: f.fonte_url };
   }
 
+  iniciarFilmeVR(filme) {
+    const fonte = fonteR2(filme?.fonte_url);
+    if (!fonte) return false;
+    if (!this.filmeVR) this._mudoDaSala = this.mutado;
+    this._consulta++;
+    this.filmeVR = { ...filme, origem: fonte.tipo, fonte_url: fonte.url };
+    this._carregar(this.filmeVR).catch(() => {
+      if (this.filmeVR?.fonte_url === fonte.url) this.aoEstado?.('erro', 'Falha ao abrir o filme do R2.');
+    });
+    this.aoLegenda?.('');
+    this.v.muted = false;
+    if (this.v.hasAttribute('src')) this.tocar();
+    return true;
+  }
+
+  sairFilmeVR() {
+    if (!this.filmeVR) return;
+    this.filmeVR = null;
+    this.itemAtual = null;
+    this._parar();
+    this.v.muted = this._mudoDaSala;
+    this.aoLegenda?.('');
+    return this.atualizar();
+  }
+
   _parar() {
+    this._geracao++;
+    if (this._aoMetadados) this.v.removeEventListener('loadedmetadata', this._aoMetadados);
+    this._aoMetadados = null;
+    clearTimeout(this._legendasTimer);
+    this.emAnuncio = false;
     this.hls?.destroy(); this.hls = null;
     this.dash?.reset(); this.dash = null;
     this.v.removeAttribute('src'); this.v.load();
@@ -107,6 +147,7 @@ export class PlayerSincronizado {
 
   async _carregar(f) {
     this._parar();
+    const geracao = this._geracao;
     let { tipo, url } = this.fonteDe(f);
     if (tipo === 'link') tipo = detectarTipo(url);
     const v = this.v;
@@ -124,7 +165,7 @@ export class PlayerSincronizado {
         tocando: () => this.aoEstado?.('tocando'), carregando: () => this.aoEstado?.('carregando'),
         fim: () => setTimeout(() => this.atualizar(), 800), erro: (msg) => this.aoEstado?.('erro', msg),
         pronto: () => this._corrigir(true),
-        anuncio: (sim) => { this.emAnuncio = sim; this.aoAnuncio?.(sim); if (!sim) this._corrigir(true); },
+        anuncio: (sim) => { if (geracao !== this._geracao) return; this.emAnuncio = sim; this.aoAnuncio?.(sim); if (!sim) this._corrigir(true); },
       });
       this._usar('youtube', yt);
       return;
@@ -136,12 +177,13 @@ export class PlayerSincronizado {
       return;
     }
     if (tipo === 'link') { this._usar('iframe', new MidiaIframe(url)); return; }
-    if (tipo === 'mp4') this._semCors = () => { this._semCors = null; v.removeAttribute('src'); this._tocarLivre(url); };
+    if (tipo === 'mp4' && !this.filmeVR) this._semCors = () => { this._semCors = null; v.removeAttribute('src'); this._tocarLivre(url); };
     [...v.querySelectorAll('track')].forEach(t => t.remove());
     if (tipo === 'hls') {
       // hls.js primeiro (MSE / ManagedMediaSource no iOS 17.1+): o quadro pode virar textura do telão 3D.
       // HLS nativo do iPhone toca o som mas deixa o telão preto no WebGL, então ele fica só de reserva.
       const H = await carregarHls();
+      if (geracao !== this._geracao) return;
       if (H.isSupported()) {
         const leve = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
         v.disableRemotePlayback = true;      // exigido pelo ManagedMediaSource do iOS
@@ -154,6 +196,7 @@ export class PlayerSincronizado {
       } else v.src = url;
     } else if (tipo === 'dash') {
       const d = await carregarDash();
+      if (geracao !== this._geracao) return;
       this.dash = d.MediaPlayer().create(); this.dash.initialize(v, url, false);
     } else {
       v.src = url;
@@ -165,7 +208,7 @@ export class PlayerSincronizado {
       if (i === 0) tr.default = true;
       v.appendChild(tr);
     }
-    setTimeout(() => {
+    this._legendasTimer = setTimeout(() => {
       for (const tt of v.textTracks) {
         tt.mode = 'hidden';
         tt.oncuechange = () => this.aoLegenda?.([...(tt.activeCues || [])].map(c => c.text).join('\n'));
@@ -173,8 +216,8 @@ export class PlayerSincronizado {
     }, 500);
     // O primeiro seek só é confiável depois de os metadados chegarem.
     // Evita solicitar vários trechos do MP4 antes de o navegador conhecer sua duração.
-    const iniciarNaPosicao = () => {
-      if (this.m !== v) return;
+    const iniciarNaPosicao = this._aoMetadados = () => {
+      if (geracao !== this._geracao || this.m !== v) return;
       const alvo = Math.min(this.posicaoAlvo(), Number.isFinite(v.duration) ? Math.max(0, v.duration - 0.25) : this.posicaoAlvo());
       if (alvo > 0.5) { try { v.currentTime = alvo; this._ultimoSeek = performance.now(); } catch {} }
       this.tocar();
@@ -183,7 +226,12 @@ export class PlayerSincronizado {
     else v.addEventListener('loadedmetadata', iniciarNaPosicao, { once: true });
   }
 
-  tocar() { return Promise.resolve(this.m.play()).catch(() => this.aoEstado?.('bloqueado')); }
+  tocar() {
+    const geracao = this._geracao;
+    return Promise.resolve(this.m.play()).catch(e => {
+      if (geracao === this._geracao && e?.name !== 'AbortError') this.aoEstado?.('bloqueado');
+    });
+  }
 
   ativarSom() { this.m.muted = false; try { this.m.volume = this.volumeFilme ?? 1; } catch { } return this.tocar(); }
   // volume do filme (separado do volume da conversa por voz); no iPhone o volume de <video> é do sistema
@@ -191,7 +239,7 @@ export class PlayerSincronizado {
 
   _corrigir(forcar = false) {
     const v = this.m;
-    if (v.semControle || this.emAnuncio) return;
+    if (this.filmeVR || v.semControle || this.emAnuncio || this.controlesYouTube) return;
     if (!this.estado?.filme || v.readyState < 1) return;
     if (this.estado.pausado) { if (!v.paused) v.pause(); return; }
     const alvo = this.posicaoAlvo();

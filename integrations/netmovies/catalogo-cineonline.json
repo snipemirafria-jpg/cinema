@@ -6,7 +6,18 @@
     "subtitle": "Filmes sem anúncios",
     "channelUrl": "",
     "licenseNote": "Arquivos MP4 próprios hospedados no Cloudflare R2.",
-    "lastChecked": "2026-11-18"
+    "lastChecked": "2026-11-19"
   },
-  "items": []
+  "items": [
+    {
+      "id": "em-rota-de-fuga-r2",
+      "title": "Em Rota de Fuga",
+      "poster": "https://pub-85dd77ddbbce44a5891417b08065fbea.r2.dev/acao/em-rota-de-fuga-4k.jpg",
+      "watchUrl": "https://pub-85dd77ddbbce44a5891417b08065fbea.r2.dev/acao/Em%20Rota%20de%20Fuga.mp4",
+      "durationMinutes": 87,
+      "genres": [
+        "Ação"
+      ]
+    }
+  ]
 }

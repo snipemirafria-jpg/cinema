@@ -86,7 +86,7 @@
         <span class="titulo-filme" id="titulo-filme">Carregando…</span>
       </div>
       <div class="hud-dir">
-        <button class="chip" id="btn-pular-anuncio" title="Liberar o botão Pular do YouTube">⏭ Pular anúncio</button>
+        <button class="chip" id="btn-pular-anuncio" hidden aria-controls="controles-anuncio" aria-expanded="false" title="Liberar o botão Pular do YouTube">⏭ Pular anúncio</button>
         <button class="chip" id="btn-som" title="Som">🔇 Ativar som</button>
         <button class="chip" id="btn-pessoas" title="Participantes">👥 <b id="qtd-online">0</b></button>
         <button class="chip eu" id="btn-eu"><span id="eu-nome"></span></button>
@@ -94,6 +94,7 @@
     </header>
     <button type="button" id="aviso-anuncio" class="aviso-anuncio-tela" hidden>📢 Anúncio passando · Toque para <b>pular</b></button>
 
+    <div id="controles-anuncio" hidden><span>Toque em “Pular” quando aparecer no YouTube.</span><button type="button" class="chip">Voltar à sala</button></div>
     <nav class="menu-lateral" id="menu-lateral">
       <button data-ir="sala" class="ativo" title="Sala">🎬<span>Sala</span></button>
       <button data-ir="perfil" title="Meu perfil">👤<span>Perfil</span></button>
@@ -163,18 +164,18 @@
   <dialog id="modal-vr" class="modal modal-vr">
     <form method="dialog">
       <h3>🥽 Entrar no VR</h3>
-      <p class="dica">Você continua na mesma sala da Sessão Juntos, sentado na sua poltrona, olhando para o telão. O filme e a sincronia com a galera seguem iguais.</p>
+      <p class="dica">No VR Box, escolha o que assistir na sua poltrona. Ao sair, você volta ao filme que estiver passando na sala.</p>
       <div id="vr-opcoes" class="vr-opcoes"><p class="dica">Verificando o que este aparelho suporta…</p></div>
       <label class="vr-qual">Qualidade
         <select id="vr-qualidade"><option value="baixa">Baixa (aparelhos mais simples)</option><option value="media">Média</option><option value="alta">Alta</option></select>
       </label>
-      <p class="dica" id="vr-aviso-fonte" hidden></p>
       <div class="acoes"><button value="cancelar" class="btn-sec">Fechar</button></div>
     </form>
   </dialog>
   <div id="vr-ui" class="vr-ui" hidden>
    <div class="vr-lado">
     <div class="vr-barra">
+      <button data-vr="reproducao" class="so-cardboard" title="Reproduzir filme">▶</button>
       <button data-vr="centro" title="Centralizar visão">↻</button>
       <button data-vr="perto" title="Telão mais perto">⇡</button>
       <button data-vr="longe" title="Telão mais longe">⇣</button>

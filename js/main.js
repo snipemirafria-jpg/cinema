@@ -1,3 +1,5 @@
+import { controlesAnuncio } from './anuncio-youtube.js';
+import { carregarFilmesR2 } from './catalogo-r2.js';
 // Fluxo do app dos espectadores: login Google → perfil → sala 3D.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -211,6 +213,7 @@ async function abrirCinema() {
   cinema.aoClicarPessoa = (id, ev) => id !== cinema.meuId && ((estado.owner || estado.moderador) && estado.mod ? estado.mod.abrirMenu(id, ev) : abrirDenuncia(id));
   cinema.controles.addEventListener('start', () => cinema.interromperCamera());
 
+  let atualizarControleAnuncio;
   const eventosPlayer = {
     aoMudarFilme: (f) => {
       $('#sem-filme').hidden = !!f;
@@ -222,11 +225,12 @@ async function abrirCinema() {
       if ($('#gaveta-programacao').hidden === false) carregarProgramacao();
     },
     aoLegenda: (t) => cinema.legenda(t),
-    aoModo: (modo, el) => cinema.mostrarNaTela(el),
+    aoModo: (modo, el) => { cinema.mostrarNaTela(el); atualizarControleAnuncio?.(modo); },
     aoEstado: (s, msg) => {
       if (s === 'tocando' && player.modo === 'textura') cinema.mostrarVideo(true);
       if (s === 'erro' && msg) toast(msg, 'erro');
-      if (s === 'bloqueado') $('#toque-iniciar').hidden = false;
+      if (s === 'bloqueado' && !player.filmeVR) $('#toque-iniciar').hidden = false;
+      if (s === 'erro' && player.filmeVR && estado.vr?.ativo) estado.vr.sair();
     },
   };
   const player = estado.player = estado.sala ? estado.sala.criarPlayer(video, eventosPlayer) : new PlayerSincronizado(video, eventosPlayer);
@@ -236,45 +240,8 @@ async function abrirCinema() {
     if (player.mutado) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
     else { player.silenciar(); $('#btn-som').textContent = '🔇 Ativar som'; }
   };
-  // "Pular anúncio": por 20 s o player sai do 3D e o toque vai para o player do YouTube, para tocar no botão "Pular" dele
-  // Quando o app percebe um anúncio, aparece o botão grande no telão; ao fim do anúncio volta sozinho ao cinema 3D.
-  let tPular, anuncioRestaurar = null;
-  // O CSS3DRenderer mantém transforms 3D nos ancestrais do iframe.
-  // Para liberar o botão do anúncio, mostramos o MESMO elemento numa camada 2D,
-  // sem recriar o player, e restauramos seu lugar ao voltar à sala.
-  const modoPular = (ligar) => {
-    const caixa = cinema.objTela?.element;
-    const midiaYT = player.modo === 'youtube' && !!caixa?.querySelector('.midia-yt iframe');
-    if (ligar && !midiaYT) return;
-    clearTimeout(tPular);
-    if (ligar && !anuncioRestaurar) {
-      const pai = caixa.parentNode;
-      const proximo = caixa.nextSibling;
-      const overlay = document.createElement('div');
-      overlay.className = 'yt-anuncio-overlay';
-      document.body.appendChild(overlay);
-      overlay.appendChild(caixa);
-      anuncioRestaurar = () => {
-        if (pai?.isConnected) pai.insertBefore(caixa, proximo?.parentNode === pai ? proximo : null);
-        else caixa.remove();
-        overlay.remove();
-      };
-    } else if (!ligar && anuncioRestaurar) {
-      anuncioRestaurar();
-      anuncioRestaurar = null;
-    }
-    document.body.classList.toggle('yt-tocavel', ligar);
-    $('#btn-pular-anuncio').classList.toggle('ativo', ligar);
-    $('#aviso-anuncio').hidden = ligar || !player.emAnuncio;
-    if (ligar) tPular = setTimeout(() => modoPular(false), 60000);
-  };
-  $('#btn-pular-anuncio').onclick = () => modoPular(!document.body.classList.contains('yt-tocavel'));
-  $('#aviso-anuncio').onclick = () => modoPular(true);
-  eventosPlayer.aoAnuncio = (sim) => {
-    if (!sim) { $('#aviso-anuncio').hidden = true; if (document.body.classList.contains('yt-tocavel')) modoPular(false); return; }
-    if (!document.body.classList.contains('yt-tocavel')) $('#aviso-anuncio').hidden = false;
-  };
-  player.aoAnuncio = eventosPlayer.aoAnuncio;
+  atualizarControleAnuncio = controlesAnuncio(cinema, player, { botao: $('#btn-pular-anuncio'), aviso: $('#aviso-anuncio'), barra: $('#controles-anuncio') });
+  atualizarControleAnuncio(player.modo);
   // navegadores só liberam som após um toque do usuário
   $('#toque-iniciar').hidden = !!obs?.mini;
   if (!estado.sala) player.atualizar();      // na sala do filme, o início vem de quem já está assistindo
@@ -308,7 +275,7 @@ async function iniciarVozEModeracao() {
   const eu = { id: estado.sessao.user.id, apelido: estado.perfil.apelido, cor: estado.perfil.avatar?.roupa || '#7c3aed', desde: estado._desde };
   try {
     const { iniciarVozUI } = await import('./voz-ui.js');
-    estado.voz = iniciarVozUI({ sb, sala: salaAtual(), eu, player: estado.player, toast, esc });
+    estado.voz = iniciarVozUI({ sb, sala: salaAtual(), eu, player: estado.player, toast, esc, aoFala: falando => { estado.cinema.falando = falando; } });
   } catch (e) { console.warn('voz indisponível', e); }
   try {
     const { iniciarModeracao } = await import('./moderacao.js');
@@ -332,6 +299,11 @@ function marcarSalaFilme() {
 
 function conectarSala() {
   const canal = estado.canal = sb.channel(estado.sala ? estado.sala.canal : 'sala-principal', { config: { presence: { key: estado.sessao.user.id } } });
+  let conectado = false;
+  estado.cinema.aoPose = pose => { if (conectado && visivel() && estado.pessoas.size > 1) canal.send({type:'broadcast',event:'pose',payload:pose}); };
+  canal.on('broadcast', {event:'pose'}, ({payload}) => {
+    if (payload?.id !== estado.sessao.user.id && estado.pessoas.has(payload?.id)) estado.cinema.receberPose(payload);
+  });
   canal.on('presence', { event: 'sync' }, () => {
     const st = canal.presenceState();
     const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
@@ -351,7 +323,7 @@ function conectarSala() {
     if (['silenciar_voz', 'silenciar_texto', 'silenciar_ajuda', 'revogar'].includes(payload.acao)) estado.voz?.atualizarSilenciados();   // mutes: confere no banco
     else location.reload();                                                                                                          // ban/expulsão
   });
-  canal.subscribe(async (s) => { if (s === 'SUBSCRIBED' && visivel()) await canal.track(meuEstadoPresenca()); });
+  canal.subscribe(async (s) => { conectado = s === 'SUBSCRIBED'; if (conectado && visivel()) await canal.track(meuEstadoPresenca()); });
 }
 
 // ------------------------------------------------------------------ chat
@@ -470,29 +442,58 @@ async function abrirVR() {
   const dlg = $('#modal-vr'), opcoes = $('#vr-opcoes');
   $('#vr-qualidade').value = vr.qualidade;
   $('#vr-qualidade').onchange = (e) => vr.definirQualidade(e.target.value);
-  const fonteTextura = estado.player.modo === 'textura';
-  $('#vr-aviso-fonte').hidden = fonteTextura;
-  $('#vr-aviso-fonte').textContent = estado.player.modo === 'youtube'
-    ? '▶️ Filme do YouTube: aparece no modo celular (Cardboard), com um player por olho sincronizado. No óculos VR (WebXR) só o som funciona.'
-    : '⚠️ O filme de agora vem do Drive, Archive ou de um site, que não deixam a imagem entrar no VR. Você ouve o som, mas o telão mostra um aviso. Filmes em MP4, HLS, DASH e YouTube aparecem.';
-  opcoes.innerHTML = '<p class="dica">Verificando o que este aparelho suporta…</p>';
+  opcoes.innerHTML = '<p class="dica" role="status">Verificando os modos disponíveis…</p>';
   dlg.showModal();
   const cap = await vr.detectar();
-  let html = '';
-  if (cap.webxr) html += `<button type="button" class="vr-op" data-modo="webxr">Óculos VR (WebXR)<small>Rastreamento da cabeça do próprio óculos, uma imagem para cada olho.</small></button>`;
-  if (cap.cardboard) html += `<button type="button" class="vr-op ${cap.webxr ? 'sec' : ''}" data-modo="cardboard">Celular no óculos (VR Box / Cardboard)<small>Experimental. Tela dividida em dois olhos, ${cap.giroscopio ? 'movimento pelo giroscópio (só giro da cabeça)' : 'olhar arrastando o dedo'}. Deite o celular e coloque no óculos.</small></button>`;
-  if (!html) html = `<div class="vr-indisp">VR indisponível neste aparelho. ${esc(cap.motivoXR)} O modo Cardboard precisa de celular ou tablet. O cinema normal continua funcionando.</div>`;
-  else if (!cap.webxr) html += `<div class="vr-indisp">Óculos VR (WebXR) não disponível aqui: ${esc(cap.motivoXR)}</div>`;
-  opcoes.innerHTML = html;
-  opcoes.querySelectorAll('[data-modo]').forEach(bt => bt.onclick = async () => {
-    // a permissão do sensor precisa ser pedida já no toque (iPhone)
-    const perm = bt.dataset.modo === 'cardboard' ? vr.pedirPermissaoSensor() : null;
-    dlg.close();
-    if (estado.player.mutado) { estado.player.ativarSom(); $('#btn-som').textContent = '🔊'; $('#toque-iniciar').hidden = true; }
-    const ok = bt.dataset.modo === 'webxr' ? await vr.entrarWebXR() : await vr.entrarCardboard(await perm);
-    if (ok) mostrarControlesVR(vr);
-  });
+  if (!dlg.open) return;
+  opcoes.replaceChildren();
+  if (cap.cardboard) {
+    const escolher = document.createElement('button');
+    escolher.type = 'button'; escolher.className = 'vr-op'; escolher.dataset.modo = 'cardboard';
+    escolher.innerHTML = 'VR Box / Cardboard<small>Escolher um filme do CineOnline sem anúncios.</small>';
+    opcoes.append(escolher);
+    escolher.onclick = async () => {
+      opcoes.innerHTML = '<p role="status">Carregando filmes do R2…</p>';
+      let filmes;
+      try { filmes = await carregarFilmesR2(sb); }
+      catch {
+        opcoes.innerHTML = '<p role="status">Não foi possível carregar o acervo.</p>';
+        escolher.textContent = 'Tentar novamente'; opcoes.append(escolher); return;
+      }
+      if (!dlg.open) return;
+      if (!filmes.length) { opcoes.innerHTML = '<p role="status">Nenhum filme disponível no R2 agora.</p>'; return; }
+      opcoes.innerHTML = '<label class="vr-qual">Filme sem anúncios<select id="vr-filme"></select></label><button type="button" class="vr-op" id="vr-assistir">Assistir em VR Box</button>';
+      const lista = opcoes.querySelector('select');
+      for (const [i, filme] of filmes.entries()) {
+        const minutos = Math.round(filme.duracao_seg / 60);
+        lista.add(new Option(filme.titulo + (minutos ? ' · ' + minutos + ' min' : ''), i));
+      }
+      lista.focus();
+      $('#vr-assistir').onclick = async () => {
+        const filme = filmes[lista.selectedIndex];
+        const permissao = vr.pedirPermissaoSensor();
+        if (!estado.player.iniciarFilmeVR(filme)) return;
+        dlg.close();
+        const ok = await vr.entrarCardboard(permissao);
+        if (ok && !estado.player.v.error) mostrarControlesVR(vr);
+        else { if (ok) await vr.sair(); estado.player.sairFilmeVR(); }
+      };
+    };
+  }
+  if (cap.webxr) {
+    const headset = document.createElement('button');
+    headset.type = 'button'; headset.className = 'vr-op sec';
+    headset.innerHTML = 'Óculos VR (WebXR)<small>Entrar na sessão da sala com o headset.</small>';
+    opcoes.append(headset);
+    headset.onclick = async () => {
+      dlg.close();
+      estado.player.ativarSom();
+      if (await vr.entrarWebXR()) mostrarControlesVR(vr);
+    };
+  }
+  if (!cap.cardboard && !cap.webxr) opcoes.textContent = 'O modo VR está indisponível neste aparelho.';
 }
+
 
 function mostrarControlesVR(vr) {
   const ui = $('#vr-ui'), cardboard = vr.estado === 'VR_CARDBOARD';
@@ -518,6 +519,11 @@ function mostrarControlesVR(vr) {
   vr.aoValores = ({ ipd, tamanho, distancia }) => { const txt = `Telão ${tamanho}% · distância ${distancia > 0 ? '+' : ''}${distancia.toFixed(1)} m${vr.estado === 'VR_CARDBOARD' ? ` · olhos ${ipd} mm` : ''}`; $$('#vr-ui .vr-valores').forEach(x => x.textContent = txt); revelar(); };
   vr.aoValores({ ipd: Math.round(vr.ipd * 1000), tamanho: 100, distancia: 0 });
   const acoes = {
+    reproducao: () => {
+      const video = estado.player.v;
+      if (video.paused || video.ended) estado.player.ativarSom();
+      else video.pause();
+    },
     centro: () => vr.recentralizar(), perto: () => vr.ajustarDistancia(0.5), longe: () => vr.ajustarDistancia(-0.5),
     menor: () => vr.ajustarTamanho(-0.05), maior: () => vr.ajustarTamanho(0.05),
     'ipd-': () => vr.ajustarIPD(-0.002), 'ipd+': () => vr.ajustarIPD(0.002),
@@ -525,7 +531,17 @@ function mostrarControlesVR(vr) {
     sair: () => vr.sair(),
   };
   $$('#vr-ui [data-vr]').forEach(b => b.onclick = (e) => { e.stopPropagation(); acoes[b.dataset.vr]?.(); revelar(); });
+  const video = estado.player.v;
+  const atualizarReproducao = () => {
+    for (const b of ui.querySelectorAll('[data-vr="reproducao"]')) {
+      b.textContent = video.paused || video.ended ? '▶' : 'Ⅱ';
+      b.setAttribute('aria-label', b.title = video.paused || video.ended ? 'Reproduzir filme' : 'Pausar filme');
+    }
+  };
+  const eventos = ['playing', 'pause', 'ended'];
+  if (cardboard) { eventos.forEach(ev => video.addEventListener(ev, atualizarReproducao)); atualizarReproducao(); }
   vr.aoSair = () => {
+    eventos.forEach(ev => video.removeEventListener(ev, atualizarReproducao));
     clearTimeout(t); ui.hidden = true; ui.classList.remove('some'); $('#vr-divisor').hidden = true;
     vr.aoToque = vr.aoValores = vr.aoSair = vr.aoControle = null;
     $$('#vr-ui [data-vr]').forEach(b => { b.onclick = null; b.classList.remove('foco'); });
