@@ -143,3 +143,15 @@ export class MidiaIframe {
   play() { return Promise.resolve(); } pause() { }
   destruir() { this.el.remove(); }
 }
+
+export async function carregarHls() {
+  return (await import('../vendor/hls.mjs')).default;
+}
+let dashPendente;
+export function carregarDash() {
+  if (window.dashjs) return Promise.resolve(window.dashjs);
+  return dashPendente ??= new Promise((ok, erro) => {
+    const s = document.createElement('script'); s.src = new URL('../vendor/dash.all.min.js', import.meta.url).href;
+    s.onload = () => ok(window.dashjs); s.onerror = () => { dashPendente = null; s.remove(); erro(new Error('Player DASH indisponível')); }; document.head.appendChild(s);
+  });
+}

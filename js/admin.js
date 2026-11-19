@@ -3,6 +3,7 @@
 import { sb, esc, toast, urlPublica } from './supa.js';
 import { CANAL_GLOBAL, nomeSala, urlSala } from './moderacao.js';
 import { detectarTipo, NOME_TIPO, idArchive, idYouTube, idDrive, urlDriveDireto, capaYouTube, capaDrive, carregarApiYouTube } from './fontes.js';
+import { POSICOES_ANUNCIOS, urlAnuncio } from './midia-anuncio.js';
 
 const $ = (s, el = document) => el.querySelector(s);
 const $$ = (s, el = document) => [...el.querySelectorAll(s)];
@@ -29,7 +30,7 @@ canal.on('presence', { event: 'sync' }, () => {
 }).subscribe();
 
 // ------------------------------------------------------------------ navegação
-const SECOES = { dashboard, programacao, filmes, usuarios, mensagens, denuncias, banimentos, moderacao, ajuda, cameras, acessos, auditoria, config };
+const SECOES = { dashboard, programacao, filmes, anuncios, usuarios, mensagens, denuncias, banimentos, moderacao, ajuda, cameras, acessos, auditoria, config };
 
 // canal global: presença de todas as salas (só observa: o painel não entra na contagem) + avisos de moderação
 const global = sb.channel(CANAL_GLOBAL);
@@ -735,6 +736,58 @@ async function auditoria() {
 }
 
 // ------------------------------------------------------------------ configurações
+async function anuncios() {
+  const { data, error } = await sb.from('anuncios_parede').select('posicao,tipo,url');
+  if (st.secao !== 'anuncios') return;
+  if (error) {
+    if (error.code === 'PGRST205') {
+      C.innerHTML = '<p class="dica">Ative os anúncios no Supabase aplicando a migração 011_anuncios_parede.sql.</p>';
+      return;
+    }
+    throw error;
+  }
+  const tipos = { auto: 'Automático', foto: 'Foto', video: 'Vídeo', pagina: 'Página incorporável' };
+  const paineis = new Map(data.map(registro => [registro.posicao, registro]));
+  C.innerHTML = `<p class="dica">Os painéis são numerados do telão para o fundo, olhando da plateia. Use um link público HTTPS. Para limpar um painel, apague o link e salve.</p>
+    ${POSICOES_ANUNCIOS.map((nome, i) => {
+      const posicao = i + 1;
+      const { tipo, url } = paineis.get(posicao) || {};
+      return `<form class="card" data-posicao="${posicao}">
+        <h3>${nome}</h3>
+        <div class="form-grid">
+          <label>Tipo<select name="tipo">${Object.entries(tipos).map(([id, rotulo]) =>
+            `<option value="${id}" ${tipo === id ? 'selected' : ''}>${rotulo}</option>`).join('')}</select></label>
+          <label>Link<input type="url" name="url" maxlength="2048" placeholder="https://…" value="${esc(url || '')}"></label>
+        </div>
+        <div class="linha-acoes"><button class="btn p" type="submit">Salvar</button><span role="status"></span></div>
+      </form>`;
+    }).join('')}`;
+  $$('form[data-posicao]', C).forEach(form => form.onsubmit = async e => {
+    e.preventDefault();
+    const campos = new FormData(form);
+    const valor = campos.get('url').trim();
+    const url = valor ? urlAnuncio(valor) : null;
+    if (valor && !url) return toast('Use um link HTTP ou HTTPS válido, sem credenciais.', 'erro');
+
+    const botao = $('button[type=submit]', form);
+    const status = $('[role=status]', form);
+    botao.disabled = true;
+    status.textContent = 'Salvando…';
+    try {
+      const { error } = await sb.from('anuncios_parede')
+        .update({ tipo: campos.get('tipo'), url: url?.href ?? null })
+        .eq('posicao', Number(form.dataset.posicao)).select('posicao').single();
+      if (error) throw error;
+      status.textContent = url ? 'Anúncio salvo.' : 'Painel limpo.';
+    } catch (error) {
+      status.textContent = 'Falha ao salvar.';
+      erro(error);
+    } finally {
+      botao.disabled = false;
+    }
+  });
+}
+
 async function config() {
   const { data: c, error } = await sb.from('configuracoes').select('*').eq('id', 1).single();
   if (erro(error)) return;

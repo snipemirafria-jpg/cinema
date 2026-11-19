@@ -1,7 +1,7 @@
 import { observarQualidade } from './qualidade-video.js';
 import { controlesAnuncio } from './anuncio-youtube.js';
 import { carregarFilmesR2 } from './catalogo-r2.js';
-// Login → perfil, se necessário → recepção 3D.
+// Login → perfil, se necessário → cinema 3D.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { sb, configurado, COLS_PERFIL, idDispositivo, plataforma, esc, toast } from './supa.js';
@@ -26,27 +26,12 @@ function mostrar(id) {
   $('#carregando').classList.add('some');
 }
 
-function urlRecepcao() {
+function urlSalaPrincipal() {
   const url = new URL(location.href);
   url.searchParams.delete('netmovies');
   url.searchParams.delete('programacao');
   return url;
 }
-
-function abrirDestino() {
-  const q = new URLSearchParams(location.search);
-  if (q.get('netmovies') || q.get('programacao') === '1') return abrirCinema();
-  mostrar('tela-recepcao');
-  import('./recepcao.js').then(m => m.abrirRecepcao()).catch(e => console.warn('Recepção estática', e));
-}
-
-const botaoSalas = $('#abrir-salas');
-botaoSalas.onclick = () => {
-  const gaveta = $('#gaveta-salas');
-  gaveta.hidden = !gaveta.hidden;
-  botaoSalas.setAttribute('aria-expanded', String(!gaveta.hidden));
-};
-$('#fechar-salas').onclick = () => { botaoSalas.click(); botaoSalas.focus(); };
 
 // ------------------------------------------------------------------ início
 async function iniciar() {
@@ -59,7 +44,7 @@ async function iniciar() {
     if (ev === 'SIGNED_IN' && !estado.sessao && s) { estado.sessao = s; entrar(); }
   });
   if (!session) {
-    history.replaceState(history.state, '', urlRecepcao());
+    history.replaceState(history.state, '', urlSalaPrincipal());
     mostrar('tela-login');
     return;
   }
@@ -88,10 +73,10 @@ async function entrar() {
   const { data: perfil } = await sb.rpc('meu_perfil');
   estado.perfil = perfil;
   if (!perfil?.cadastro_completo) {
-    history.replaceState(history.state, '', urlRecepcao());
+    history.replaceState(history.state, '', urlSalaPrincipal());
     return abrirPerfil(true);
   }
-  abrirDestino();
+  abrirCinema();
 }
 
 function telaBanido(st) {
@@ -104,7 +89,7 @@ function telaBanido(st) {
 // ------------------------------------------------------------------ login
 $$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
-  const destino = urlRecepcao();
+  const destino = urlSalaPrincipal();
   const volta = new URL('./', destino);
   volta.search = destino.search;
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta.href, queryParams: { prompt: 'select_account' } } });
@@ -193,7 +178,7 @@ async function abrirPerfil(primeiraVez) {
     estado.perfil = { ...estado.perfil, apelido, genero, avatar: cfg, cadastro_completo: true };
     toast('Perfil salvo!', 'ok');
     estado.canal?.track(meuEstadoPresenca());
-    abrirDestino();
+    abrirCinema();
   };
 }
 
@@ -235,12 +220,16 @@ async function abrirCinema() {
     try { estado.sala = await (await import('./sala-filme.js')).prepararSalaFilme(idFilme); } catch (e) { console.warn(e); }
     if (!estado.sala && !obs) {
       toast('Esse filme não está disponível. Voltando para a Sala Principal.', 'erro');
-      history.replaceState(history.state, '', urlRecepcao());
-      return abrirDestino();
+      history.replaceState(history.state, '', urlSalaPrincipal());
     }
   }
   const video = $('#video');
-  const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
+  const anuncios = !estado.sala && !obs?.mini;
+  const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video, { anuncios });
+  if (anuncios) {
+    import('./anuncios-sala.js').then(({ acompanharAnuncios }) => acompanharAnuncios(sb, cinema))
+      .catch(e => console.warn('Não foi possível carregar os anúncios da sala', e));
+  }
   cinema.meuId = obs ? null : estado.sessao.user.id;
   if (obs) {
     cinema.modoCamera();
@@ -277,13 +266,13 @@ async function abrirCinema() {
     };
   }
   if (estado.sala) marcarSalaFilme();
-  if (!obs) {
+  if (estado.sala && !obs) {
     const voltar = document.createElement('button');
     voltar.type = 'button';
     voltar.className = 'chip';
     voltar.id = 'btn-sala-principal';
     voltar.textContent = '⬅ Sala Principal';
-    voltar.onclick = () => { location.href = urlRecepcao().href; };
+    voltar.onclick = () => { location.href = urlSalaPrincipal().href; };
     $('.hud-dir').prepend(voltar);
   }
   $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
@@ -381,7 +370,6 @@ function conectarSala() {
   $('#convidar-sala').onclick = async () => {
     const url = new URL(location.pathname, location.origin);
     if (estado.sala) url.searchParams.set('netmovies',estado.sala.id);
-    else url.searchParams.set('programacao', '1');
     try {
       if (navigator.share) await navigator.share({title:'Sessão Juntos',url:url.href});
       else { await navigator.clipboard.writeText(url.href); toast('Link da sala copiado.'); }
@@ -509,6 +497,7 @@ function configurarMenu() {
     $$('#menu-lateral button').forEach(x => x.classList.toggle('ativo', x === b));
     const ir = b.dataset.ir;
     if (ir === 'sala') { fecharGavetas(); $('#chat').classList.remove('oculto'); estado.cinema.focarEm(estado.sessao.user.id); }
+    if (ir === 'salas') { fecharGavetas(); $('#gaveta-salas').hidden = false; }
     if (ir === 'perfil') abrirPerfil(false);
     if (ir === 'chat') { $('#chat').classList.toggle('oculto'); $('#chat-input').focus(); }
     if (ir === 'pessoas') { fecharGavetas(); $('#gaveta-pessoas').hidden = false; desenharPessoas(); estado.cinema.visaoGeral(); }

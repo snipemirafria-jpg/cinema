@@ -13,7 +13,7 @@ import { SalaTematica } from './temas-sala.js';
 const ANDROID_LEVE = /Android/i.test(navigator.userAgent) && new URLSearchParams(location.search).get('gpu') !== 'normal';
 
 export class Cinema extends AmbienteCinema {
-  constructor(canvas, camadaRotulos, video) {
+  constructor(canvas, camadaRotulos, video, { anuncios = false } = {}) {
     super();
     this.canvas = canvas;
     this.video = video;
@@ -22,7 +22,7 @@ export class Cinema extends AmbienteCinema {
     this.meuId = null;
     this.modo = 'poltrona';
 
-    const r = this.renderer = new THREE.WebGLRenderer({ canvas, antialias: !MOBILE, powerPreference: MOBILE ? 'default' : 'high-performance' });
+    const r = this.renderer = new THREE.WebGLRenderer({ canvas, alpha: anuncios, antialias: !MOBILE, powerPreference: MOBILE ? 'default' : 'high-performance' });
     r.setPixelRatio(Math.min(devicePixelRatio, ANDROID_LEVE ? 0.65 : MOBILE ? 1 : 2));
     r.outputColorSpace = THREE.SRGBColorSpace;
     r.toneMapping = MOBILE ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
@@ -62,6 +62,7 @@ export class Cinema extends AmbienteCinema {
     this.assentos = [];
     this._m = {}; this._l = { pontos: [] };     // materiais e luzes da sala que os temas podem ajustar
     this._matsPoltrona = [];
+    this.paineisAnuncios = anuncios ? [] : null;
     this._montarSala();
     this._montarTela();
     this._montarCameraSeguranca();
@@ -384,6 +385,7 @@ export class Cinema extends AmbienteCinema {
     this.renderer.setSize(w, h, false);
     this.css.setSize(w, h);
     this.css3d?.setSize(w, h);
+    this.anuncios?.redimensionar(w, h);
     this.camera.aspect = w / h;
     if (this.modo === 'poltrona') {   // 90° de campo de visão horizontal (limitado no celular em pé)
       this.camera.fov = Math.min(100, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(45)) / (w / h))));
@@ -478,6 +480,7 @@ export class Cinema extends AmbienteCinema {
   _loop() {
     // modo VR: o mesmo loop e a mesma cena; o módulo VR só troca a câmera e a forma de desenhar
     if (this.vr?.ativo) {
+      this.anuncios?.mostrar(false);
       const dt = Math.min(this.relogio.getDelta(), 0.1);
       this._animar(this.relogio.elapsedTime);
       this.vr.quadro(dt);
@@ -514,6 +517,7 @@ export class Cinema extends AmbienteCinema {
     this._limitarCamera();
     this.atualizarMeuOlhar(this.camera);
     this._animar(t);
+    this.anuncios?.renderizar(this.camera);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);
     if (this.objTela) {
@@ -527,6 +531,7 @@ export class Cinema extends AmbienteCinema {
   destruir() {
     this.renderer.setAnimationLoop(null);
     this.tema?.destruir();
+    this.anuncios?.destruir();
     removeEventListener('resize', this._redimensionar);
     this.camadaPlana.remove();
     this.renderer.dispose();

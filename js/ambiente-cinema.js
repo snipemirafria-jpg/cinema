@@ -72,6 +72,11 @@ export class AmbienteCinema {
       for (let k = 0; k < 7; k++) {
         const p = new THREE.Mesh(new THREE.BoxGeometry(0.15, 5.5, 3.2), painelMat);
         p.position.set(lado * (L / 2 - 0.08), 5.2, -12 + k * 4.2); c.add(p);
+        // Visto da plateia, +X é a parede esquerda. Numeração começa perto do telão.
+        if (this.paineisAnuncios && k >= 4) {
+          const posicao = (lado === 1 ? 0 : 3) + (6 - k);
+          this.paineisAnuncios[posicao] = { painel: p, lado };
+        }
         // neon vertical vermelho entre painéis
         const neon = new THREE.Mesh(new THREE.BoxGeometry(0.06, 7, 0.08), k % 2 ? M.neonB : M.neonA);
         neon.position.set(lado * (L / 2 - 0.1), 5.6, -14.1 + k * 4.2); c.add(neon);

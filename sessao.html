@@ -14,7 +14,6 @@
   <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="css/app.css">
-  <link rel="stylesheet" href="css/recepcao.css">
   <script type="importmap">
   { "imports": {
       "three": "./vendor/three/three.module.js",
@@ -74,23 +73,6 @@
     </div>
   </section>
 
-  <section id="tela-recepcao" class="tela" aria-labelledby="titulo-recepcao" hidden>
-    <div class="sala-estatica" aria-hidden="true"><div class="painel"></div><div class="plateia"></div></div>
-    <canvas id="recepcao" aria-label="Sala de cinema com telão vazio"></canvas>
-    <header class="recepcao-topo"><img src="icons/logo-2d.webp" alt="Sessão Juntos"></header>
-    <nav class="recepcao-menu" aria-label="Acesso às salas">
-      <h1 id="titulo-recepcao">Sala Principal</h1>
-      <a href="?programacao=1">Sala da programação</a>
-      <button type="button" id="abrir-salas" aria-controls="gaveta-salas" aria-expanded="false">Outras salas</button>
-      <button type="button" data-acao="sair">Sair</button>
-    </nav>
-    <aside class="gaveta" id="gaveta-salas" hidden>
-      <header><h3>Outras salas</h3><button class="fechar" type="button" id="fechar-salas" aria-label="Fechar outras salas">✕</button></header>
-      <div class="lista-prog" id="catalogos-salas"></div>
-      <p class="dica" id="status-salas" role="status">Carregando catálogos…</p>
-    </aside>
-  </section>
-
   <!-- CINEMA -->
   <section id="tela-cinema" class="tela" hidden>
     <canvas id="cena3d"></canvas>
@@ -114,6 +96,7 @@
     <div id="controles-anuncio" hidden><span>Toque em “Pular” quando aparecer no YouTube.</span><button type="button" class="chip">Voltar à sala</button></div>
     <nav class="menu-lateral" id="menu-lateral">
       <button data-ir="sala" class="ativo" title="Sala">🎬<span>Sala</span></button>
+      <button data-ir="salas" type="button" aria-label="Outras salas" aria-controls="gaveta-salas" title="Outras salas">🍿<span>Salas</span></button>
       <button data-ir="perfil" title="Meu perfil">👤<span>Perfil</span></button>
       <button data-ir="chat" title="Chat">💬<span>Chat</span></button>
       <button data-ir="pessoas" title="Participantes">👥<span>Pessoas</span></button>
@@ -141,9 +124,14 @@
       <ul id="lista-pessoas"></ul>
     </aside>
 
+    <aside class="gaveta" id="gaveta-salas" hidden>
+      <header><h3>Outras salas</h3><button class="fechar" type="button" data-fechar aria-label="Fechar outras salas">✕</button></header>
+      <div class="lista-prog" id="catalogos-salas"></div>
+      <p class="dica" id="status-salas" role="status">Carregando catálogos…</p>
+    </aside>
+
     <aside class="gaveta" id="gaveta-programacao" hidden>
       <header><h3>Programação</h3><button class="fechar" data-fechar>✕</button></header>
-      <a href="saguao.html" class="chip" style="display:inline-block;color:inherit">Abrir saguão e mural de cartazes</a>
       <details><summary>Qualidade da reprodução</summary><button class="chip" type="button" id="medir-video">Medir vídeo neste aparelho</button><p id="qualidade-video" role="status"></p></details>
       <div id="lista-programacao" class="lista-prog"></div>
     </aside>

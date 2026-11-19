@@ -1,18 +1,9 @@
 // Player sincronizado: todos veem o mesmo ponto do filme (o servidor manda).
 import { fonteR2 } from './catalogo-r2.js';
 import { sb, urlPublica } from './supa.js';
-import { detectarTipo, idYouTube, idDrive, idArchive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe } from './fontes.js';
+import { detectarTipo, idYouTube, idDrive, idArchive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe, carregarHls, carregarDash } from './fontes.js';
 
-let Hls = null;
 const LEVE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;   // celular: corrige o sincronismo com mais folga (menos travadinhas)
-async function carregarHls() { if (!Hls) Hls = (await import('../vendor/hls.mjs')).default; return Hls; }
-function carregarDash() {
-  if (window.dashjs) return Promise.resolve(window.dashjs);
-  return new Promise((ok, erro) => {
-    const s = document.createElement('script'); s.src = new URL('../vendor/dash.all.min.js', import.meta.url).href;
-    s.onload = () => ok(window.dashjs); s.onerror = erro; document.head.appendChild(s);
-  });
-}
 
 export class PlayerSincronizado {
   constructor(video, { aoMudarFilme, aoLegenda, aoEstado, aoModo, aoAnuncio } = {}) {
