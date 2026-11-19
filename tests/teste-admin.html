@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#0d0b14">
+  <title>Painel do Criador · Cine Online</title>
+  <link rel="icon" href="icons/icon.svg" type="image/svg+xml">
+  <link rel="manifest" href="manifest.webmanifest">
+  <link rel="stylesheet" href="../css/admin.css">
+  <script type="importmap">{"imports":{"../js/supa.js":"./mock-supa-admin.js"}}</script>
+</head>
+<body>
+  <div id="bloqueio" class="bloqueio">Verificando permissão…</div>
+  <div class="layout" id="layout" hidden>
+    <aside class="lateral" id="lateral">
+      <div class="marca"><img src="../icons/icon.svg" alt=""><div><b>Cine<span>Online</span></b><small>Painel do criador</small></div></div>
+      <nav>
+        <button data-sec="dashboard" class="ativo">📊 Dashboard</button>
+        <button data-sec="programacao">🗓️ Programação</button>
+        <button data-sec="filmes">🎞️ Filmes</button>
+        <button data-sec="usuarios">👥 Usuários</button>
+        <button data-sec="mensagens">💬 Mensagens</button>
+        <button data-sec="denuncias">🚩 Denúncias <span class="badge" id="badge-den"></span></button>
+        <button data-sec="banimentos">⛔ Banimentos</button>
+        <button data-sec="moderacao">🛡️ Moderação</button>
+        <button data-sec="ajuda">🆘 Pedidos de ajuda <span class="badge" id="badge-ajuda"></span></button>
+        <button data-sec="cameras">📺 Câmeras das Salas</button>
+        <button data-sec="acessos">🕓 Acessos</button>
+        <button data-sec="auditoria">🧾 Auditoria</button>
+        <button data-sec="config">⚙️ Configurações</button>
+      </nav>
+      <a class="voltar-sala" href="./">🎬 Voltar para a sala</a>
+    </aside>
+    <main>
+      <header class="topo"><button class="menu-mob" id="menu-mob">☰</button><h1 id="titulo-sec">Dashboard</h1><div class="eu" id="eu"></div></header>
+      <section id="conteudo"></section>
+    </main>
+  </div>
+
+  <dialog id="modal" class="modal"><form method="dialog" id="modal-form"></form></dialog>
+  <div id="toasts"></div>
+  <script type="module" src="../js/admin.js"></script>
+</body>
+</html>

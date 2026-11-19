@@ -1,0 +1,7 @@
+<!doctype html><html><head><script type="importmap">{"imports":{"three":"../vendor/three/three.module.js","three/addons/":"../vendor/three/addons/"}}</script></head><body>
+<!-- Confere que os módulos novos carregam (imports e sintaxe) sem abrir o app -->
+<script type="module">
+const r = {};
+for (const m of ['../js/voz.js','../js/voz-ui.js','../js/moderacao.js','../js/vr.js']) { try { const x = await import(m); r[m] = Object.keys(x).join(','); } catch (e) { r[m] = 'ERRO ' + e.message; } }
+window.RES = r;
+</script></body></html>

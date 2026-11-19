@@ -29,12 +29,24 @@ Branch: `moderacao-voz` (NADA vai para `main`, NADA de deploy, NADA aplicado no 
   - `js/main.js` (integração mínima), `js/cinema3d.js` (clique no nome passa o evento), `js/player.js` + `js/fontes.js` (volume do filme),
     `css/app.css` (estilos novos + esconder no VR), `sw.js` cine-v19.
 
+- Passo 4 (FEITO, 5365b31): painel do criador com abas Moderação (ativos + revogar), Pedidos de ajuda e Câmeras das Salas.
+- Passo 5 (FEITO): `docs/VOZ.md` (limites da conexão direta e como trocar para LiveKit).
+- Passo 6 (FEITO, testes no navegador simulado, Chromium headless):
+  - `tests/teste-voz.html` + `tests/mock-supa-voz.js`: 17/17 OK — entra com mic desligado; sala A só vê A; sala B isolada;
+    mic liga no toque; conexão WebRTC real entre duas abas e faixa de áudio recebida; mic ligado aparece na lista;
+    sala B não recebe nada da A; Ouvir vozes e Mensagens só locais; trocar de sala fecha o canal anterior (1 canal aberto);
+    Sair libera mic e conexões; entrar/sair 5x sem canal sobrando; permissão negada mostra aviso e continua ouvindo.
+  - `tests/teste-admin.html` + `tests/mock-supa-admin.js`: 7/7 OK — painel abre; Moderação lista ativos; Revogar chama
+    `revogar_moderacao`; Pedidos de ajuda lista e Ignorar chama `atender_pedido_ajuda`; Câmeras desenha 2 salas; sem erros.
+  - `tests/teste-modulos.html`: voz.js, voz-ui.js, moderacao.js e vr.js carregam sem erro. index.html e teste-sala.html sem erros.
+  - Corrigido: admin.js lançava erro sem sessão antes do redirecionamento (agora para ali).
+
 ## Falta (ordem)
-2. `js/voz.js` (VoiceManager + transporte P2P Supabase) e UI de voz em `index.html`/`css/app.css`/`js/main.js`.
-3. `js/moderacao.js`: menu do criador no avatar/nome, mutes, Pedir ajuda, notificações ao criador.
-4. `js/admin.js`: abas Moderação (bans/mutes ativos + revogar), Pedidos de ajuda, Câmeras das Salas.
-5. `sw.js` cine-v18 → cine-v19.
-6. Testes Playwright com Supabase simulado.
+1. Testar dentro da sala logada (menu do criador no avatar, botão 🆘, aviso ao criador, entrar/sair do VR com a gaveta de voz)
+   — precisa de login real ou de um simulador maior do Supabase.
+2. **Com liberação do Victor:** aplicar `007_moderacao_voz_ajuda.sql` no SQL Editor do Supabase.
+3. **Com liberação do Victor:** juntar `moderacao-voz` no `main` (publica o site).
+4. Teste com 2–3 celulares em redes diferentes (Wi-Fi e 4G).
 
 ## Publicado
-- Nada em `main`. Nada de deploy. Nada aplicado no banco real.
+- Nada em `main`. Nada de deploy. Nada aplicado no banco real. Só o ramo `moderacao-voz` no GitHub.
