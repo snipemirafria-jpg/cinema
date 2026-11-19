@@ -27,12 +27,15 @@ export class PlayerSincronizado {
     vl.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
     vl.addEventListener('error', () => this._falhaLivre?.());
     this.estado = null; this.offset = 0; this.itemAtual = null; this.hls = null; this.dash = null;
+    this._ultimoSeek = 0; this._aguardandoDados = false;
     this._tick = setInterval(() => this._corrigir(), 1500);
     this._poll = setInterval(() => this.atualizar(), 30000);
     video.addEventListener('ended', () => setTimeout(() => this.atualizar(), 800));
     video.addEventListener('error', () => { if (this.m === this.v && this._semCors) return this._semCors(); this.aoEstado?.('erro'); });
     video.addEventListener('playing', () => this.aoEstado?.('tocando'));
-    video.addEventListener('waiting', () => this.aoEstado?.('carregando'));
+    video.addEventListener('waiting', () => { this._aguardandoDados = true; this.aoEstado?.('carregando'); });
+    video.addEventListener('playing', () => { this._aguardandoDados = false; });
+    video.addEventListener('seeked', () => { this._ultimoSeek = performance.now(); });
     document.addEventListener('visibilitychange', () => { if (!document.hidden) this.atualizar(); });
     this.canal = sb.channel('estado-cinema')
       .on('postgres_changes', { event: '*', schema: 'public', table: 'estado_cinema' }, () => this.atualizar())
@@ -78,6 +81,7 @@ export class PlayerSincronizado {
     this.vLivre.removeAttribute('src'); this.vLivre.load();
     if (this.m !== this.v && this.m !== this.vLivre) this.m.destroy?.(), this.m.destruir?.();
     this._semCors = null; this._falhaLivre = null;
+    this._ultimoSeek = 0; this._aguardandoDados = false;
     this._usar('textura', this.v);
   }
 
@@ -167,8 +171,16 @@ export class PlayerSincronizado {
         tt.oncuechange = () => this.aoLegenda?.([...(tt.activeCues || [])].map(c => c.text).join('\n'));
       }
     }, 500);
-    v.currentTime = this.posicaoAlvo();
-    this.tocar();
+    // O primeiro seek só é confiável depois de os metadados chegarem.
+    // Evita solicitar vários trechos do MP4 antes de o navegador conhecer sua duração.
+    const iniciarNaPosicao = () => {
+      if (this.m !== v) return;
+      const alvo = Math.min(this.posicaoAlvo(), Number.isFinite(v.duration) ? Math.max(0, v.duration - 0.25) : this.posicaoAlvo());
+      if (alvo > 0.5) { try { v.currentTime = alvo; this._ultimoSeek = performance.now(); } catch {} }
+      this.tocar();
+    };
+    if (v.readyState >= 1) iniciarNaPosicao();
+    else v.addEventListener('loadedmetadata', iniciarNaPosicao, { once: true });
   }
 
   tocar() { return Promise.resolve(this.m.play()).catch(() => this.aoEstado?.('bloqueado')); }
@@ -179,16 +191,36 @@ export class PlayerSincronizado {
 
   _corrigir(forcar = false) {
     const v = this.m;
-    if (v.semControle || this.emAnuncio) return;   // durante anúncio não mexe no tempo
+    if (v.semControle || this.emAnuncio) return;
     if (!this.estado?.filme || v.readyState < 1) return;
     if (this.estado.pausado) { if (!v.paused) v.pause(); return; }
     const alvo = this.posicaoAlvo();
     const dur = this.estado.filme.duracao_seg;
     if (alvo >= dur + 1) { this.atualizar(); return; }
     const dif = alvo - v.currentTime;
-    if (Math.abs(dif) > (LEVE ? 6 : 3) || forcar && Math.abs(dif) > 1) { try { v.currentTime = alvo; } catch { } v.playbackRate = 1; }
-    else if (Math.abs(dif) > (LEVE ? 1 : 0.4)) v.playbackRate = dif > 0 ? 1.05 : 0.95;
-    else v.playbackRate = 1;
+    const htmlVideo = v instanceof HTMLVideoElement;
+    if (htmlVideo) {
+      // Não dispara novos seeks enquanto o navegador busca dados ou termina um seek.
+      if (v.seeking || v.readyState < 3 || this._aguardandoDados) {
+        v.playbackRate = 1;
+        return;
+      }
+      // MP4 remoto: um seek frequente pode descartar o buffer e criar travamentos em cascata.
+      const agora = performance.now();
+      const limiteSeek = LEVE ? 9 : 6;
+      const atrasoSeek = 12000;
+      if (Math.abs(dif) > limiteSeek && agora - this._ultimoSeek > atrasoSeek) {
+        try { v.currentTime = Math.min(alvo, Number.isFinite(v.duration) ? Math.max(0, v.duration - 0.25) : alvo); this._ultimoSeek = agora; } catch {}
+        v.playbackRate = 1;
+      } else if (Math.abs(dif) > (LEVE ? 1.5 : 0.8)) {
+        v.playbackRate = dif > 0 ? 1.03 : 0.97;
+      } else v.playbackRate = 1;
+    } else {
+      // Mantém o comportamento já existente para YouTube e players externos.
+      if (Math.abs(dif) > (LEVE ? 6 : 3) || forcar && Math.abs(dif) > 1) { try { v.currentTime = alvo; } catch {} v.playbackRate = 1; }
+      else if (Math.abs(dif) > (LEVE ? 1 : 0.4)) v.playbackRate = dif > 0 ? 1.05 : 0.95;
+      else v.playbackRate = 1;
+    }
     if (v.paused && !document.hidden) this.tocar();
   }
 
