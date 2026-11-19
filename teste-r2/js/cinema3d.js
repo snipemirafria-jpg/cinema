@@ -4,7 +4,7 @@ import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
-import { criarAvatar, poseSentado, animarOcioso } from './avatar.js';
+import { criarAvatar, poseSentado, animarOcioso, corpoPOV } from './avatar.js';
 import { esc } from './supa.js';
 import { SalaTematica } from './temas-sala.js';
 
@@ -70,7 +70,6 @@ export class Cinema {
     camadaTela.after(this.camadaPlana);
     this.cenaHtml = new THREE.Scene();
     this._telaPlana = false;
-    this._planaSuspensa = false;
     this._planaUltima = '';
 
     this.cena = new THREE.Scene();
@@ -325,7 +324,6 @@ export class Cinema {
   mostrarNaTela(el) {
     if (this.objTela) { this.cenaHtml.remove(this.objTela); this.objTela.element.remove(); this.objTela = null; }
     this._telaPlana = false;
-    this._planaSuspensa = false;
     this._planaUltima = '';
     this.camadaPlana.style.display = '';
     if (!el) return;
@@ -475,9 +473,10 @@ export class Cinema {
           reg.wrap = wrap; reg.carregando = false;
           wrap.userData.semente = Math.random();
           baratear(wrap); this.cena.add(wrap);
-          this._sentar(reg, reg.assento);
+
           reg.rotulo = this._criarRotulo(reg.dados);
           wrap.add(reg.rotulo);
+          this._sentar(reg, reg.assento);
           if (p.id === this.meuId && this.modo === 'poltrona') this.focarEm(p.id);
         }).catch(e => console.warn('avatar', e));
       } else {
@@ -499,14 +498,14 @@ export class Cinema {
     const quadril = w.userData.alturaQuadril ?? 0.9;
     w.position.y = assento.pos.y + 0.5 - quadril;
     w.position.z -= 0.06;
-    if (reg.rotulo) reg.rotulo.position.set(0, 1.55 - (w.position.y - assento.pos.y), 0);
+    if (reg.rotulo) reg.rotulo.position.set(w.userData.olhos.x, w.userData.topo + 0.12, w.userData.olhos.z);
     if (reg.dados?.id === this.meuId && this.modo === 'poltrona') this.focarEm(reg.dados.id);
   }
 
   _criarRotulo(p) {
     const div = document.createElement('div');
     div.className = 'rotulo3d';
-    div.innerHTML = `<div class="balao" hidden></div><div class="nome"></div>`;
+    div.innerHTML = `<div class="balao" hidden></div><div class="fala" hidden>◖))) Falando</div><div class="nome"></div>`;
     const obj = new CSS2DObject(div);
     obj.position.set(0, 1.5, 0);
     obj.center.set(0.5, 1);
@@ -535,6 +534,7 @@ export class Cinema {
     const reg = this.avatares.get(id);
     if (!reg) return;
     if (reg.wrap) { reg.rotulo?.removeFromParent(); reg.rotulo?.element.remove(); this.cena.remove(reg.wrap); }
+    reg.placa?.material.map.dispose(); reg.placa?.material.dispose();
     this.avatares.delete(id);
   }
 
@@ -545,7 +545,7 @@ export class Cinema {
     this.modo = 'poltrona';
     const p = reg.wrap.position;
     // visão em primeira pessoa: câmera nos olhos do próprio personagem, olhando para o telão
-    const olhos = new THREE.Vector3(p.x, reg.assento.pos.y + 1.22, p.z + 0.12);
+    const olhos = reg.wrap.localToWorld(reg.wrap.userData.olhos.clone().addScaledVector(reg.wrap.userData.frente, 0.035));
     const dir = new THREE.Vector3(p.x * 0.4, TELA.y - 0.6, TELA.z).sub(olhos).normalize();
     this._alvoCam = { pos: olhos, alvo: olhos.clone().add(dir.multiplyScalar(0.05)) };
     this._primeiraPessoa(true, reg);
@@ -559,14 +559,16 @@ export class Cinema {
   }
   // liga/desliga a primeira pessoa: esconde o próprio corpo, gira a cabeça no lugar e usa 90° de visão
   _primeiraPessoa(sim, reg) {
-    if (this._regFP && this._regFP !== reg) this._regFP.wrap && (this._regFP.wrap.visible = true);
+    if (this._regFP && this._regFP !== reg && this._regFP.wrap) {
+      corpoPOV(this._regFP.wrap,false); this._regFP.rotulo.visible = true;
+    }
     this._regFP = sim ? reg : null;
-    if (reg?.wrap) reg.wrap.visible = !sim;
+    if (reg?.wrap) { corpoPOV(reg.wrap,sim); reg.rotulo.visible = !sim; }
     this.controles.minDistance = sim ? 0.01 : 1.2;
     this.controles.maxDistance = sim ? 0.05 : 20;
     this.controles.enableZoom = !sim;
     this.controles.rotateSpeed = (MOBILE ? 0.5 : 0.7) * (sim ? -0.6 : 1);
-    this.controles.maxPolarAngle = sim ? Math.PI * 0.8 : Math.PI * 0.62;
+    this.controles.maxPolarAngle = sim ? Math.PI * 0.96 : Math.PI * 0.62;
     this._redimensionar();
   }
   _pularCamera() {
@@ -616,9 +618,61 @@ export class Cinema {
 
   // anima o que se mexe na sala (personagens e luz do telão), sem câmera e sem desenhar.
   // Usado pelo _loop da sala.
+  atualizarMeuOlhar(camera) {
+    const reg = this.avatares.get(this.meuId), agora = performance.now();
+    if (!reg?.wrap || !this.aoPose || agora < (this._proximaPose || 0)) return;
+    this._proximaPose = agora + 180;
+    const dir = camera.getWorldDirection(new THREE.Vector3()), frente = reg.wrap.userData.frente.clone().applyQuaternion(reg.wrap.quaternion);
+    const angulo = Math.atan2(dir.x,dir.z) - Math.atan2(frente.x,frente.z);
+    const yaw = Math.round(THREE.MathUtils.clamp(Math.atan2(Math.sin(angulo),Math.cos(angulo)), -1.3,1.3)*20)/20;
+    const pitch = Math.round(THREE.MathUtils.clamp(Math.asin(dir.y),-0.9,0.9)*20)/20;
+    const pose = {id:this.meuId,pov:this.modo === 'poltrona',yaw,pitch,falando:!!this.falando};
+    const chave = JSON.stringify(pose);
+    if (chave === this._poseAnterior && agora < this._repetirPose) return;
+    this._poseAnterior = chave; this._repetirPose = agora + 2200;
+    this.receberPose(pose); this.aoPose(pose);
+  }
+
+  receberPose(p) {
+    const reg = this.avatares.get(p?.id);
+    if (!reg?.wrap || !Number.isFinite(p.yaw) || !Number.isFinite(p.pitch)) return;
+    reg.wrap.userData.olhar = p.pov === true ? {yaw:THREE.MathUtils.clamp(p.yaw,-1.3,1.3),pitch:THREE.MathUtils.clamp(p.pitch,-0.9,0.9)} : null;
+    reg.falando = p.falando === true;
+    reg.rotulo.element.querySelector('.fala').hidden = !reg.falando;
+    reg.expira = performance.now()+5500;
+  }
+
+  _nomeVR(reg) {
+    if (!reg.placa) {
+      const cv = document.createElement('canvas'); cv.width = 384; cv.height = 96;
+      const map = new THREE.CanvasTexture(cv); map.colorSpace = THREE.SRGBColorSpace;
+      reg.placa = new THREE.Sprite(new THREE.SpriteMaterial({map,transparent:true,depthWrite:false,toneMapped:false}));
+      reg.placa.center.set(0.5,0); reg.placa.scale.set(0.96,0.24,1); reg.wrap.add(reg.placa);
+    }
+    reg.placa.visible = true; reg.placa.position.copy(reg.rotulo.position);
+    const nome = reg.dados.apelido || 'Convidado', chave = nome + (reg.falando ? '/voz' : '');
+    if (reg.placaTexto === chave) return;
+    reg.placaTexto = chave;
+    const tex = reg.placa.material.map, g = tex.image.getContext('2d');
+    g.clearRect(0,0,384,96); g.textAlign = 'center'; g.font = 'bold 34px sans-serif';
+    const largura = Math.min(384,g.measureText(nome).width+24);
+    g.fillStyle = '#17111e'; g.fillRect((384-largura)/2,48,largura,48);
+    g.fillStyle = 'white'; g.fillText(nome,192,83,360);
+    if (reg.falando) { g.fillStyle = '#68ffc1'; g.fillText('Falando',192,36); }
+    tex.needsUpdate = true;
+  }
+
   _animar(t) {
     if (!MOBILE && (this._f = (this._f || 0) + 1) % 20 === 0) this._corDoVideo();
-    for (const reg of this.avatares.values()) if (reg.wrap) animarOcioso(reg.wrap, t, reg.wrap.userData.semente);
+    for (const reg of this.avatares.values()) if (reg.wrap) {
+      if (reg.expira && performance.now() > reg.expira) {
+        reg.expira = 0; reg.wrap.userData.olhar = null; reg.falando = false;
+        reg.rotulo.element.querySelector('.fala').hidden = true;
+      }
+      animarOcioso(reg.wrap,t,reg.wrap.userData.semente);
+      if (this.vr?.ativo && reg !== this._regFP) this._nomeVR(reg);
+      else if (reg.placa) reg.placa.visible = false;
+    }
     this.tema?.animar(t);
     if (this._ledCamera) { const on = (t % 1.2) < 0.6; this._ledCamera.visible = on; this._brilhoCamera.intensity = on ? 0.6 : 0; }
   }
@@ -631,19 +685,6 @@ export class Cinema {
   }
 
   _loop() {
-    // O VR usa o posicionamento tridimensional original; a otimização Android vale só fora do VR.
-    if (this._telaPlana && this.objTela) {
-      if (this.vr?.ativo && !this._planaSuspensa) {
-        this.camadaPlana.style.display = 'none';
-        this.css3d.render(this.cenaHtml, this.camera);
-        this._planaSuspensa = true;
-      } else if (!this.vr?.ativo && this._planaSuspensa) {
-        this.camadaPlana.appendChild(this.objTela.element);
-        this.camadaPlana.style.display = '';
-        this._planaSuspensa = false;
-        this._planaUltima = '';
-      }
-    }
     // modo VR: o mesmo loop e a mesma cena; o módulo VR só troca a câmera e a forma de desenhar
     if (this.vr?.ativo) {
       const dt = Math.min(this.relogio.getDelta(), 0.1);
@@ -680,6 +721,7 @@ export class Cinema {
     }
     this.controles.update();
     this._limitarCamera();
+    this.atualizarMeuOlhar(this.camera);
     this._animar(t);
     this.renderer.render(this.cena, this.camera);
     this.css.render(this.cena, this.camera);

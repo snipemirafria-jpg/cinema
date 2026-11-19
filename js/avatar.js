@@ -146,7 +146,7 @@ export async function criarAvatar(cfg) {
     o.frustumCulled = false;
     o.castShadow = true;
     const nome = (o.material?.name || '');
-    if (/Superhero/i.test(nome)) o.material = aplicarRoupa(o.material, lim, a);
+    if (/Superhero/i.test(nome)) { o.userData.pescoco = lim.pescoco; o.material = aplicarRoupa(o.material, lim, a); }
     else if (/Eye/i.test(nome)) { o.material = o.material.clone(); o.material.color = new THREE.Color(a.olhos).lerp(new THREE.Color('#ffffff'), 0.25); }
     else if (/Hair/i.test(nome)) { o.material = o.material.clone(); o.material.color = new THREE.Color(a.cabeloCor).multiplyScalar(1.6); }
   });
@@ -164,6 +164,10 @@ export async function criarAvatar(cfg) {
   root.position.y = -box.min.y * (1.75 / altura);
   wrap.userData.corpo = root;
   wrap.userData.frente = direcaoFrente(root);
+  wrap.updateMatrixWorld(true);
+  const olhos = root.getObjectByName('Eyes');
+  wrap.userData.olhos = olhos ? new THREE.Box3().setFromObject(olhos).getCenter(new THREE.Vector3()) : new THREE.Vector3(0,1.62,0);
+  wrap.userData.topo = new THREE.Box3().setFromObject(root).max.y;
   return wrap;
 }
 
@@ -232,6 +236,31 @@ export function animarOcioso(wrap, t, semente = 0) {
   if (sp && !sp.userData.q0) sp.userData.q0 = sp.quaternion.clone();
   const yaw = Math.sin(t * 0.35 + semente * 7.1) * 0.12;
   const pitch = Math.sin(t * 0.5 + semente * 3.3) * 0.04;
-  head.quaternion.copy(head.userData.q0).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0)));
+  if (wrap.userData.olhar) {
+    const {yaw,pitch} = wrap.userData.olhar;
+    const frente = wrap.userData.frente.clone().applyQuaternion(wrap.quaternion);
+    const cima = new THREE.Vector3(0,1,0), eixo = frente.cross(cima).normalize();
+    const pai = head.parent.getWorldQuaternion(new THREE.Quaternion());
+    const giro = new THREE.Quaternion().setFromAxisAngle(cima,yaw).multiply(new THREE.Quaternion().setFromAxisAngle(eixo,pitch));
+    head.quaternion.slerp(pai.clone().invert().multiply(giro).multiply(pai).multiply(head.userData.q0),0.32);
+  } else head.quaternion.copy(head.userData.q0).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(pitch, yaw, 0)));
   if (sp) sp.quaternion.copy(sp.userData.q0).multiply(new THREE.Quaternion().setFromEuler(new THREE.Euler(Math.sin(t * 1.4 + semente) * 0.01, 0, 0)));
+}
+
+const torsos = new WeakMap();
+export function corpoPOV(wrap, ativo) {
+  wrap.userData.corpo.traverse(o => {
+    if (!o.isMesh) return;
+    if (o.userData.pescoco == null) { o.visible = !ativo; return; }
+    const g = o.userData.inteira ||= o.geometry;
+    if (ativo && !torsos.has(g)) {
+      const pos = g.attributes.position, indices = [];
+      for (let i = 0; i < (g.index?.count ?? pos.count); i += 3) {
+        const a = g.index ? g.index.getX(i) : i, b = g.index ? g.index.getX(i+1) : i+1, c = g.index ? g.index.getX(i+2) : i+2;
+        if (Math.max(pos.getY(a), pos.getY(b), pos.getY(c)) <= o.userData.pescoco) indices.push(a,b,c);
+      }
+      const torso = g.clone(); torso.setIndex(indices); torsos.set(g,torso);
+    }
+    o.geometry = ativo ? torsos.get(g) : g;
+  });
 }

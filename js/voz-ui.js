@@ -9,7 +9,7 @@ const ROTULO_ESTADO = {
 const ROTULO_MIC = { desligado: 'mic desligado', ligado: 'mic ligado', 'sem-permissao': 'sem permissão do microfone', silenciado: 'silenciado pelo criador' };
 const CHAVE_MSGS = 'cine_chat_oculto';
 
-export function iniciarVozUI({ sb, sala, eu, player, toast, esc }) {
+export function iniciarVozUI({ sb, sala, eu, player, toast, esc, aoFala }) {
   const $ = (s) => document.querySelector(s);
 
   // botão no topo (antes de 👥)
@@ -71,6 +71,7 @@ export function iniciarVozUI({ sb, sala, eu, player, toast, esc }) {
     chip.dataset.ouvinte = ouvintes.length ? '1' : '';
     chip.dataset.estado = gv.estado; chip.dataset.mic = gv.mic;
     chip.setAttribute('aria-label', 'Conversa por voz: ' + ROTULO_ESTADO[gv.estado] + (con ? ', ' + ROTULO_MIC[gv.mic] : ''));
+    aoFala?.(con && gv.mic === 'ligado' && !gv.meuSilencio('voz') && gv.falando(gv.t.pid));
     if (g.hidden) return;
     const sil = gv.meuSilencio('voz');
     $('#voz-status').textContent = ROTULO_ESTADO[gv.estado] + (con ? ' · ' + ROTULO_MIC[gv.mic] : '') +
