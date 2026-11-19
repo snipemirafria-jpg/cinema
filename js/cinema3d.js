@@ -90,6 +90,7 @@ export class Cinema {
     addEventListener('resize', this._redimensionar);
     this._redimensionar();
     this.prontoPoltronas = this._montarPoltronas();
+    this._ultimoCheckQuadros = 0;
     this._loop = this._loop.bind(this);
     this.renderer.setAnimationLoop(this._loop);
   }
@@ -585,9 +586,24 @@ export class Cinema {
       this.vr.quadro(dt);
       return;
     }
-    if (MOBILE || this.fpsMax) {        // celular: até 60 fps para reduzir judder em filmes 24/30 fps; miniatura usa fpsMax
+    if (MOBILE && !this.vr?.ativo && performance.now() - this._ultimoCheckQuadros > 6000) {
+      this._ultimoCheckQuadros = performance.now();
+      const q = this.video.getVideoPlaybackQuality?.();
+      if (q && this._qualidadeAnterior) {
+        const total = q.totalVideoFrames - this._qualidadeAnterior.totalVideoFrames;
+        const perdidos = q.droppedVideoFrames - this._qualidadeAnterior.droppedVideoFrames;
+        if (total > 50 && perdidos / total > 0.06 && !this._modoEconomiaVideo) {
+          this._modoEconomiaVideo = true;
+          this.renderer.setPixelRatio(Math.min(devicePixelRatio, 0.75));
+          this._redimensionar();
+          console.info('[CineOnline] Modo leve ativado: perda de quadros no Android');
+        }
+      }
+      if (q) this._qualidadeAnterior = { totalVideoFrames: q.totalVideoFrames, droppedVideoFrames: q.droppedVideoFrames };
+    }
+    if (MOBILE || this.fpsMax) {        // celular: taxa adaptativa quando decodificação do vídeo perde quadros
       const agora = performance.now();
-      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : 15)) return;
+      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : this._modoEconomiaVideo ? 32 : 15)) return;
       this._ult = agora;
     }
     const dt = Math.min(this.relogio.getDelta(), 0.1);
