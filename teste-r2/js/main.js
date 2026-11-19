@@ -238,12 +238,35 @@ async function abrirCinema() {
   };
   // "Pular anúncio": por 20 s o player sai do 3D e o toque vai para o player do YouTube, para tocar no botão "Pular" dele
   // Quando o app percebe um anúncio, aparece o botão grande no telão; ao fim do anúncio volta sozinho ao cinema 3D.
-  let tPular;
+  let tPular, anuncioRestaurar = null;
+  // O CSS3DRenderer mantém transforms 3D nos ancestrais do iframe.
+  // Para liberar o botão do anúncio, mostramos o MESMO elemento numa camada 2D,
+  // sem recriar o player, e restauramos seu lugar ao voltar à sala.
   const modoPular = (ligar) => {
-    document.body.classList.toggle('yt-tocavel', ligar); $('#btn-pular-anuncio').classList.toggle('ativo', ligar);
-    $('#aviso-anuncio').hidden = ligar || !player.emAnuncio;
+    const caixa = cinema.objTela?.element;
+    const midiaYT = player.modo === 'youtube' && !!caixa?.querySelector('.midia-yt iframe');
+    if (ligar && !midiaYT) return;
     clearTimeout(tPular);
-    if (ligar) tPular = setTimeout(() => modoPular(false), 60000);   // segurança: volta ao 3D depois de 1 min
+    if (ligar && !anuncioRestaurar) {
+      const pai = caixa.parentNode;
+      const proximo = caixa.nextSibling;
+      const overlay = document.createElement('div');
+      overlay.className = 'yt-anuncio-overlay';
+      document.body.appendChild(overlay);
+      overlay.appendChild(caixa);
+      anuncioRestaurar = () => {
+        if (pai?.isConnected) pai.insertBefore(caixa, proximo?.parentNode === pai ? proximo : null);
+        else caixa.remove();
+        overlay.remove();
+      };
+    } else if (!ligar && anuncioRestaurar) {
+      anuncioRestaurar();
+      anuncioRestaurar = null;
+    }
+    document.body.classList.toggle('yt-tocavel', ligar);
+    $('#btn-pular-anuncio').classList.toggle('ativo', ligar);
+    $('#aviso-anuncio').hidden = ligar || !player.emAnuncio;
+    if (ligar) tPular = setTimeout(() => modoPular(false), 60000);
   };
   $('#btn-pular-anuncio').onclick = () => modoPular(!document.body.classList.contains('yt-tocavel'));
   $('#aviso-anuncio').onclick = () => modoPular(true);
