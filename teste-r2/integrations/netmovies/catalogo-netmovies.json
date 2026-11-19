@@ -1,0 +1,186 @@
+{
+  "source": {
+    "id": "netmovies-youtube",
+    "name": "NetMovies",
+    "channelUrl": "https://www.youtube.com/@netmovies",
+    "channelId": "UCK5RRQ3TdwAbbCWrtnXsN3Q",
+    "licenseNote": "Vídeos publicados no canal oficial. Reprodução via player incorporado do YouTube; anúncios e disponibilidade são controlados pelo YouTube/provedor.",
+    "lastChecked": "2026-11-17",
+    "ads": true
+  },
+  "items": [
+    {
+      "id": "o-grito",
+      "title": "O Grito",
+      "youtubeId": "F7HugXwPblI",
+      "duration": "1h 31min",
+      "durationMinutes": 91,
+      "genres": [
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/F7HugXwPblI/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=F7HugXwPblI",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/F7HugXwPblI",
+      "source": "NetMovies"
+    },
+    {
+      "id": "super-heroi-o-filme",
+      "title": "Super-Herói: O Filme",
+      "youtubeId": "zlmWuf84vO0",
+      "duration": "1h 18min",
+      "durationMinutes": 78,
+      "genres": [
+        "Comédia",
+        "Paródia"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/zlmWuf84vO0/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=zlmWuf84vO0",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/zlmWuf84vO0",
+      "source": "NetMovies"
+    },
+    {
+      "id": "deu-a-louca-na-branca-de-neve",
+      "title": "Deu a Louca na Branca de Neve",
+      "youtubeId": "A7E1H2Yupuo",
+      "duration": "1h 08min",
+      "durationMinutes": 68,
+      "genres": [
+        "Animação",
+        "Comédia",
+        "Família"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/A7E1H2Yupuo/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=A7E1H2Yupuo",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/A7E1H2Yupuo",
+      "source": "NetMovies"
+    },
+    {
+      "id": "os-13-pecados",
+      "title": "Os 13 Pecados",
+      "youtubeId": "g2Ok4XIeuFA",
+      "duration": "1h 32min",
+      "durationMinutes": 92,
+      "genres": [
+        "Suspense",
+        "Terror"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/g2Ok4XIeuFA/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=g2Ok4XIeuFA",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/g2Ok4XIeuFA",
+      "source": "NetMovies"
+    },
+    {
+      "id": "nerve",
+      "title": "Nerve: Um Jogo Sem Regras",
+      "youtubeId": "E70P8G6rsjU",
+      "duration": "1h 36min",
+      "durationMinutes": 96,
+      "genres": [
+        "Suspense",
+        "Aventura"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/E70P8G6rsjU/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=E70P8G6rsjU",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/E70P8G6rsjU",
+      "source": "NetMovies"
+    },
+    {
+      "id": "pororo-aventuras-no-castelo-do-dragao",
+      "title": "Pororo — Aventuras no Castelo do Dragão",
+      "youtubeId": "ZAzY-wfmCVE",
+      "duration": "1h 10min",
+      "durationMinutes": 70,
+      "genres": [
+        "Animação",
+        "Aventura",
+        "Família"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/ZAzY-wfmCVE/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=ZAzY-wfmCVE",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/ZAzY-wfmCVE",
+      "source": "NetMovies"
+    },
+    {
+      "id": "a-lady-e-o-lobo",
+      "title": "A Lady e o Lobo: O Bicho tá Solto",
+      "youtubeId": "M1wgv3o1qDI",
+      "duration": "1h 28min",
+      "durationMinutes": 88,
+      "genres": [
+        "Animação",
+        "Aventura",
+        "Família"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/M1wgv3o1qDI/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=M1wgv3o1qDI",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/M1wgv3o1qDI",
+      "source": "NetMovies"
+    },
+    {
+      "id": "a-loja-magica-de-brinquedos",
+      "title": "A Loja Mágica de Brinquedos",
+      "youtubeId": "L7Lxs31hCDE",
+      "duration": "1h 34min",
+      "durationMinutes": 94,
+      "genres": [
+        "Família",
+        "Fantasia",
+        "Comédia"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/L7Lxs31hCDE/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=L7Lxs31hCDE",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/L7Lxs31hCDE",
+      "source": "NetMovies"
+    },
+    {
+      "id": "a-menina-invisivel",
+      "title": "A Menina Invisível",
+      "youtubeId": "0iqCcyC52Ts",
+      "duration": "1h 35min",
+      "durationMinutes": 95,
+      "genres": [
+        "Família",
+        "Fantasia"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/0iqCcyC52Ts/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=0iqCcyC52Ts",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/0iqCcyC52Ts",
+      "source": "NetMovies"
+    },
+    {
+      "id": "apenas-uma-vez",
+      "title": "Apenas Uma Vez",
+      "youtubeId": "yG3vgY3u2Lw",
+      "duration": "1h 24min",
+      "durationMinutes": 84,
+      "genres": [
+        "Drama",
+        "Romance"
+      ],
+      "year": null,
+      "synopsis": "",
+      "poster": "https://i.ytimg.com/vi/yG3vgY3u2Lw/hqdefault.jpg",
+      "watchUrl": "https://www.youtube.com/watch?v=yG3vgY3u2Lw",
+      "embedUrl": "https://www.youtube-nocookie.com/embed/yG3vgY3u2Lw",
+      "source": "NetMovies"
+    }
+  ]
+}
