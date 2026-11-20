@@ -4,13 +4,14 @@
 //  - Cardboard (celular em óculos VR Box): sistema separado; duas câmeras com perspectiva própria (StereoCamera),
 //    orientação pelo giroscópio (só rotação, sem rastreamento de posição) ou arrastando o dedo.
 import * as THREE from 'three';
+import { VISUAL_PC } from './ambiente-cinema.js';
 
 export const ESTADOS = { NORMAL: 'NORMAL', CHECANDO: 'VR_CHECKING', WEBXR: 'VR_WEBXR', CARDBOARD: 'VR_CARDBOARD', SAINDO: 'VR_EXITING', ERRO: 'VR_ERROR' };
 
 const QUALIDADE = {   // resolução de desenho por nível (o vídeo em si não é alterado)
   baixa: { ratio: 0.6, xr: 0.6 },
   media: { ratio: 1, xr: 0.8 },
-  alta: { ratio: 1.5, xr: 1 },
+  alta: { ratio: 1.5, xr: 1 },   // mesma resolução da sala normal no iPhone e no computador
 };
 const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
 
@@ -25,9 +26,9 @@ const TECLAS = { ArrowLeft: 'esquerda', ArrowRight: 'direita', ArrowUp: 'cima', 
 // Lente do óculos de celular (VR Box/Cardboard): distorção em barril que compensa a lente de aumento.
 // O par inteiro ocupa uma textura. A lente compõe os dois olhos em uma passagem.
 const SHADER_LENTE = {
-  uniforms: { tDiffuse: { value: null }, k1: { value: 0.22 }, k2: { value: 0.24 }, escala: { value: 0.78 }, divisao: { value: 0.5 }, meioTexel: { value: 0 } },
+  uniforms: { tDiffuse: { value: null }, k1: { value: 0.22 }, k2: { value: 0.24 }, escala: { value: 0.78 }, divisao: { value: 0.5 }, meioTexel: { value: 0 }, vinheta: { value: 1 } },
   vertexShader: 'varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }',
-  fragmentShader: `uniform sampler2D tDiffuse; uniform float k1, k2, escala, divisao, meioTexel; varying vec2 vUv;
+  fragmentShader: `uniform sampler2D tDiffuse; uniform float k1, k2, escala, divisao, meioTexel, vinheta; varying vec2 vUv;
     void main(){
       float inicio = vUv.x < divisao ? 0.0 : divisao;
       float largura = vUv.x < divisao ? divisao : 1.0 - divisao;
@@ -38,8 +39,9 @@ const SHADER_LENTE = {
       vec2 uv = q * 0.5 + 0.5;
       uv.x = clamp(inicio + uv.x * largura, inicio + meioTexel, inicio + largura - meioTexel);
       vec4 c = texture2D(tDiffuse, uv);
-      float borda = 1.0 - smoothstep(0.92, 1.0, max(abs(q.x), abs(q.y)));
+      float borda = mix(1.0, 1.0 - smoothstep(0.92, 1.0, max(abs(q.x), abs(q.y))), vinheta);
       gl_FragColor = vec4(c.rgb * borda, 1.0);
+      #include <tonemapping_fragment>
       #include <colorspace_fragment>
     }`,
 };
@@ -49,8 +51,9 @@ export class ModoVR {
     this.c = cinema; this.player = player; this.aviso = aviso || (() => { });
     this.estado = ESTADOS.NORMAL;
     this.ativo = false;
-    const qualidade = localStorage.getItem('vr-qualidade');
-    this.qualidade = Object.hasOwn(QUALIDADE, qualidade) ? qualidade : (MOBILE ? 'media' : 'alta');
+    // v2: a escolha antiga ('media' por padrão no celular) não vale mais; iPhone e computador começam em Alta
+    const qualidade = localStorage.getItem('vr-qualidade-v2');
+    this.qualidade = Object.hasOwn(QUALIDADE, qualidade) ? qualidade : (VISUAL_PC ? 'alta' : 'media');
     this.ipd = +localStorage.getItem('vr-ipd') || 0.064;
     this.distancia = 0;    // metros a mais (+ mais perto do telão)
     this.tamanho = 1;      // escala aparente do telão
@@ -401,6 +404,9 @@ export class ModoVR {
     if (this._rt) this._garantirLente();
   }
 
+  // Passa por uma textura intermediária quando há lente ou na qualidade Alta (suavização de bordas 4x).
+  _usarAlvo() { return this.lente || this.qualidade === 'alta'; }
+
   _projecaoPar() {
     const cam = this.c.camera;
     // Inclui as duas pirâmides de visão na seleção de objetos, inclusive na borda próxima.
@@ -433,7 +439,7 @@ export class ModoVR {
     this.par.matrixWorldInverse.copy(c.camera.matrixWorldInverse);
     for (const olho of this.par.cameras) olho.matrixWorldInverse.copy(olho.matrixWorld).invert();
     // Uma travessia da sala e uma atualização da VideoTexture para o par inteiro.
-    if (this.lente) {
+    if (this._usarAlvo()) {
       if (!this._rt) this._garantirLente();
       r.setRenderTarget(this._rt);
       r.render(c.cena, this.par);
@@ -451,13 +457,24 @@ export class ModoVR {
   _garantirLente() {
     const { x: W, y: H } = this._buffer;
     if (!this._rt) {
-      this._rt = new THREE.WebGLRenderTarget(W, H, { colorSpace: THREE.SRGBColorSpace, depthBuffer: true });
-      this._matLente = new THREE.ShaderMaterial({ ...SHADER_LENTE, uniforms: THREE.UniformsUtils.clone(SHADER_LENTE.uniforms), depthTest: false, depthWrite: false, toneMapped: false });
+      const amostras = this.qualidade === 'alta' && this.c.renderer.capabilities.isWebGL2 ? 4 : 0;
+      const r = this.c.renderer, ext = r.extensions;
+      const hdr = r.capabilities.isWebGL2 && (ext.has('EXT_color_buffer_half_float') || ext.has('EXT_color_buffer_float'));
+      // HDR: guarda a luz da sala antes do tom ACES (aplicado na saída). Sem suporte, usa a textura comum em sRGB.
+      this._rt = new THREE.WebGLRenderTarget(W, H, hdr
+        ? { type: THREE.HalfFloatType, depthBuffer: true, samples: amostras }
+        : { colorSpace: THREE.SRGBColorSpace, depthBuffer: true, samples: amostras });
+      this._rtAmostras = amostras;
+      // toneMapped: o tom (ACES) da sala é aplicado aqui, na saída para a tela, igual ao modo normal
+      this._matLente = new THREE.ShaderMaterial({ ...SHADER_LENTE, uniforms: THREE.UniformsUtils.clone(SHADER_LENTE.uniforms), depthTest: false, depthWrite: false, toneMapped: true });
       this._matLente.uniforms.tDiffuse.value = this._rt.texture;
       this._cenaLente = new THREE.Scene();
       this._cenaLente.add(new THREE.Mesh(new THREE.PlaneGeometry(2, 2), this._matLente));
       this._camLente = new THREE.OrthographicCamera(-1, 1, 1, -1, 0, 1);
     } else if (this._rt.width !== W || this._rt.height !== H) this._rt.setSize(W, H);
+    const u = this._matLente.uniforms;
+    u.k1.value = this.lente ? 0.22 : 0; u.k2.value = this.lente ? 0.24 : 0;
+    u.escala.value = this.lente ? 0.78 : 1; u.vinheta.value = this.lente ? 1 : 0;
     this._matLente.uniforms.divisao.value = this.stereo.cameraL.viewport.z / W;
     this._matLente.uniforms.meioTexel.value = 0.5 / W;
   }
@@ -466,7 +483,7 @@ export class ModoVR {
     this._rt.dispose(); this._matLente.dispose(); this._cenaLente.children[0].geometry.dispose();
     this._rt = this._matLente = this._cenaLente = this._camLente = null;
   }
-  alternarLente() { this.lente = !this.lente; localStorage.setItem('vr-lente', this.lente ? '1' : '0'); if (!this.lente) this._liberarLente(); this.c.camera.fov = this.lente ? 90 : 80; this.redimensionar(); return this.lente; }
+  alternarLente() { this.lente = !this.lente; localStorage.setItem('vr-lente', this.lente ? '1' : '0'); if (!this._usarAlvo()) this._liberarLente(); this.c.camera.fov = this.lente ? 90 : 80; this.redimensionar(); return this.lente; }
 
   _resolucaoPreferida() {
     const limite = this.qualidade === 'alta' ? devicePixelRatio : this._salvo.ratio;
@@ -480,19 +497,23 @@ export class ModoVR {
     if (this._tempoAmostra < 1) return;
     const fps = this._quadrosAmostra / this._tempoAmostra;
     this._quadrosAmostra = this._tempoAmostra = 0;
-    this._amostrasLentas = fps < 42 ? this._amostrasLentas + 1 : 0;
+    const alta = this.qualidade === 'alta';
+    this._amostrasLentas = fps < (alta ? 34 : 42) ? this._amostrasLentas + 1 : 0;
     if (this._amostrasLentas < 2) return;
     this._amostrasLentas = 0;
     const r = this.c.renderer, atual = r.getPixelRatio();
-    const proxima = Math.max(0.5, +(atual * 0.8).toFixed(2));
+    const proxima = Math.max(alta ? 1 : 0.5, +(atual * 0.8).toFixed(2));
     if (proxima >= atual) return;
     r.setPixelRatio(proxima); this.redimensionar();
   }
 
   definirQualidade(q) {
     if (!QUALIDADE[q]) return;
-    this.qualidade = q; localStorage.setItem('vr-qualidade', q);
-    if (this.estado === ESTADOS.CARDBOARD) { this.c.renderer.setPixelRatio(this._resolucaoPreferida()); this.redimensionar(); }
+    this.qualidade = q; localStorage.setItem('vr-qualidade-v2', q);
+    if (this.estado === ESTADOS.CARDBOARD) {
+      this._liberarLente();   // recria a textura com (ou sem) suavização
+      this.c.renderer.setPixelRatio(this._resolucaoPreferida()); this.redimensionar();
+    }
     this.aoQualidade?.(q);
   }
 }
