@@ -181,7 +181,9 @@ export class AmbienteCinema {
   _yFila(i) { return i * DEGRAU; }
 
   async _montarPoltronas() {
-    const gltf = await new GLTFLoader().loadAsync(ASSETS + 'models/seat.glb');
+    const modeloLeve = /Android/i.test(navigator.userAgent);
+    const arquivo = modeloLeve ? 'seat-mobile.glb' : 'seat.glb';
+    const gltf = await new GLTFLoader().loadAsync(ASSETS + 'models/' + arquivo);
     const modelo = gltf.scene;
     modelo.updateMatrixWorld(true);
     const blocos = [];

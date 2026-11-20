@@ -1,3 +1,4 @@
+import { exigirHorizontal } from './orientacao.js';
 import { observarQualidade } from './qualidade-video.js';
 import { controlesAnuncio } from './anuncio-youtube.js';
 import { carregarFilmesR2 } from './catalogo-r2.js';
@@ -30,7 +31,6 @@ function mostrar(id) {
 async function iniciar() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (!configurado) { $('#aviso-config').hidden = false; mostrar('tela-login'); return; }
-  preCarregar();
   const { data: { session } } = await sb.auth.getSession();
   sb.auth.onAuthStateChange((ev, s) => {
     if (ev === 'SIGNED_OUT') location.reload();
@@ -61,6 +61,8 @@ async function entrar() {
   estado.moderador = !estado.owner && !!st.moderador;
   const { data: perfil } = await sb.rpc('meu_perfil');
   estado.perfil = perfil;
+  await aguardarHorizontal();
+  preCarregar();
   if (!perfil?.cadastro_completo) return abrirPerfil(true);
   abrirCinema();
 }
@@ -181,14 +183,24 @@ function criarPreview(canvas) {
   const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 50); cam.position.set(0, 1.25, 4.2);
   const ctl = new OrbitControls(cam, canvas); ctl.target.set(0, 0.95, 0); ctl.enablePan = false; ctl.minDistance = 1.5; ctl.maxDistance = 6; ctl.autoRotate = true; ctl.autoRotateSpeed = 1.2;
   let atual = null;
-  function tam() { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w) return; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
+  let largura = 0, altura = 0;
+  function tam() { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h || (w === largura && h === altura)) return; largura = w; altura = h; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
   addEventListener('resize', tam);
-  r.setAnimationLoop(() => { if (document.hidden || !canvas.offsetParent) return; tam(); ctl.update(); r.render(cena, cam); });   // só desenha quando a tela de perfil está visível
+  r.setAnimationLoop(() => { if (document.hidden || $('#aviso-orientacao').open || !canvas.offsetParent) return; tam(); ctl.update(); r.render(cena, cam); });   // só desenha quando a tela de perfil está visível
   return { mostrar(av) { if (atual) cena.remove(atual); atual = av; poseEmPe(av); cena.add(av); } };
 }
 
 // ------------------------------------------------------------------ cinema
+let verificarHorizontal;
+function aguardarHorizontal() {
+  verificarHorizontal ??= exigirHorizontal($('#aviso-orientacao'), bloqueado => {
+    if (estado.cinema) estado.cinema.orientacaoBloqueada = bloqueado;
+  });
+  return verificarHorizontal();
+}
+
 async function abrirCinema() {
+  if (!estado.observando?.mini) await aguardarHorizontal();
   mostrar('tela-cinema');
   $('#menu-painel').hidden = !estado.owner;                 // painel: só o criador
   if ($('#menu-moderar')) $('#menu-moderar').hidden = !estado.moderador;   // moderador: ícone 🛡️
@@ -206,6 +218,7 @@ async function abrirCinema() {
   }
   const video = $('#video');
   const cinema = estado.cinema = new Cinema($('#cena3d'), $('#rotulos'), video);
+  cinema.orientacaoBloqueada = $('#aviso-orientacao').open;
   cinema.meuId = obs ? null : estado.sessao.user.id;
   if (obs) {
     cinema.modoCamera();

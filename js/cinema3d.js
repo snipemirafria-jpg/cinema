@@ -491,6 +491,7 @@ export class Cinema extends AmbienteCinema {
 
   _loop() {
     // modo VR: o mesmo loop e a mesma cena; o módulo VR só troca a câmera e a forma de desenhar
+    if (this.orientacaoBloqueada && !this.renderer.xr.isPresenting) return;
     if (this.vr?.ativo) {
       this.anuncios?.mostrar(false);
       const dt = Math.min(this.relogio.getDelta(), 0.1);
