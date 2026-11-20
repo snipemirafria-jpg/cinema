@@ -197,12 +197,24 @@ function criarPreview(canvas) {
   const anel = new THREE.Mesh(new THREE.TorusGeometry(0.74, 0.012, 8, 64), new THREE.MeshBasicMaterial({ color: '#a78bfa' }));
   anel.rotation.x = Math.PI / 2; cena.add(anel);
   const cam = new THREE.PerspectiveCamera(32, 1, 0.1, 50); cam.position.set(0, 1.25, 4.2);
-  const ctl = new OrbitControls(cam, canvas); ctl.target.set(0, 0.95, 0); ctl.enablePan = false; ctl.minDistance = 1.5; ctl.maxDistance = 6; ctl.autoRotate = true; ctl.autoRotateSpeed = 1.2;
+  const ctl = new OrbitControls(cam, canvas); ctl.target.set(0, 0.95, 0); ctl.enablePan = false; ctl.minDistance = 1.5; ctl.maxDistance = 6;
+  ctl.autoRotate = !matchMedia('(prefers-reduced-motion: reduce)').matches;
+  ctl.autoRotateSpeed = 1.2;
   let atual = null;
-  let largura = 0, altura = 0;
-  function tam() { const w = canvas.clientWidth, h = canvas.clientHeight; if (!w || !h || (w === largura && h === altura)) return; largura = w; altura = h; r.setSize(w, h, false); cam.aspect = w / h; cam.updateProjectionMatrix(); }
-  addEventListener('resize', tam);
-  r.setAnimationLoop(() => { if (document.hidden || $('#aviso-orientacao').open || !canvas.offsetParent) return; tam(); ctl.update(); r.render(cena, cam); });   // só desenha quando a tela de perfil está visível
+  const tela = $('#tela-perfil');
+  const tamanho = new ResizeObserver(([{ contentRect: { width, height } }]) => {
+    if (!width || !height) return;
+    r.setSize(width, height, false);
+    cam.aspect = width / height;
+    cam.updateProjectionMatrix();
+  });
+  tamanho.observe(canvas);
+  const aviso = $('#aviso-orientacao');
+  r.setAnimationLoop(() => {
+    if (document.hidden || tela.hidden || aviso.open) return;
+    ctl.update();
+    r.render(cena, cam);
+  });
   return { mostrar(av) { if (atual) cena.remove(atual); atual = av; poseEmPe(av); cena.add(av); } };
 }
 
@@ -251,11 +263,15 @@ async function abrirCinema() {
   cinema.aoClicarPessoa = (id, ev) => id !== cinema.meuId && ((estado.owner || estado.moderador) && estado.mod ? estado.mod.abrirMenu(id, ev) : abrirDenuncia(id));
   cinema.controles.addEventListener('start', () => cinema.interromperCamera());
 
+  const toqueIniciar = $('#toque-iniciar');
+  const btnSom = $('#btn-som');
   let atualizarControleAnuncio;
   const eventosPlayer = {
     aoMudarFilme: (f) => {
       $('#sem-filme').hidden = !!f;
-      $('#titulo-filme').textContent = f ? f.titulo : 'Sem filme agora';
+      if (!f) toqueIniciar.hidden = true;
+      const titulo = $('#titulo-filme');
+      titulo.title = titulo.textContent = f ? f.titulo : 'Sem filme agora';
       cinema.aplicarTema(f);   // sala temática pelo gênero do filme (sem gênero = sala original)
       estado.mod?.atualizarSala(infoSalaAtual());   // aba Câmeras do criador: título/capa/fonte do telão
       if (f) { cinema.mostrarCapa(f.capa_url); } else cinema.mostrarVideo(false);
@@ -265,9 +281,12 @@ async function abrirCinema() {
     aoLegenda: (t) => cinema.legenda(t),
     aoModo: (modo, el) => { cinema.mostrarNaTela(el); atualizarControleAnuncio?.(modo); },
     aoEstado: (s, msg) => {
-      if (s === 'tocando' && player.modo === 'textura') cinema.mostrarVideo(true);
+      if (s === 'tocando') {
+        toqueIniciar.hidden = true;
+        if (player.modo === 'textura') cinema.mostrarVideo(true);
+      }
       if (s === 'erro' && msg) toast(msg, 'erro');
-      if (s === 'bloqueado' && !player.filmeVR) $('#toque-iniciar').hidden = false;
+      if (s === 'bloqueado' && !player.filmeVR && !obs?.mini) toqueIniciar.hidden = false;
       if (s === 'erro' && player.filmeVR && estado.vr?.ativo) estado.vr.sair();
     },
   };
@@ -288,15 +307,25 @@ async function abrirCinema() {
     voltar.onclick = () => { location.href = urlSalaPrincipal().href; };
     $('.hud-dir').prepend(voltar);
   }
-  $('#toque-iniciar').onclick = () => { $('#toque-iniciar').hidden = true; player.ativarSom(); $('#btn-som').textContent = '🔊'; };
-  $('#btn-som').onclick = () => {
-    if (player.mutado) { player.ativarSom(); $('#btn-som').textContent = '🔊'; }
-    else { player.silenciar(); $('#btn-som').textContent = '🔇 Ativar som'; }
+  const ativarSom = () => {
+    toqueIniciar.hidden = true;
+    player.ativarSom();
+    btnSom.textContent = '🔊';
+    btnSom.title = 'Silenciar filme';
+    btnSom.setAttribute('aria-label', btnSom.title);
+  };
+  toqueIniciar.onclick = ativarSom;
+  btnSom.onclick = () => {
+    if (player.mutado) ativarSom();
+    else {
+      player.silenciar();
+      btnSom.textContent = '🔇 Ativar som';
+      btnSom.title = 'Ativar som';
+      btnSom.setAttribute('aria-label', btnSom.title);
+    }
   };
   atualizarControleAnuncio = controlesAnuncio(cinema, player, { botao: $('#btn-pular-anuncio'), aviso: $('#aviso-anuncio'), barra: $('#controles-anuncio') });
   atualizarControleAnuncio(player.modo);
-  // navegadores só liberam som após um toque do usuário
-  $('#toque-iniciar').hidden = !!obs?.mini;
   if (!estado.sala) player.atualizar();      // na sala do filme, o início vem de quem já está assistindo
 
   if (visivel()) { cinema.atualizarPessoas([meuEstadoPresenca()]); $('#qtd-online').textContent = 1; }   // eu apareço mesmo antes da conexão em tempo real
@@ -502,22 +531,70 @@ async function abrirDenuncia(id, msgId = null) {
 
 // ------------------------------------------------------------------ menu e gavetas
 function configurarMenu() {
+  const compacto = matchMedia('(max-width:760px), (max-height:520px) and (orientation:landscape)');
+  const chat = $('#chat');
+  const btnChat = $('[data-ir="chat"]');
+  const campoChat = $('#chat-input');
+  const viewport = window.visualViewport;
+  if (viewport) {
+    const atualizarTeclado = () => {
+      const altura = compacto.matches && viewport.scale === 1
+        ? Math.max(0, Math.round(innerHeight - viewport.height - viewport.offsetTop))
+        : 0;
+      chat.style.setProperty('--teclado', `${altura}px`);
+    };
+    campoChat.addEventListener('focus', () => {
+      viewport.addEventListener('resize', atualizarTeclado);
+      viewport.addEventListener('scroll', atualizarTeclado);
+      atualizarTeclado();
+    });
+    campoChat.addEventListener('blur', () => {
+      viewport.removeEventListener('resize', atualizarTeclado);
+      viewport.removeEventListener('scroll', atualizarTeclado);
+      chat.style.removeProperty('--teclado');
+    });
+  }
+  const mostrarChat = aberto => {
+    chat.hidden = !aberto;
+    btnChat.setAttribute('aria-expanded', String(aberto));
+    if (aberto) {
+      const mensagens = $('#chat-lista');
+      mensagens.scrollTop = mensagens.scrollHeight;
+    } else {
+      $('#emojis').hidden = true;
+    }
+  };
+  mostrarChat(!!estado.observando || !compacto.matches);
+  compacto.addEventListener('change', ({ matches }) => mostrarChat(!!estado.observando || !matches));
   const fecharGavetas = () => $$('.gaveta').forEach(g => g.hidden = true);
+  const abrirGaveta = g => {
+    fecharGavetas();
+    if (compacto.matches) mostrarChat(false);
+    g.hidden = false;
+  };
   $$('[data-fechar]').forEach(b => b.onclick = fecharGavetas);
-  $('#btn-pessoas').onclick = () => { const g = $('#gaveta-pessoas'); const abrir = g.hidden; fecharGavetas(); g.hidden = !abrir; if (abrir) desenharPessoas(); };
+  $('#btn-pessoas').onclick = () => {
+    const g = $('#gaveta-pessoas');
+    if (g.hidden) { abrirGaveta(g); desenharPessoas(); }
+    else fecharGavetas();
+  };
   $('#btn-eu').onclick = () => abrirPerfil(false);
   $$('#menu-lateral button').forEach(b => b.onclick = () => {
     $$('#menu-lateral button').forEach(x => x.classList.toggle('ativo', x === b));
     const ir = b.dataset.ir;
-    if (ir === 'sala') { fecharGavetas(); $('#chat').classList.remove('oculto'); estado.cinema.focarEm(estado.sessao.user.id); }
-    if (ir === 'salas') { fecharGavetas(); $('#gaveta-salas').hidden = false; }
+    if (ir === 'sala') { fecharGavetas(); mostrarChat(!compacto.matches); estado.cinema.focarEm(estado.sessao.user.id); }
+    if (ir === 'salas') abrirGaveta($('#gaveta-salas'));
     if (ir === 'perfil') abrirPerfil(false);
-    if (ir === 'chat') { $('#chat').classList.toggle('oculto'); $('#chat-input').focus(); }
-    if (ir === 'pessoas') { fecharGavetas(); $('#gaveta-pessoas').hidden = false; desenharPessoas(); estado.cinema.visaoGeral(); }
-    if (ir === 'programacao') { fecharGavetas(); $('#gaveta-programacao').hidden = false; carregarProgramacao(); }
+    if (ir === 'chat') {
+      fecharGavetas();
+      mostrarChat(chat.hidden);
+      if (!chat.hidden && !compacto.matches) campoChat.focus();
+    }
+    if (ir === 'pessoas') { abrirGaveta($('#gaveta-pessoas')); desenharPessoas(); estado.cinema.visaoGeral(); }
+    if (ir === 'programacao') { abrirGaveta($('#gaveta-programacao')); carregarProgramacao(); }
     if (ir === 'vr') { fecharGavetas(); abrirVR(); b.classList.remove('ativo'); $('[data-ir="sala"]').classList.add('ativo'); }
     if (ir === 'painel') location.href = 'admin.html';
-    if (ir === 'moderar') { fecharGavetas(); $('#gaveta-pessoas').hidden = false; desenharPessoas(); toast('🛡️ Toque em “Moderar” ao lado de uma pessoa, ou no avatar dela na sala.'); }
+    if (ir === 'moderar') { abrirGaveta($('#gaveta-pessoas')); desenharPessoas(); toast('🛡️ Toque em “Moderar” ao lado de uma pessoa, ou no avatar dela na sala.'); }
     if (ir === 'sair') sair();
   });
 }

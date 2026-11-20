@@ -13,8 +13,8 @@
   <div id="bloqueio" class="bloqueio">Verificando permissão…</div>
   <div class="layout" id="layout" hidden>
     <aside class="lateral" id="lateral">
-      <div class="marca"><img src="icons/icon.svg" alt=""><div><b>Cine<span>Online</span></b><small>Painel do criador</small></div></div>
-      <nav>
+      <div class="marca"><img src="icons/icon.svg" alt=""><div><b>Sessão <span>Juntos</span></b><small>Painel do criador</small></div></div>
+      <nav aria-label="Seções do painel">
         <button data-sec="dashboard" class="ativo">📊 Dashboard</button>
         <button data-sec="programacao">🗓️ Programação</button>
         <button data-sec="filmes">🎞️ Filmes</button>
@@ -32,14 +32,15 @@
       </nav>
       <a class="voltar-sala" href="sessao.html">🎬 Voltar para a sala</a>
     </aside>
+    <button type="button" class="menu-fundo" aria-label="Fechar menu do criador"></button>
     <main>
-      <header class="topo"><button class="menu-mob" id="menu-mob">☰</button><h1 id="titulo-sec">Dashboard</h1><div class="eu" id="eu"></div></header>
+      <header class="topo"><button class="menu-mob" id="menu-mob" type="button" aria-label="Menu do criador" aria-expanded="false" aria-controls="lateral">☰</button><h1 id="titulo-sec">Dashboard</h1><div class="eu" id="eu"></div></header>
       <section id="conteudo"></section>
     </main>
   </div>
 
   <dialog id="modal" class="modal"><form method="dialog" id="modal-form"></form></dialog>
   <div id="toasts"></div>
-  <script type="module" src="js/admin.js?v=21"></script>
+  <script type="module" src="js/admin.js?v=22"></script>
 </body>
 </html>

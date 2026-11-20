@@ -43,13 +43,29 @@ global.on('presence', { event: 'sync' }, () => {
 }).subscribe();
 const avisar = (alvo, acao) => { const msg = { type: 'broadcast', event: 'moderacao', payload: { alvo, acao } }; canal.send(msg); global.send(msg); };
 $$('nav button').forEach(b => b.onclick = () => ir(b.dataset.sec));
-$('#menu-mob').onclick = () => $('#lateral').classList.toggle('aberta');
+const menuMovel = $('#menu-mob');
+const lateral = $('#lateral');
+function mostrarMenuMovel(aberto) {
+  lateral.classList.toggle('aberta', aberto);
+  menuMovel.setAttribute('aria-expanded', String(aberto));
+}
+menuMovel.onclick = () => mostrarMenuMovel(!lateral.classList.contains('aberta'));
+$('.menu-fundo')?.addEventListener('click', () => {
+  mostrarMenuMovel(false);
+  menuMovel.focus();
+});
+document.addEventListener('keydown', e => {
+  if (e.key === 'Escape' && lateral.classList.contains('aberta')) {
+    mostrarMenuMovel(false);
+    menuMovel.focus();
+  }
+});
 function ir(sec) {
   if (st.secao === 'cameras' && sec !== 'cameras') pararCameras();
   st.secao = sec;
   $$('nav button').forEach(b => b.classList.toggle('ativo', b.dataset.sec === sec));
   $('#titulo-sec').textContent = $(`nav button[data-sec="${sec}"]`).textContent.replace(/\d+$/, '').trim();
-  $('#lateral').classList.remove('aberta');
+  mostrarMenuMovel(false);
   C.innerHTML = '<p class="dica">Carregando…</p>';
   SECOES[sec]().catch(e => { C.innerHTML = `<p class="dica">Erro: ${esc(e.message)}</p>`; });
   history.replaceState(null, '', '#' + sec);

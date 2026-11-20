@@ -3,15 +3,21 @@ export function exigirHorizontal(aviso, aoMudar) {
   const vertical = matchMedia('(orientation: portrait)');
   const toque = matchMedia('(pointer: coarse)');
   const orientacao = screen.orientation;
+  let permitirVertical = sessionStorage.getItem('cine-orientacao-vertical') === 'sim';
   let espera, liberar;
   function atualizar() {
     const retrato = orientacao?.type ? orientacao.type.startsWith('portrait') : vertical.matches;
-    const bloqueado = toque.matches && retrato;
+    const bloqueado = !permitirVertical && toque.matches && retrato;
     if (bloqueado && !aviso.open) aviso.showModal();
     if (!bloqueado && aviso.open) aviso.close();
     aoMudar(bloqueado);
     if (!bloqueado && liberar) { liberar(); liberar = null; espera = null; }
   }
+  aviso.querySelector('[data-orientacao-vertical]').addEventListener('click', () => {
+    permitirVertical = true;
+    sessionStorage.setItem('cine-orientacao-vertical', 'sim');
+    atualizar();
+  });
   aviso.addEventListener('cancel', evento => evento.preventDefault());
   vertical.addEventListener('change', atualizar);
   toque.addEventListener('change', atualizar);

@@ -16,6 +16,7 @@ export class Cinema extends AmbienteCinema {
   constructor(canvas, camadaRotulos, video, { anuncios = false } = {}) {
     super();
     this.canvas = canvas;
+    this.telaApp = canvas.closest('#tela-cinema');
     this.video = video;
     this.avatares = new Map();      // id -> {wrap, rotulo, cfgKey, assento}
     this.relogio = new THREE.Clock();
@@ -399,8 +400,8 @@ export class Cinema extends AmbienteCinema {
     this.css3d?.setSize(w, h);
     this.anuncios?.redimensionar(w, h);
     this.camera.aspect = w / h;
-    if (this.modo === 'poltrona') {   // 90° de campo de visão horizontal (limitado no celular em pé)
-      this.camera.fov = Math.min(100, THREE.MathUtils.radToDeg(2 * Math.atan(Math.tan(THREE.MathUtils.degToRad(45)) / (w / h))));
+    if (this.modo === 'poltrona') {   // Tenta preservar o campo horizontal ao assistir com o celular em pé.
+      this.camera.fov = Math.min(120, THREE.MathUtils.radToDeg(2 * Math.atan(1 / this.camera.aspect)));
     } else this.camera.fov = this.modo === 'camera' ? 68 : w / h < 0.8 ? 72 : 55;
     this.camera.updateProjectionMatrix();
   }
@@ -499,7 +500,7 @@ export class Cinema extends AmbienteCinema {
       this.vr.quadro(dt);
       return;
     }
-    if (document.hidden || this.anuncioAmpliado) return;
+    if (document.hidden || this.telaApp?.hidden || this.anuncioAmpliado) return;
     if (MOBILE && performance.now() - this._ultimoCheckQuadros > 6000) {
       this._ultimoCheckQuadros = performance.now();
       const q = this.video.getVideoPlaybackQuality?.();

@@ -2,7 +2,7 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, maximum-scale=1, user-scalable=no">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#0b0710">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="mobile-web-app-capable" content="yes">
@@ -26,8 +26,9 @@
 
   <dialog id="aviso-orientacao" aria-labelledby="titulo-orientacao" aria-describedby="dica-orientacao">
     <div class="telefone-girando" aria-hidden="true">⤾</div>
-    <h2 id="titulo-orientacao">Gire seu celular</h2>
-    <p id="dica-orientacao">Coloque o aparelho na horizontal para entrar na sala. Se a tela continuar em pé, ative a rotação automática.</p>
+    <h2 id="titulo-orientacao">Assista na horizontal</h2>
+    <p id="dica-orientacao">Gire o celular para ganhar espaço para o filme.</p>
+    <button class="btn-sec" type="button" data-orientacao-vertical>Continuar na vertical</button>
   </dialog>
 
   <!-- LOGIN -->
@@ -35,19 +36,22 @@
     <div class="login-fundo"></div>
     <header class="login-topo">
       <div class="marca marca-3d"><img src="icons/logo-3d.webp" alt="Sessão Juntos"><small class="slogan">Assista. Converse. Faça parte!</small></div>
-      <button class="btn-google pequeno" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
     </header>
     <div class="login-hero">
-      <h1>Seu cinema virtual, sempre <em>com você!</em></h1>
-      <p>Assista aos filmes em tempo real, converse com outras pessoas e viva essa experiência.</p>
-      <button class="btn-google grande" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
-      <form id="form-email" class="form-email">
-        <div class="ou"><span>ou entre com e-mail</span></div>
-        <input type="email" id="em-email" placeholder="seu@email.com" autocomplete="email" required>
-        <input type="password" id="em-senha" placeholder="Senha (mín. 6)" minlength="6" autocomplete="current-password" required>
-        <div class="em-botoes"><button type="submit" class="em-entrar">Entrar</button><button type="button" id="em-criar" class="em-criar">Criar conta</button></div>
-      </form>
-      <p class="aviso-config" id="aviso-config" hidden>⚠️ Configure o Supabase em <code>js/config.js</code> (veja o README).</p>
+      <div>
+        <h1>Seu cinema virtual <em>sempre com você.</em></h1>
+        <p>Assista aos filmes em tempo real e converse com outras pessoas na sala.</p>
+      </div>
+      <div class="login-acesso">
+        <button class="btn-google grande" type="button" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
+        <form id="form-email" class="form-email">
+          <div class="ou"><span>ou entre com e-mail</span></div>
+          <input type="email" id="em-email" aria-label="E-mail" placeholder="seu@email.com" autocomplete="email" required>
+          <input type="password" id="em-senha" aria-label="Senha" placeholder="Senha (mín. 6)" minlength="6" autocomplete="current-password" required>
+          <div class="em-botoes"><button type="submit" class="em-entrar">Entrar</button><button type="button" id="em-criar" class="em-criar">Criar conta</button></div>
+        </form>
+        <p class="aviso-config" id="aviso-config" hidden>⚠️ Configure o Supabase em <code>js/config.js</code> (veja o README).</p>
+      </div>
     </div>
   </section>
 
@@ -87,44 +91,44 @@
 
     <header class="hud-topo">
       <div class="hud-esq">
-        <span class="ao-vivo"><i></i>Ao vivo</span>
-        <span class="titulo-filme" id="titulo-filme">Carregando…</span>
+        <span class="ao-vivo"><i aria-hidden="true"></i>Ao vivo</span>
+        <span class="titulo-filme" id="titulo-filme" aria-live="polite">Carregando…</span>
       </div>
       <div class="hud-dir">
         <button class="chip" id="btn-pular-anuncio" hidden aria-controls="controles-anuncio" aria-expanded="false" title="Liberar o botão Pular do YouTube">⏭ Pular anúncio</button>
-        <button class="chip" id="btn-som" title="Som">🔇 Ativar som</button>
+        <button class="chip" id="btn-som" title="Ativar som" aria-label="Ativar som">🔇 Ativar som</button>
         <button class="chip" id="btn-pessoas" title="Participantes">👥 <b id="qtd-online">0</b></button>
-        <button class="chip eu" id="btn-eu"><span id="eu-nome"></span></button>
+        <button class="chip eu" id="btn-eu" aria-label="Meu perfil"><span id="eu-nome"></span></button>
       </div>
     </header>
     <button type="button" id="aviso-anuncio" class="aviso-anuncio-tela" hidden>📢 Anúncio passando · Toque para <b>pular</b></button>
 
     <div id="controles-anuncio" hidden><span>Toque em “Pular” quando aparecer no YouTube.</span><button type="button" class="chip">Voltar à sala</button></div>
-    <nav class="menu-lateral" id="menu-lateral">
+    <nav class="menu-lateral" id="menu-lateral" aria-label="Controles do cinema">
       <button data-ir="sala" class="ativo" title="Sala">🎬<span>Sala</span></button>
       <button data-ir="salas" type="button" aria-label="Outras salas" aria-controls="gaveta-salas" title="Outras salas">🍿<span>Salas</span></button>
-      <button data-ir="perfil" title="Meu perfil">👤<span>Perfil</span></button>
-      <button data-ir="chat" title="Chat">💬<span>Chat</span></button>
+      <button data-ir="chat" title="Chat" aria-controls="chat" aria-expanded="false">💬<span>Chat</span></button>
       <button data-ir="pessoas" title="Participantes">👥<span>Pessoas</span></button>
       <button data-ir="programacao" title="Programação">🗓️<span>Próximos</span></button>
+      <button data-ir="perfil" title="Meu perfil">👤<span>Perfil</span></button>
       <button data-ir="vr" id="menu-vr" title="Entrar no VR">🥽<span>VR</span></button>
       <button data-ir="painel" id="menu-painel" hidden title="Painel do criador">👑<span>Painel</span></button>
       <button data-ir="moderar" id="menu-moderar" hidden title="Moderação">🛡️<span>Moderar</span></button>
       <button data-ir="sair" title="Sair">🚪<span>Sair</span></button>
     </nav>
 
-    <div class="chat" id="chat">
+    <div class="chat" id="chat" hidden>
       <div class="chat-lista" id="chat-lista"></div>
       <form class="chat-form" id="chat-form">
         <button type="button" class="emoji" id="btn-emoji" aria-label="Emoji">😊</button>
-        <input id="chat-input" maxlength="300" placeholder="Digite sua mensagem…" autocomplete="off" enterkeyhint="send">
+        <input id="chat-input" aria-label="Mensagem do chat" maxlength="300" placeholder="Digite sua mensagem…" autocomplete="off" enterkeyhint="send">
         <button class="enviar" aria-label="Enviar">➤</button>
         <div class="emojis" id="emojis" hidden></div>
       </form>
     </div>
 
     <aside class="gaveta" id="gaveta-pessoas" hidden>
-      <header><h3>Na sala agora</h3><button class="fechar" data-fechar>✕</button></header>
+      <header><h3>Na sala agora</h3><button class="fechar" type="button" data-fechar aria-label="Fechar">✕</button></header>
       <button type="button" class="chip" id="convidar-sala">Compartilhar link da sala</button>
       <fieldset><legend>Reações rápidas</legend><div id="reacoes-rapidas"></div><label><input type="checkbox" id="ocultar-reacoes"> Ocultar reações sobre os avatares</label></fieldset>
       <ul id="lista-pessoas"></ul>
@@ -137,14 +141,13 @@
     </aside>
 
     <aside class="gaveta" id="gaveta-programacao" hidden>
-      <header><h3>Programação</h3><button class="fechar" data-fechar>✕</button></header>
+      <header><h3>Programação</h3><button class="fechar" type="button" data-fechar aria-label="Fechar">✕</button></header>
       <details><summary>Qualidade da reprodução</summary><button class="chip" type="button" id="medir-video">Medir vídeo neste aparelho</button><p id="qualidade-video" role="status"></p></details>
       <div id="lista-programacao" class="lista-prog"></div>
     </aside>
 
     <div class="toque-iniciar" id="toque-iniciar" hidden>
-      <button class="btn-primario">▶ Entrar na sessão</button>
-      <small>Toque para ligar o som do filme</small>
+      <button class="btn-primario" type="button">🔊 Ativar som</button>
     </div>
     <div class="sem-filme" id="sem-filme" hidden>Nenhum filme na programação agora. Volte em breve! 🍿</div>
   </section>
