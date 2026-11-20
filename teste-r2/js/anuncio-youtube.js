@@ -15,6 +15,7 @@ export function controlesAnuncio(cinema, player, { botao, aviso, barra }) {
       camada = null;
     }
     player.controlesYouTube = abrir;
+    cinema.anuncioAmpliado = abrir;
     document.body.classList.toggle('yt-tocavel', abrir);
     barra.hidden = !abrir;
     aviso.hidden = abrir || !player.emAnuncio || player.modo !== 'youtube';
@@ -22,11 +23,16 @@ export function controlesAnuncio(cinema, player, { botao, aviso, barra }) {
     if (abrir) fechar.focus({ preventScroll: true });
   }
   botao.onclick = aviso.onclick = () => alternar(true);
-  fechar.onclick = () => { alternar(false); botao.focus({ preventScroll: true }); };
+  function voltar() {
+    alternar(false);
+    botao.focus({ preventScroll: true });
+  }
+  fechar.onclick = () => { voltar(); player._corrigir(true); };
+  player.aoFecharAmpliado = voltar;
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape' && camada) { e.preventDefault(); fechar.click(); }
   });
-  player.aoAnuncio = sim => { aviso.hidden = !!camada || !sim || player.modo !== 'youtube'; };
+  player.aoAnuncio = sim => { if (!sim && camada) voltar(); aviso.hidden = !!camada || !sim || player.modo !== 'youtube'; };
   return modo => {
     botao.hidden = modo !== 'youtube';
     if (modo !== 'youtube') alternar(false);

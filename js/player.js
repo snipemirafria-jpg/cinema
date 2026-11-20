@@ -156,6 +156,18 @@ export class PlayerSincronizado {
         tocando: () => this.aoEstado?.('tocando'), carregando: () => this.aoEstado?.('carregando'),
         fim: () => setTimeout(() => this.atualizar(), 800), erro: (msg) => this.aoEstado?.('erro', msg),
         pronto: () => this._corrigir(true),
+        salto: () => {
+          if (geracao !== this._geracao || !this.controlesYouTube) return;
+          this.aoFecharAmpliado?.();
+          this._corrigir(true);
+        },
+        pausa: () => {
+          if (geracao === this._geracao && this.controlesYouTube && !this.estado?.pausado) {
+            this.aoFecharAmpliado?.();
+            if (this.emAnuncio) yt.play();
+            else this._corrigir(true);
+          }
+        },
         anuncio: (sim) => { if (geracao !== this._geracao) return; this.emAnuncio = sim; this.aoAnuncio?.(sim); if (!sim) this._corrigir(true); },
       });
       this._usar('youtube', yt);

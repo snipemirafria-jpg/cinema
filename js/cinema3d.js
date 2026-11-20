@@ -52,6 +52,10 @@ export class Cinema extends AmbienteCinema {
     this.camera.position.set(0, 7, -10);
     this.controles = new OrbitControls(this.camera, canvas);
     this.controles.enableDamping = true;
+    this._movendoAte = 0;
+    const registrarMovimento = () => { this._movendoAte = performance.now() + 250; };
+    this.controles.addEventListener('start', registrarMovimento);
+    this.controles.addEventListener('change', registrarMovimento);
     this.controles.enablePan = false;
     this.controles.minDistance = 1.2;
     this.controles.maxDistance = 20;
@@ -155,6 +159,7 @@ export class Cinema extends AmbienteCinema {
     if (this.objTela) { this.cenaHtml.remove(this.objTela); this.objTela.element.remove(); this.objTela = null; }
     this._telaPlana = false;
     this._planaUltima = '';
+    this._projecaoPlana = null;
     this.camadaPlana.style.display = '';
     if (!el) return;
     const W = 1280, H = Math.round(W * TELA.h / TELA.w);
@@ -178,6 +183,13 @@ export class Cinema extends AmbienteCinema {
     if (!w || !h) return;
     this.camera.updateMatrixWorld();
     this.tela.updateWorldMatrix(true, false);
+    const proj = this.camera.projectionMatrix, vista = this.camera.matrixWorldInverse, tela = this.tela.matrixWorld;
+    const anterior = this._projecaoPlana;
+    if (anterior && anterior.w === w && anterior.h === h && anterior.proj.equals(proj) &&
+        anterior.vista.equals(vista) && anterior.tela.equals(tela)) return;
+    const cache = this._projecaoPlana ??= { proj: new THREE.Matrix4(), vista: new THREE.Matrix4(), tela: new THREE.Matrix4() };
+    cache.w = w; cache.h = h;
+    cache.proj.copy(proj); cache.vista.copy(vista); cache.tela.copy(tela);
     const pts = [];
     for (const [x, y] of [[-TELA.w / 2, TELA.h / 2], [TELA.w / 2, TELA.h / 2], [TELA.w / 2, -TELA.h / 2], [-TELA.w / 2, -TELA.h / 2]]) {
       const p = new THREE.Vector3(x, y, 0).applyMatrix4(this.tela.matrixWorld);
@@ -486,7 +498,8 @@ export class Cinema extends AmbienteCinema {
       this.vr.quadro(dt);
       return;
     }
-    if (MOBILE && !this.vr?.ativo && performance.now() - this._ultimoCheckQuadros > 6000) {
+    if (document.hidden || this.anuncioAmpliado) return;
+    if (MOBILE && performance.now() - this._ultimoCheckQuadros > 6000) {
       this._ultimoCheckQuadros = performance.now();
       const q = this.video.getVideoPlaybackQuality?.();
       if (q && this._qualidadeAnterior) {
@@ -503,8 +516,13 @@ export class Cinema extends AmbienteCinema {
     }
     if (MOBILE || this.fpsMax) {        // celular: taxa adaptativa quando decodificação do vídeo perde quadros
       const agora = performance.now();
-      if (document.hidden || agora - (this._ult || 0) < (this.fpsMax ? 1000 / this.fpsMax : ANDROID_LEVE ? (this._telaPlana ? 1000 / 15 : 1000 / 30) : this._modoEconomiaVideo ? 32 : 15)) return;
-      this._ult = agora;
+      const salaParada = this._telaPlana && !this._alvoCam && agora > this._movendoAte;
+      const fps = this.fpsMax || (ANDROID_LEVE ? (salaParada ? 15 : 30) : this._modoEconomiaVideo ? 30 : 60);
+      const intervalo = 1000 / fps;
+      if (this._proximoQuadro != null && agora + 0.5 < this._proximoQuadro) return;
+      const anterior = this._proximoQuadro ?? agora;
+      this._proximoQuadro = anterior + intervalo;
+      if (this._proximoQuadro <= agora) this._proximoQuadro = agora + intervalo;
     }
     const dt = Math.min(this.relogio.getDelta(), 0.1);
     const t = this.relogio.elapsedTime;

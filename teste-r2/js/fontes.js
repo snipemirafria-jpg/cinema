@@ -80,13 +80,14 @@ export class MidiaYouTube {
       if (this.encerrado) return;
       this.p = new YT.Player(alvo, {
         videoId: id, width: '100%', height: '100%',
-        playerVars: { autoplay: 1, mute: 1, controls: 1, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 0, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'none', hl: 'pt', start: Math.floor(inicio || 0) },
+        playerVars: { autoplay: 1, mute: 1, controls: 0, fs: 0, playsinline: 1, rel: 0, modestbranding: 1, disablekb: 1, iv_load_policy: 3, cc_load_policy: 0, cc_lang_pref: 'none', hl: 'pt', start: Math.floor(inicio || 0) },
         events: {
           onReady: () => { if (this.encerrado) return; this.pronto = true; this.muted = this._mudo; this.semLegenda(); this.p.playVideo(); this._vigiarAnuncio(); eventos.pronto?.(); },
           onStateChange: (e) => {
             if (this.encerrado) return;
             this._estado = e.data;
             if (e.data === 1) { this.semLegenda(); eventos.tocando?.(); }
+            if (e.data === 2) eventos.pausa?.();
             if (e.data === 3) eventos.carregando?.();
             if (e.data === 0) eventos.fim?.();
           },
@@ -98,15 +99,19 @@ export class MidiaYouTube {
   // Detecta anúncio: o YouTube diz "tocando" mas o tempo do filme fica parado (a API não avisa de anúncio).
   // Quando o tempo volta a andar normalmente, o anúncio acabou.
   _vigiarAnuncio() {
-    this.anuncio = false; let ultimo = null, parado = 0, andando = 0;
+    this.anuncio = false; let ultimo = null, amostra = 0, parado = 0, andando = 0;
     this._vigia = setInterval(() => {
-      if (!this.pronto || document.hidden) return;
+      if (!this.pronto || document.hidden) { ultimo = null; andando = parado = 0; return; }
       let t; try { t = this.p.getCurrentTime(); } catch { return; }
       const delta = ultimo == null ? null : t - ultimo; ultimo = t;
-      if (delta == null) return;
+      const agora = performance.now();
+      const intervalo = (agora - amostra) / 1000;
+      amostra = agora;
+      if (delta == null || intervalo > 2.5) return;
+      if (!this.anuncio && (delta < -1 || delta > intervalo + 2)) this.eventos.salto?.();
       if (this._estado === 1 && Math.abs(delta) < 0.05) { parado++; andando = 0; }
       else if (delta > 0.5 && delta < 2.5) { andando++; parado = 0; }
-      else { parado = 0; }
+      else { parado = 0; andando = 0; }
       if (!this.anuncio && parado >= 2) { this.anuncio = true; this.eventos.anuncio?.(true); }
       else if (this.anuncio && andando >= 2) { this.anuncio = false; this.eventos.anuncio?.(false); }
     }, 1000);
