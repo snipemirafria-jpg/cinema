@@ -137,6 +137,14 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .gaveta>details,.gaveta>fieldset,.gaveta>.chip,.gaveta>.dica{margin:8px 12px}
 .gaveta .chip{min-height:44px;white-space:normal}
 .gaveta #status-salas{color:var(--sub)}
+.mapa-assentos{display:grid;gap:14px;padding:14px}
+.mapa-assentos label{display:flex;justify-content:space-between;align-items:center;gap:10px}
+.mapa-assentos select{min-height:44px;padding:8px;border:1px solid var(--linha);border-radius:10px;background:var(--bg2);font-size:16px}
+.grade-assentos{display:grid;gap:6px;grid-template-columns:repeat(auto-fit,minmax(44px,1fr))}
+.grade-assentos button{min-height:44px;border:1px solid #756184;border-radius:10px;background:#352542}
+.grade-assentos button[aria-pressed="true"]{background:#693c89;border-color:#cfacf0}
+.grade-assentos button:disabled{background:#211924;color:#b0a3b8;opacity:.65;cursor:default}
+#status-assentos{margin:0;color:var(--sub);font-size:13px}
 .gaveta h3{margin:0;font-size:16px}
 .gaveta ul{list-style:none;margin:0;padding:8px;overflow:auto}
 .gaveta li{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px;border-radius:10px}
@@ -215,8 +223,9 @@ input,select,textarea{font:inherit;color:var(--txt)}
 .msg.sumindo{opacity:0}
 
 .form-email{margin-top:14px;display:grid;gap:10px}
-.form-email .ou{display:flex;align-items:center;gap:10px;color:#bfb6cc;font-size:13px}
-.form-email .ou::before,.form-email .ou::after{content:"";flex:1;height:1px;background:#ffffff30}
+.login-email{margin-top:12px;border-top:1px solid var(--linha)}
+.login-email summary{padding:12px 4px 0;color:var(--sub);font-size:14px;cursor:pointer}
+.login-hero .login-google-status{font-size:14px;color:#ffd3dc;margin:12px 0 0}
 .form-email input{background:#0d0a14cc;border:1px solid #ffffff2a;color:#fff;border-radius:12px;padding:12px 14px;font-size:16px;width:100%;box-sizing:border-box}
 .em-botoes{display:flex;gap:10px}
 .em-botoes button{flex:1;border-radius:12px;padding:12px;font-weight:700;font-size:15px;border:0;cursor:pointer}

@@ -78,12 +78,12 @@ export class PlayerSalaFilme extends PlayerSincronizado {
     return this.filme.duracao_seg;
   }
   posicaoAlvo() {
-    if (this.filmeVR || !this.inicio) return 0;
+    if ((this.filmeVR && !this._itemVRSala) || !this.inicio) return 0;
     const dur = this._duracao() + 3;                        // terminou: a sessão recomeça do início
     return (((this.agoraServidor() - this.inicio) / 1000) % dur + dur) % dur;
   }
   async atualizar() {
-    if (this.filmeVR || !this.inicio) return;
+    if ((this.filmeVR && !this._itemVRSala) || !this.inicio) return;
     this.estado = { filme: { ...this.filme, duracao_seg: this._duracao() + 10 }, item: this.filme.item, iniciado_em: new Date(this.inicio).toISOString(), pausado: false };
     if (this.itemAtual !== this.filme.item) {
       this.itemAtual = this.filme.item;
@@ -95,7 +95,7 @@ export class PlayerSalaFilme extends PlayerSincronizado {
     this._corrigir(true);
   }
   _corrigir(forcar = false) {
-    if (this.filmeVR || this.controlesYouTube) return;
+    if ((this.filmeVR && !this._itemVRSala) || this.controlesYouTube) return;
     super._corrigir(forcar);
     if (this.m?._estado === 0 && this.posicaoAlvo() < this._duracao() - 2) this.tocar();   // recomeço após o fim
   }

@@ -4,7 +4,6 @@
 //  - Cardboard (celular em óculos VR Box): sistema separado; duas câmeras com perspectiva própria (StereoCamera),
 //    orientação pelo giroscópio (só rotação, sem rastreamento de posição) ou arrastando o dedo.
 import * as THREE from 'three';
-import { fonteR2 } from './catalogo-r2.js';
 
 export const ESTADOS = { NORMAL: 'NORMAL', CHECANDO: 'VR_CHECKING', WEBXR: 'VR_WEBXR', CARDBOARD: 'VR_CARDBOARD', SAINDO: 'VR_EXITING', ERRO: 'VR_ERROR' };
 
@@ -268,7 +267,7 @@ export class ModoVR {
   }
 
   async entrarCardboard(permissao) {
-    if (!this._podeEntrar() || !fonteR2(this.player?.filmeVR?.fonte_url)) return false;
+    if (!this._podeEntrar() || !this.player?.podeEntrarCardboard()) return false;
     this.estado = ESTADOS.CHECANDO;
     try {
       this._prepararAssento();

@@ -1,12 +1,13 @@
 // Sala de cinema 3D: telão, poltronas vermelhas, neon, avatares sentados com nomes.
 import * as THREE from 'three';
-import { AmbienteCinema, TELA, SALA, MOBILE, FILEIRAS, baratear } from './ambiente-cinema.js';
+import { AmbienteCinema, TELA, SALA, MOBILE, IOS, VISUAL_PC, FILEIRAS, baratear } from './ambiente-cinema.js';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
 import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 import { CSS3DRenderer, CSS3DObject } from 'three/addons/renderers/CSS3DRenderer.js';
 import { criarAvatar, poseSentado, animarOcioso, corpoPOV } from './avatar.js';
 import { esc } from './supa.js';
 import { SalaTematica } from './temas-sala.js';
+import { distribuirAssentos } from './assentos.js';
 
 // Android: mantém o filme em camada 2D independente e economiza GPU na sala WebGL.
 // ?gpu=normal permite comparar a renderização antiga, sem mexer nas configurações da conta.
@@ -24,9 +25,9 @@ export class Cinema extends AmbienteCinema {
     this.modo = 'poltrona';
 
     const r = this.renderer = new THREE.WebGLRenderer({ canvas, alpha: anuncios, antialias: !MOBILE, powerPreference: MOBILE ? 'default' : 'high-performance' });
-    r.setPixelRatio(Math.min(devicePixelRatio, ANDROID_LEVE ? 0.65 : MOBILE ? 1 : 2));
+    r.setPixelRatio(Math.min(devicePixelRatio, ANDROID_LEVE ? 0.65 : IOS ? 1.5 : MOBILE ? 1 : 2));
     r.outputColorSpace = THREE.SRGBColorSpace;
-    r.toneMapping = MOBILE ? THREE.NoToneMapping : THREE.ACESFilmicToneMapping;
+    r.toneMapping = VISUAL_PC ? THREE.ACESFilmicToneMapping : THREE.NoToneMapping;
     r.toneMappingExposure = 1.05;
     r.shadowMap.enabled = !MOBILE;
     r.shadowMap.type = THREE.PCFSoftShadowMap;
@@ -73,7 +74,7 @@ export class Cinema extends AmbienteCinema {
     this._montarCameraSeguranca();
     baratear(this.cena);
     // salas temáticas: a mesma sala, com cores, texturas, luz e decoração do gênero do filme
-    this.tema = new SalaTematica(this, { MOBILE, baratear, TELA, SALA, FILEIRAS, zFila: (i) => this._zFila(i), yFila: (i) => this._yFila(i) });
+    this.tema = new SalaTematica(this, { MOBILE, VISUAL_PC, baratear, TELA, SALA, FILEIRAS, zFila: (i) => this._zFila(i), yFila: (i) => this._yFila(i) });
     this._redimensionar = this._redimensionar.bind(this);
     addEventListener('resize', this._redimensionar);
     this._redimensionar();
@@ -253,10 +254,12 @@ export class Cinema extends AmbienteCinema {
   // lista: [{id, apelido, avatar, papel, desde}] — ordem estável igual em todos os aparelhos
   async atualizarPessoas(lista) {
     await this.prontoPoltronas;
-    const ordenada = [...lista].sort((a, b) => (a.desde || 0) - (b.desde || 0) || String(a.id).localeCompare(String(b.id)));
+    const lugares = distribuirAssentos(lista, this.assentos.length);
     const vivos = new Set();
-    for (let i = 0; i < ordenada.length && i < this.assentos.length; i++) {
-      const p = ordenada[i]; vivos.add(p.id);
+    for (const p of lista) {
+      const i = lugares.get(p.id);
+      if (i === undefined) continue;
+      vivos.add(p.id);
       const assento = this.assentos[i];
       const cfgKey = JSON.stringify(p.avatar || {});
       let reg = this.avatares.get(p.id);
@@ -273,7 +276,6 @@ export class Cinema extends AmbienteCinema {
           reg.rotulo = this._criarRotulo(reg.dados);
           wrap.add(reg.rotulo);
           this._sentar(reg, reg.assento);
-          if (p.id === this.meuId && this.modo === 'poltrona') this.focarEm(p.id);
         }).catch(e => console.warn('avatar', e));
       } else {
         reg.dados = p;
@@ -509,7 +511,7 @@ export class Cinema extends AmbienteCinema {
         const perdidos = q.droppedVideoFrames - this._qualidadeAnterior.droppedVideoFrames;
         if (total > 50 && perdidos / total > 0.06 && !this._modoEconomiaVideo) {
           this._modoEconomiaVideo = true;
-          this.renderer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 0.6));
+          this.renderer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), IOS ? 1 : 0.6));
           this._redimensionar();
           console.info('[CineOnline] Modo leve ativado: perda de quadros no Android');
         }

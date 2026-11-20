@@ -1,7 +1,7 @@
 import { exigirHorizontal } from './orientacao.js';
 import { observarQualidade } from './qualidade-video.js';
 import { controlesAnuncio } from './anuncio-youtube.js';
-import { carregarFilmesR2 } from './catalogo-r2.js';
+import { carregarFilmesR2, mesmoFilmeParaVR } from './catalogo-r2.js';
 // Login → perfil, se necessário → cinema 3D.
 import * as THREE from 'three';
 import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -38,13 +38,21 @@ function urlSalaPrincipal() {
 async function iniciar() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js').catch(() => {});
   if (!configurado) { $('#aviso-config').hidden = false; mostrar('tela-login'); return; }
+  const retorno = new URL(location.href);
+  const erroGoogle = retorno.searchParams.has('error') || new URLSearchParams(retorno.hash.slice(1)).has('error');
   const { data: { session } } = await sb.auth.getSession();
   sb.auth.onAuthStateChange((ev, s) => {
     if (ev === 'SIGNED_OUT') location.reload();
     if (ev === 'SIGNED_IN' && !estado.sessao && s) { estado.sessao = s; entrar(); }
   });
   if (!session) {
-    history.replaceState(history.state, '', urlSalaPrincipal());
+    const destino = urlSalaPrincipal();
+    if (erroGoogle) {
+      for (const campo of ['error', 'error_code', 'error_description']) destino.searchParams.delete(campo);
+      destino.hash = '';
+      mostrarErroGoogle('A entrada com Google foi interrompida. Tente novamente.');
+    }
+    history.replaceState(history.state, '', destino);
     mostrar('tela-login');
     return;
   }
@@ -89,14 +97,30 @@ function telaBanido(st) {
 }
 
 // ------------------------------------------------------------------ login
-$$('[data-acao="login"]').forEach(b => b.addEventListener('click', async () => {
+const statusGoogle = $('#status-google');
+function mostrarErroGoogle(msg) {
+  statusGoogle.textContent = msg;
+  statusGoogle.hidden = !msg;
+}
+$('[data-acao="login"]').addEventListener('click', async e => {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
+  const botao = e.currentTarget;
   const destino = urlSalaPrincipal();
   const volta = new URL('./', destino);
   volta.search = destino.search;
-  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta.href, queryParams: { prompt: 'select_account' } } });
-  if (error) toast(error.message, 'erro');
-}));
+  mostrarErroGoogle('');
+  botao.disabled = true;
+  try {
+    const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: volta.href, queryParams: { prompt: 'select_account' } } });
+    if (error) throw error;
+  } catch (error) {
+    mostrarErroGoogle(/provider.*(disabled|not enabled)|unsupported provider/i.test(error.message)
+      ? 'O login com Google ainda precisa ser ativado no Supabase.'
+      : 'Não foi possível abrir o Google. Tente novamente.');
+  } finally {
+    botao.disabled = false;
+  }
+});
 async function loginEmail(criar) {
   if (!configurado) return toast('Configure o Supabase primeiro', 'erro');
   const email = $('#em-email').value.trim(), password = $('#em-senha').value;
@@ -366,7 +390,7 @@ async function iniciarVozEModeracao() {
 }
 
 function meuEstadoPresenca() {
-  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : estado.moderador ? 'moderador' : 'espectador', desde: estado._desde || (estado._desde = Date.now()), ...(estado.sala?.presenca() || {}) };
+  return { id: estado.sessao.user.id, apelido: estado.perfil.apelido, avatar: estado.perfil.avatar, papel: estado.owner ? 'owner' : estado.moderador ? 'moderador' : 'espectador', desde: estado._desde || (estado._desde = Date.now()), assento: estado.assento ?? null, ...(estado.sala?.presenca() || {}) };
 }
 
 // Sala de um filme do catálogo: título da sessão.
@@ -424,13 +448,19 @@ function conectarSala() {
   canal.on('presence', { event: 'sync' }, () => {
     const st = canal.presenceState();
     const lista = Object.values(st).map(arr => arr[0]).filter(Boolean);
-    if (visivel() && !lista.some(p => p.id === estado.sessao.user.id)) lista.push(meuEstadoPresenca());
     estado.pessoas = new Map(lista.map(p => [p.id, p]));
+    if (visivel()) {
+      const eu = meuEstadoPresenca();
+      estado.pessoas.set(eu.id, eu);
+    }
     for (const id of ultima.keys()) if (!estado.pessoas.has(id)) ultima.delete(id);
-    $('#qtd-online').textContent = lista.length;
-    estado.cinema.atualizarPessoas(lista);
+    const presentes = [...estado.pessoas.values()];
+    $('#qtd-online').textContent = presentes.length;
+    estado.cinema.atualizarPessoas(presentes).then(() => {
+      if (!$('#gaveta-assentos').hidden) desenharAssentos();
+    });
     if (!$('#gaveta-pessoas').hidden) desenharPessoas();
-    if (estado.sala) estado.sala.aoSync(lista, estado.sessao.user.id).then(mudou => mudou && visivel() && canal.track(meuEstadoPresenca()));
+    if (estado.sala) estado.sala.aoSync(presentes, estado.sessao.user.id).then(mudou => mudou && visivel() && canal.track(meuEstadoPresenca()));
   });
   if (estado.sala) {   // chat ao vivo só desta sala
     canal.on('broadcast', { event: 'chat' }, ({ payload }) => payload?.usuario && adicionarMsg({ ...payload, sala: true, texto: String(payload.texto || '').slice(0, 300) }, true));
@@ -441,7 +471,66 @@ function conectarSala() {
     if (['silenciar_voz', 'silenciar_texto', 'silenciar_ajuda', 'revogar'].includes(payload.acao)) estado.voz?.atualizarSilenciados();   // mutes: confere no banco
     else location.reload();                                                                                                          // ban/expulsão
   });
-  canal.subscribe(async (s) => { conectado = s === 'SUBSCRIBED'; if (conectado && visivel()) await canal.track(meuEstadoPresenca()); });
+  canal.subscribe(async (s) => {
+    estado.presencaConectada = conectado = s === 'SUBSCRIBED';
+    if (conectado && visivel()) await canal.track(meuEstadoPresenca());
+  });
+}
+
+async function escolherAssento(assento) {
+  if (estado.escolhendoAssento) return;
+  if (!estado.presencaConectada) return toast('Aguarde a conexão da sala para trocar de assento.');
+  const eu = estado.sessao.user.id;
+  const cinema = estado.cinema;
+  if ([...cinema.avatares].some(([id, reg]) => id !== eu && reg.assento === assento)) return;
+  const anterior = estado.assento;
+  estado.escolhendoAssento = true;
+  estado.assento = assento.indice;
+  try {
+    if (await estado.canal.track(meuEstadoPresenca()) !== 'ok') throw new Error('Falha na presença');
+    cinema.modo = 'poltrona';
+  } catch {
+    estado.assento = anterior;
+    toast('Não foi possível trocar de assento. Tente novamente.', 'erro');
+  } finally {
+    estado.escolhendoAssento = false;
+    estado.pessoas.set(eu, meuEstadoPresenca());
+    await cinema.atualizarPessoas([...estado.pessoas.values()]);
+    if (estado.assento === assento.indice && cinema.avatares.get(eu)?.assento === assento) cinema.focarEm(eu);
+    desenharAssentos();
+  }
+}
+
+async function desenharAssentos(abrindo = false) {
+  const cinema = estado.cinema;
+  await cinema.prontoPoltronas;
+  const fileira = $('#fileira-assentos');
+  const grade = $('#grade-assentos');
+  const meu = cinema.avatares.get(estado.sessao.user.id)?.assento;
+  if (!fileira.options.length) {
+    const fileiras = [...new Set(cinema.assentos.map(a => a.fila))].sort((a, b) => a - b);
+    for (const i of fileiras) fileira.add(new Option(`Fileira ${i + 1}`, i));
+    fileira.onchange = () => desenharAssentos();
+  }
+  if (abrindo && meu) fileira.value = meu.fila;
+  const ocupados = new Set([...cinema.avatares.values()].map(reg => reg.assento));
+  const assentos = cinema.assentos.filter(a => a.fila === Number(fileira.value)).sort((a, b) => b.pos.x - a.pos.x);
+  const foco = document.activeElement?.dataset.assento;
+  grade.replaceChildren(...assentos.map((assento, i) => {
+    const botao = document.createElement('button');
+    const atual = assento === meu;
+    botao.type = 'button';
+    botao.textContent = i + 1;
+    botao.dataset.assento = assento.indice;
+    botao.disabled = ocupados.has(assento) && !atual;
+    botao.setAttribute('aria-pressed', String(atual));
+    botao.setAttribute('aria-label', `Assento ${i + 1}, ${atual ? 'seu lugar' : botao.disabled ? 'ocupado' : 'livre'}`);
+    botao.onclick = () => escolherAssento(assento);
+    return botao;
+  }));
+  if (foco != null) grade.querySelector(`[data-assento="${foco}"]:not(:disabled)`)?.focus({ preventScroll: true });
+  const numero = assentos.indexOf(meu);
+  $('#status-assentos').textContent = numero < 0 ? 'Selecione um lugar livre.' : `Seu lugar nesta fileira é o assento ${numero + 1}.`;
 }
 
 // ------------------------------------------------------------------ chat
@@ -591,6 +680,7 @@ function configurarMenu() {
       if (!chat.hidden && !compacto.matches) campoChat.focus();
     }
     if (ir === 'pessoas') { abrirGaveta($('#gaveta-pessoas')); desenharPessoas(); estado.cinema.visaoGeral(); }
+    if (ir === 'assentos') { abrirGaveta($('#gaveta-assentos')); desenharAssentos(true); }
     if (ir === 'programacao') { abrirGaveta($('#gaveta-programacao')); carregarProgramacao(); }
     if (ir === 'vr') { fecharGavetas(); abrirVR(); b.classList.remove('ativo'); $('[data-ir="sala"]').classList.add('ativo'); }
     if (ir === 'painel') location.href = 'admin.html';
@@ -615,14 +705,58 @@ async function abrirVR() {
   if (!dlg.open) return;
   opcoes.replaceChildren();
   if (cap.cardboard) {
+    const player = estado.player;
+    let acervo;
+    const lerAcervo = () => acervo ??= carregarFilmesR2(sb).catch(error => { acervo = null; throw error; });
+    const entrarBox = async (filme, daSala = false) => {
+      if (filme ? !player.iniciarFilmeVR(filme, daSala) : !player.podeContinuarVR()) {
+        toast('A programação mudou ou o vídeo ainda não está pronto. Abra o menu VR de novo.');
+        return;
+      }
+      const permissao = vr.pedirPermissaoSensor();
+      if (!player.filmeVR && !player.estado?.pausado) player.tocar();
+      dlg.close();
+      const ok = await vr.entrarCardboard(permissao);
+      if (ok && !player.v.error) mostrarControlesVR(vr);
+      else { if (ok) await vr.sair(); player.sairFilmeVR(); }
+    };
+    const atual = player.estado?.filme;
+    if (atual) {
+      const continuar = document.createElement('button');
+      continuar.type = 'button';
+      continuar.className = 'vr-op';
+      continuar.id = 'vr-continuar-sala';
+      continuar.textContent = 'Continuar filme da sala no VR Box';
+      const titulo = document.createElement('small');
+      titulo.textContent = atual.titulo;
+      continuar.append(titulo);
+      if (player.podeContinuarVR()) {
+        continuar.onclick = () => entrarBox();
+        opcoes.append(continuar);
+      } else {
+        lerAcervo().then(filmes => {
+          if (!dlg.open || !escolher.isConnected) return;
+          const copias = filmes.filter(f => mesmoFilmeParaVR(atual, f));
+          if (copias.length === 1) {
+            continuar.onclick = () => entrarBox(copias[0], true);
+            opcoes.prepend(continuar);
+          } else {
+            const mensagem = document.createElement('p');
+            mensagem.className = 'dica';
+            mensagem.textContent = 'O vídeo da sala precisa de uma versão compatível com VR Box para continuar.';
+            opcoes.prepend(mensagem);
+          }
+        }).catch(() => {});
+      }
+    }
     const escolher = document.createElement('button');
     escolher.type = 'button'; escolher.className = 'vr-op'; escolher.dataset.modo = 'cardboard';
-    escolher.innerHTML = 'VR Box / Cardboard<small>Escolher um filme do CineOnline sem anúncios.</small>';
+    escolher.innerHTML = 'Acervo do VR Box<small>Escolher um filme do CineOnline.</small>';
     opcoes.append(escolher);
     escolher.onclick = async () => {
       opcoes.innerHTML = '<p role="status">Carregando filmes do R2…</p>';
       let filmes;
-      try { filmes = await carregarFilmesR2(sb); }
+      try { filmes = await lerAcervo(); }
       catch {
         opcoes.innerHTML = '<p role="status">Não foi possível carregar o acervo.</p>';
         escolher.textContent = 'Tentar novamente'; opcoes.append(escolher); return;
@@ -636,15 +770,7 @@ async function abrirVR() {
         lista.add(new Option(filme.titulo + (minutos ? ' · ' + minutos + ' min' : ''), i));
       }
       lista.focus();
-      $('#vr-assistir').onclick = async () => {
-        const filme = filmes[lista.selectedIndex];
-        const permissao = vr.pedirPermissaoSensor();
-        if (!estado.player.iniciarFilmeVR(filme)) return;
-        dlg.close();
-        const ok = await vr.entrarCardboard(permissao);
-        if (ok && !estado.player.v.error) mostrarControlesVR(vr);
-        else { if (ok) await vr.sair(); estado.player.sairFilmeVR(); }
-      };
+      $('#vr-assistir').onclick = () => entrarBox(filmes[lista.selectedIndex]);
     };
   }
   if (cap.webxr) {

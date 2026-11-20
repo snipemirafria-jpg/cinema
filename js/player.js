@@ -1,5 +1,5 @@
 // Player sincronizado: todos veem o mesmo ponto do filme (o servidor manda).
-import { fonteR2 } from './catalogo-r2.js';
+import { fonteR2, mesmoFilmeParaVR } from './catalogo-r2.js';
 import { sb, urlPublica } from './supa.js';
 import { detectarTipo, idYouTube, idDrive, idArchive, urlDriveDireto, urlDrivePreview, MidiaYouTube, MidiaIframe, carregarHls, carregarDash } from './fontes.js';
 
@@ -23,7 +23,7 @@ export class PlayerSincronizado {
     this._ultimoSeek = 0; this._aguardandoDados = false; this._ultimoDiagnostico = 0;
     this._tick = setInterval(() => this._corrigir(), 1500);
     this._poll = setInterval(() => this.atualizar(), 30000);
-    video.addEventListener('ended', () => { if (!this.filmeVR) setTimeout(() => this.atualizar(), 800); });
+    video.addEventListener('ended', () => { if (!this.filmeVR || this._itemVRSala) setTimeout(() => this.atualizar(), 800); });
     video.addEventListener('error', () => {
       if (this.m !== video || !video.error) return;
       if (this.filmeVR) { this.aoEstado?.('erro', 'Não foi possível reproduzir este filme do R2. Confira a conexão ou escolha outro filme.'); return; }
@@ -42,15 +42,22 @@ export class PlayerSincronizado {
   }
 
   async atualizar() {
-    if (this.filmeVR) return;
+    if (this.filmeVR && !this._itemVRSala) return;
     const consulta = ++this._consulta;
     const t0 = Date.now();
     const { data, error } = await sb.rpc('agora_passando');
-    if (consulta !== this._consulta || this.filmeVR) return;
+    if (consulta !== this._consulta) return;
     if (error || !data) { if (error) console.warn(error); return; }
     const t1 = Date.now();
     this.offset = new Date(data.agora).getTime() - (t0 + t1) / 2;   // relógio do servidor
     this.estado = data;
+    if (this._itemVRSala) {
+      if (data.item === this._itemVRSala && mesmoFilmeParaVR(data.filme, this.filmeVR)) {
+        this._corrigir(true);
+        return;
+      }
+      this._limparFilmeVR();   // a programação mudou, volta a acompanhar a fonte da sala
+    }
     if (!data.filme) { this._parar(); this.itemAtual = null; this.aoMudarFilme?.(null, data); return; }
     if (data.item !== this.itemAtual || data.iniciado_em !== this._iniciado) {
       const trocou = data.item !== this.itemAtual;
@@ -61,8 +68,8 @@ export class PlayerSincronizado {
   }
 
   posicaoAlvo() {
-    if (this.filmeVR || !this.estado?.filme) return 0;
-    if (this.estado.pausado) return 0;
+    if ((this.filmeVR && !this._itemVRSala) || !this.estado?.filme) return 0;
+    if (this.estado.pausado) return this.estado.posicao_seg || 0;
     const agora = Date.now() + this.offset;
     return Math.max(0, (agora - new Date(this.estado.iniciado_em).getTime()) / 1000);
   }
@@ -75,29 +82,51 @@ export class PlayerSincronizado {
     return { tipo: f.origem, url: f.fonte_url };
   }
 
-  iniciarFilmeVR(filme) {
+  podeContinuarVR() {
+    return !!this.estado?.filme && this.modo === 'textura' && this._fonteDireta === true && !this.v.error;
+  }
+
+  podeEntrarCardboard() {
+    return this.filmeVR ? !!fonteR2(this.filmeVR.fonte_url) : this.podeContinuarVR();
+  }
+
+  iniciarFilmeVR(filme, exigirSessao = false) {
     const fonte = fonteR2(filme?.fonte_url);
     if (!fonte) return false;
+    const mesmo = this.estado?.item && mesmoFilmeParaVR(this.estado.filme, filme);
+    if (exigirSessao && !mesmo) return false;
+    if (mesmo && this.podeContinuarVR()) return true;
     if (!this.filmeVR) this._mudoDaSala = this.mutado;
     this._consulta++;
+    this._itemVRSala = mesmo ? this.estado.item : null;
     this.filmeVR = { ...filme, origem: fonte.tipo, fonte_url: fonte.url };
     this._carregar(this.filmeVR).catch(() => {
       if (this.filmeVR?.fonte_url === fonte.url) this.aoEstado?.('erro', 'Falha ao abrir o filme do R2.');
     });
     this.aoLegenda?.('');
     this.v.muted = false;
-    if (this.v.hasAttribute('src')) this.tocar();
+    if (this.v.hasAttribute('src') && !(this._itemVRSala && this.estado.pausado)) {
+      if (this._itemVRSala) {
+        try { this.v.currentTime = this.posicaoAlvo(); } catch { }
+      }
+      this.tocar();
+    }
     return true;
   }
 
   sairFilmeVR() {
     if (!this.filmeVR) return;
-    this.filmeVR = null;
-    this.itemAtual = null;
+    this._limparFilmeVR();
     this._parar();
     this.v.muted = this._mudoDaSala;
-    this.aoLegenda?.('');
     return this.atualizar();
+  }
+
+  _limparFilmeVR() {
+    this.filmeVR = null;
+    this._itemVRSala = null;
+    this.itemAtual = null;
+    this.aoLegenda?.('');
   }
 
   _parar() {
@@ -112,6 +141,7 @@ export class PlayerSincronizado {
     this.vLivre.removeAttribute('src'); this.vLivre.load();
     if (this.m !== this.v && this.m !== this.vLivre) this.m.destroy?.(), this.m.destruir?.();
     this._semCors = null; this._falhaLivre = null;
+    this._fonteDireta = false;
     this._ultimoSeek = 0; this._aguardandoDados = false;
     this._usar('textura', this.v);
   }
@@ -180,6 +210,7 @@ export class PlayerSincronizado {
       return;
     }
     if (tipo === 'link') { this._usar('iframe', new MidiaIframe(url)); return; }
+    this._fonteDireta = ['mp4', 'hls', 'dash'].includes(tipo);
     if (tipo === 'mp4' && !this.filmeVR) this._semCors = () => { this._semCors = null; v.removeAttribute('src'); this._tocarLivre(url); };
     [...v.querySelectorAll('track')].forEach(t => t.remove());
     if (tipo === 'hls') {
@@ -223,7 +254,7 @@ export class PlayerSincronizado {
       if (geracao !== this._geracao || this.m !== v) return;
       const alvo = Math.min(this.posicaoAlvo(), Number.isFinite(v.duration) ? Math.max(0, v.duration - 0.25) : this.posicaoAlvo());
       if (alvo > 0.5) { try { v.currentTime = alvo; this._ultimoSeek = performance.now(); } catch {} }
-      this.tocar();
+      if (!this._itemVRSala || !this.estado.pausado) this.tocar();
     };
     if (v.readyState >= 1) iniciarNaPosicao();
     else v.addEventListener('loadedmetadata', iniciarNaPosicao, { once: true });
@@ -242,7 +273,7 @@ export class PlayerSincronizado {
 
   _corrigir(forcar = false) {
     const v = this.m;
-    if (this.filmeVR || v.semControle || this.emAnuncio || this.controlesYouTube) return;
+    if ((this.filmeVR && !this._itemVRSala) || v.semControle || this.emAnuncio || this.controlesYouTube) return;
     if (!this.estado?.filme || v.readyState < 1) return;
     if (this.estado.pausado) { if (!v.paused) v.pause(); return; }
     const alvo = this.posicaoAlvo();

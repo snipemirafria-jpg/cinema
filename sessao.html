@@ -44,12 +44,15 @@
       </div>
       <div class="login-acesso">
         <button class="btn-google grande" type="button" data-acao="login"><img src="icons/google.svg" alt="">Entrar com Google</button>
-        <form id="form-email" class="form-email">
-          <div class="ou"><span>ou entre com e-mail</span></div>
-          <input type="email" id="em-email" aria-label="E-mail" placeholder="seu@email.com" autocomplete="email" required>
-          <input type="password" id="em-senha" aria-label="Senha" placeholder="Senha (mín. 6)" minlength="6" autocomplete="current-password" required>
-          <div class="em-botoes"><button type="submit" class="em-entrar">Entrar</button><button type="button" id="em-criar" class="em-criar">Criar conta</button></div>
-        </form>
+        <p class="login-google-status" id="status-google" role="alert" hidden></p>
+        <details class="login-email">
+          <summary>Entrar com e-mail e senha</summary>
+          <form id="form-email" class="form-email">
+            <input type="email" id="em-email" aria-label="E-mail" placeholder="seu@email.com" autocomplete="email" required>
+            <input type="password" id="em-senha" aria-label="Senha" placeholder="Senha (mín. 6)" minlength="6" autocomplete="current-password" required>
+            <div class="em-botoes"><button type="submit" class="em-entrar">Entrar</button><button type="button" id="em-criar" class="em-criar">Criar conta</button></div>
+          </form>
+        </details>
         <p class="aviso-config" id="aviso-config" hidden>⚠️ Configure o Supabase em <code>js/config.js</code> (veja o README).</p>
       </div>
     </div>
@@ -109,6 +112,7 @@
       <button data-ir="salas" type="button" aria-label="Outras salas" aria-controls="gaveta-salas" title="Outras salas">🍿<span>Salas</span></button>
       <button data-ir="chat" title="Chat" aria-controls="chat" aria-expanded="false">💬<span>Chat</span></button>
       <button data-ir="pessoas" title="Participantes">👥<span>Pessoas</span></button>
+      <button data-ir="assentos" type="button" title="Trocar de assento" aria-controls="gaveta-assentos">💺<span>Assentos</span></button>
       <button data-ir="programacao" title="Programação">🗓️<span>Próximos</span></button>
       <button data-ir="perfil" title="Meu perfil">👤<span>Perfil</span></button>
       <button data-ir="vr" id="menu-vr" title="Entrar no VR">🥽<span>VR</span></button>
@@ -138,6 +142,15 @@
       <header><h3>Outras salas</h3><button class="fechar" type="button" data-fechar aria-label="Fechar outras salas">✕</button></header>
       <div class="lista-prog" id="catalogos-salas"></div>
       <p class="dica" id="status-salas" role="status">Carregando catálogos…</p>
+    </aside>
+
+    <aside class="gaveta" id="gaveta-assentos" hidden>
+      <header><h3>Escolha seu assento</h3><button class="fechar" type="button" data-fechar aria-label="Fechar">✕</button></header>
+      <div class="mapa-assentos">
+        <label>Fileira <select id="fileira-assentos"></select></label>
+        <div class="grade-assentos" id="grade-assentos" aria-label="Assentos da fileira"></div>
+        <p id="status-assentos" role="status">Carregando assentos…</p>
+      </div>
     </aside>
 
     <aside class="gaveta" id="gaveta-programacao" hidden>

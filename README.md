@@ -30,7 +30,7 @@ Abra http://localhost:8080. Cada push na branch `main` republica o site automati
 ## Supabase
 - Projeto: `mbunkvouhdveruyezuof` (região São Paulo).
 - O esquema completo está em `supabase/migrations/001_cine_online.sql` (pode rodar de novo no SQL Editor; é idempotente).
-- Login Google: Authentication → Providers → Google (Client ID/Secret do Google Cloud). Em Authentication → URL Configuration, a Site URL e Redirect URLs devem incluir o endereço do GitHub Pages.
+- **Entrar com Google** usa a conta Google, sem senha do cinema. Em Authentication → Providers → Google, configure o Client ID e o Client Secret do Google Cloud. Em Authentication → URL Configuration, inclua `https://snipemirafria-jpg.github.io/cinema/` como URL de retorno.
 - O e-mail do OWNER fica em `privado.config` (chave `owner_email`). Só o primeiro login **Google verificado** com esse e-mail vira OWNER — nenhum usuário consegue se promover pelo navegador.
 
 ## Anúncios nas paredes

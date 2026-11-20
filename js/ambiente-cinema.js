@@ -2,6 +2,9 @@ import * as THREE from 'three';
 import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
 const ASSETS = new URL('../assets/', import.meta.url).href;
 const MOBILE = matchMedia('(pointer:coarse)').matches || innerWidth < 760;
+const IOS = /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+  (/Macintosh/i.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
+const VISUAL_PC = !MOBILE || IOS;
 // Geometria da sala (a plateia olha para +Z, onde fica o telão)
 const TELA = { z: 15.5, y: 5.6, w: 17.6, h: 7.4 };
 const SALA = { L: 26, A: 13, zFundo: -16 };   // largura, altura e parede do fundo (usado para prender a câmera)
@@ -12,9 +15,9 @@ const DEGRAU = 0.38;
 const LARG_BLOCO = 1.774;
 const CORREDOR = 1.6;
 
-// No celular troca materiais PBR (pesados) por Lambert, bem mais leves na GPU.
+// O modo leve troca materiais PBR por Lambert para reduzir o custo na GPU.
 function baratear(raiz) {
-  if (!MOBILE) return;
+  if (VISUAL_PC) return;
   raiz.traverse(o => {
     if (!o.isMesh) return;
     const troca = m => {
@@ -30,7 +33,7 @@ function baratear(raiz) {
 }
 
 
-export { TELA, SALA, MOBILE, FILEIRAS, baratear };
+export { TELA, SALA, MOBILE, IOS, VISUAL_PC, FILEIRAS, baratear };
 export class AmbienteCinema {
   _montarSala() {
     const c = this.cena;
@@ -124,7 +127,7 @@ export class AmbienteCinema {
     // cortinas laterais do telão
     const cortinaMat = M.cortina = new THREE.MeshStandardMaterial({ color: '#7a0a16', roughness: 0.7, side: THREE.DoubleSide });
     for (const lado of [-1, 1]) {
-      const g = new THREE.PlaneGeometry(3.2, A - 1, MOBILE ? 16 : 40, 1);
+      const g = new THREE.PlaneGeometry(3.2, A - 1, VISUAL_PC ? 40 : 16, 1);
       const pos = g.attributes.position;
       for (let i = 0; i < pos.count; i++) pos.setZ(i, Math.sin(pos.getX(i) * 7) * 0.18);
       g.computeVertexNormals();
@@ -140,14 +143,14 @@ export class AmbienteCinema {
     // iluminação
     c.add(this._l.hemi = new THREE.HemisphereLight('#ffc2cc', '#1a0810', 1.1));
     const ambiente = this._l.amb = new THREE.AmbientLight('#3a1420', 1.2); c.add(ambiente);
-    if (MOBILE) ambiente.intensity = 2.2;
-    for (const lado of (MOBILE ? [] : [-1, 1])) {
+    if (!VISUAL_PC) ambiente.intensity = 2.2;
+    for (const lado of (VISUAL_PC ? [-1, 1] : [])) {
       const pl = new THREE.PointLight('#ff2040', 60, 22, 1.4);
       pl.position.set(lado * 10, 7, 0); c.add(pl); this._l.pontos.push(pl);
       const pl2 = new THREE.PointLight('#ff2040', 45, 20, 1.4);
       pl2.position.set(lado * 10, 6, 10); c.add(pl2); this._l.pontos.push(pl2);
     }
-    if (!MOBILE) { const fundoLuz = new THREE.PointLight('#ffb070', 14, 14, 1.8); fundoLuz.position.set(0, 9, zFundo + 3); c.add(fundoLuz); this._l.fundo = fundoLuz; }
+    if (VISUAL_PC) { const fundoLuz = new THREE.PointLight('#ffb070', 14, 14, 1.8); fundoLuz.position.set(0, 9, zFundo + 3); c.add(fundoLuz); this._l.fundo = fundoLuz; }
     // luz do telão (cor varia com o filme)
     this.luzTela = new THREE.SpotLight('#9ab6ff', 60, 40, Math.PI / 3.2, 0.8, 1.2);
     this.luzTela.position.set(0, TELA.y, TELA.z - 1);
@@ -186,7 +189,7 @@ export class AmbienteCinema {
   _yFila(i) { return i * DEGRAU; }
 
   async _montarPoltronas() {
-    const arquivo = MOBILE ? 'seat-mobile.glb' : 'seat.glb';
+    const arquivo = VISUAL_PC ? 'seat.glb' : 'seat-mobile.glb';
     const gltf = await new GLTFLoader().loadAsync(ASSETS + 'models/' + arquivo);
     const modelo = gltf.scene;
     modelo.updateMatrixWorld(true);
@@ -227,6 +230,7 @@ export class AmbienteCinema {
     });
     this.tema?.registrarPoltronas(this._matsPoltrona);
     this.assentos.sort((a, b) => a.prioridade - b.prioridade);
+    this.assentos.forEach((assento, indice) => { assento.indice = indice; });
     return true;
   }
 

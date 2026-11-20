@@ -13,6 +13,19 @@ export function fonteR2(valor) {
   } catch { return null; }
 }
 
+export function mesmoFilmeParaVR(atual, copia) {
+  if (!atual || !copia) return false;
+  if (atual.id && atual.id === copia.id) return true;
+  const a = fonteR2(atual.fonte_url), b = fonteR2(copia.fonte_url);
+  if (a && b && new URL(a.url).pathname === new URL(b.url).pathname) return true;
+  const titulo = valor => String(valor ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().trim().replace(/\s+/g, ' ');
+  const nome = titulo(atual.titulo);
+  // O manifesto arredonda a duração em minutos. Evita combinar cortes com durações muito diferentes.
+  return !!nome && nome === titulo(copia.titulo) && atual.duracao_seg > 0 && copia.duracao_seg > 0
+    && Math.abs(atual.duracao_seg - copia.duracao_seg) <= 60;
+}
+
 export function reunirFilmesR2(catalogo, registros = []) {
   const itens = new Map();
   const inserir = f => {
@@ -36,7 +49,7 @@ export async function carregarFilmesR2(sb) {
     return resposta.json();
   };
   const lerCadastro = async () => {
-    const { data, error } = await sb.from('filmes').select('titulo,capa_url,fonte_url,duracao_seg,genero')
+    const { data, error } = await sb.from('filmes').select('id,titulo,capa_url,fonte_url,duracao_seg,genero')
       .eq('status', 'pronto').like('fonte_url', ORIGEM_R2 + '/%');
     if (error) throw error;
     return data;

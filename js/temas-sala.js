@@ -203,8 +203,8 @@ function paleta(lista) {
 const NIVEIS = { alta: { tex: 512, part: 1, luzes: 4 }, media: { tex: 512, part: 0.55, luzes: 0 }, baixa: { tex: 256, part: 0, luzes: 0 } };
 const ROTULO = { auto: 'Auto', alta: 'Alta', media: 'Média', baixa: 'Leve' };
 function lerPreferencia() { try { return localStorage.getItem('cine-graficos') || 'auto'; } catch { return 'auto'; } }
-function nivelAuto(MOBILE) {
-  if (!MOBILE) return 'alta';
+function nivelAuto(visualPC) {
+  if (visualPC) return 'alta';
   const fraco = (navigator.hardwareConcurrency || 4) <= 4 || (navigator.deviceMemory || 4) <= 2;
   return fraco ? 'baixa' : 'media';
 }
@@ -228,8 +228,9 @@ const TROCA_POLTRONA = `
 export class SalaTematica {
   constructor(cin, ctx) {
     this.cin = cin; this.ctx = ctx;
-    this.preferencia = lerPreferencia();
-    this.nivel = this.preferencia === 'auto' ? nivelAuto(ctx.MOBILE) : this.preferencia;
+    const preferencia = lerPreferencia();
+    this.preferencia = Object.hasOwn(ROTULO, preferencia) ? preferencia : 'auto';
+    this.nivel = this.preferencia === 'auto' ? nivelAuto(ctx.VISUAL_PC) : this.preferencia;
     this.decor = new Map();                     // tema -> camadas (criadas uma vez, guardadas)
     this.ativo = [];                            // temas visíveis agora
     this.chave = 'padrao';
@@ -328,13 +329,16 @@ export class SalaTematica {
 
   _texturas(sup) {
     const M = this.cin._m, real = (m) => m?.userData?._lambert || m;
-    const T = (tipo) => (tipo ? texturaSuperficie(tipo, NIVEIS[this.nivel].tex) : null);
+    const tamanho = NIVEIS[this.nivel].tex;
     const por = (mat, tipo, rx, ry, campo = 'map') => {
       const m = real(mat); if (!m) return;
       const antes = m[campo];
-      const nova = tipo ? comRepeticao(T(tipo), rx, ry) : null;
-      if (antes?.userData?.tipo === tipo && (!!antes === !!nova)) return;
-      if (nova) nova.userData.tipo = tipo;
+      if (tipo ? antes?.userData?.tipo === tipo && antes.image.width === tamanho : !antes) return;
+      const nova = tipo ? comRepeticao(texturaSuperficie(tipo, tamanho), rx, ry) : null;
+      if (nova) {
+        nova.userData.tipo = tipo;
+        nova.anisotropy = Math.min(4, this.cin.renderer.capabilities.getMaxAnisotropy());
+      }
       const mudouPresenca = !!antes !== !!nova;
       antes?.dispose?.();
       m[campo] = nova;
@@ -360,7 +364,7 @@ export class SalaTematica {
     for (const k of ['neonA', 'neonB', 'faixa', 'sanca', 'ledPalco', 'borda', 'brilho', 'arandela', 'luzTeto']) cor(M[k], neon(k));
     const f = escurecer;
     Lz.hemi.color.copy(p.ceu); Lz.hemi.groundColor.copy(p.chao); Lz.hemi.intensity = 1.1 * p.hemi * f;
-    Lz.amb.color.copy(p.amb); Lz.amb.intensity = (this.ctx.MOBILE ? 2.2 : 1.2) * p.ambM * f;
+    Lz.amb.color.copy(p.amb); Lz.amb.intensity = (this.ctx.VISUAL_PC ? 1.2 : 2.2) * p.ambM * f;
     Lz.pontos.forEach((l, i) => { l.color.copy(p.pontual); l.intensity = (i % 2 ? 45 : 60) * p.pontualM * f; });
     if (Lz.fundo) { Lz.fundo.color.copy(p.fundoLuz); Lz.fundo.intensity = 14 * f; }
     this.uPoltrona.uTecido.value.copy(p.tecido); this.uPoltrona.uDetalhe.value.copy(p.detalhe); this.uPoltrona.uMixPoltrona.value = p.poltrona;
@@ -436,10 +440,12 @@ export class SalaTematica {
 
   definirQualidade(nivel, automatico = false) {
     if (!automatico) { this.preferencia = nivel; try { localStorage.setItem('cine-graficos', nivel); } catch { } }
-    const novo = nivel === 'auto' ? nivelAuto(this.ctx.MOBILE) : nivel;
+    const novo = nivel === 'auto' ? nivelAuto(this.ctx.VISUAL_PC) : nivel;
+    const anterior = this.nivel;
+    this.nivel = novo;
     this._atualizarBotao();
-    if (novo === this.nivel) return;
-    this.nivel = novo; this._fps = null;
+    if (novo === anterior) return;
+    this._fps = null;
     // refaz só a decoração (a sala continua a mesma)
     for (const d of this.decor.values()) { d.raiz.removeFromParent(); d.raiz.traverse(o => { o.geometry?.dispose?.(); }); }
     this.decor.clear();
